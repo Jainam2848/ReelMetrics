@@ -3708,6 +3708,80 @@ To prevent leakage of admin credentials and to guarantee lightning-fast load tim
 2. **Dependency Tree Guard**: To prevent heavy dashboard components (like Recharts and framer-motion) from bleeding into the public-facing entry points, the Next.js bundle config MUST use package-level tree-shaking and declare clean boundaries. Any shared UI components (buttons, badges) MUST reside in `components/shared/` and contain zero external database references.
 3. **ESLint Build-Time Restrictions**: To programmatically enforce this boundary, a custom ESLint `no-restricted-imports` rule MUST be configured for all routes located within public paths (`app/(public)/**/*`). This rule blocks imports of `@/lib/db`, `@/lib/supabase`, or `@/lib/security/encryption` from public page paths, causing the build to fail immediately if violated.
 
+## 14.8 Platform Portability Notes (Railway as Future Target)
+
+> **Status — Informational, not a migration plan.** The system ships on **Vercel** (see §1, §14.6). This section enumerates every Vercel-specific coupling point so a future migration is mechanical, not exploratory. Railway is documented as the most likely target because it preserves the Next.js + Postgres model while removing the 15-second execution cap that drives the bulk of the queue-worker complexity in §9.3.
+
+### 14.8.1 Architectural Coupling Inventory
+
+| # | Coupling | Spec Reference | Vercel-Specific Reason | Railway Equivalent |
+|---|---|---|---|---|
+| 1 | Serverless function 15s ceiling | §9.3 (Bounded Worker) | Vercel Hobby/Pro function timeout | Long-running Node process — **no ceiling** |
+| 2 | Cron triggers via `vercel.json` | §6.5 (Daily Sync), §6.6 (Hourly Token Refresh), §14.6 | Vercel Cron platform feature | Railway **Cron Service** (separate service in the project) OR `node-cron` inside the worker process |
+| 3 | Connection pool sizing formula | §3 connection-math | Assumes Vercel concurrency cap (100) | Recomputed against Railway **replica count × pool size**; usually smaller because long-lived workers reuse connections |
+| 4 | Cold-start warmup pings | §14.6 #3 | Vercel functions cold-start after idle | **Delete entirely** — Railway services don't cold-start |
+| 5 | `*.vercel-insights.com` in CSP allow-list | §11.9 baseline CSP | Vercel Speed Insights | Remove from `script-src`; add Plausible/Posthog/etc. as needed |
+| 6 | Auto-TLS at the edge | §11.1 Layer 1 | Vercel managed cert | Railway managed cert OR Cloudflare proxy in front |
+| 7 | Preview deploy URLs (`*.vercel.app`) | §14 deploy table | Vercel PR previews | Railway **PR Environments** (built-in feature) — different hostname pattern; update OAuth redirect URIs |
+| 8 | 4.5 MB request body ceiling | §6.7 (referenced as platform upper bound) | Vercel platform limit | Railway uses Node's default; the **application-level 1 MiB cap (§6.7, §8.5.3) is the real ceiling** — unchanged |
+| 9 | `vercel.json` config file | §14 project structure | Vercel-specific | Replace with **`railway.toml`** + `Procfile` (or `nixpacks.toml`) |
+| 10 | Vercel Pro line item ($20/mo) | §12 cost model | — | Railway **Hobby ($5/mo)** + per-resource usage; recalculate margins in §12 |
+| 11 | In-memory circuit-breaker state scoped "per Vercel function instance" | §7.8 | Each Vercel invocation may be a new instance | On Railway one replica = one process; state shared across all requests in that replica. Multi-replica deployments still need the optional Postgres `circuit_state` row mentioned in §7.8 |
+
+### 14.8.2 What GETS SIMPLER on Railway
+
+Migrating off the 15-second ceiling unlocks structural simplifications that should be made **at the same time** as the platform switch (do not migrate first and refactor later — the temporary hybrid is harder to operate than either endpoint).
+
+| Simplification | Pre-Migration (Vercel) | Post-Migration (Railway) |
+|---|---|---|
+| Queue worker shape | Time-bounded 15s batch runner (§9.3.2) triggered by Cron webhook | **Plain long-running daemon loop** with `while (true) { claimAndProcess(); await sleep(500); }` |
+| Zombie-lock recovery window | 5 minutes (§9.2) tuned for Vercel kill behavior | Can be tightened to 60s because process death is detectable via Railway healthchecks |
+| Heartbeat cadence | 30s (§4.4.3) to stay safe under 90s stall threshold | Can stay 30s OR be removed; the long-running process is the source of truth |
+| Cold-start mitigation | Warmup cron every 5 min (§14.6) | **Deleted** |
+| Per-instance circuit-breaker reset | Frequent (instances are short-lived) | Rare (instances live for days) — consider lowering the OPEN cool-down in §7.8 |
+| Concurrency cap math | Constrained by Vercel cap of 100 | Constrained by Railway replica count × per-process pool — usually **lower** and more predictable |
+
+### 14.8.3 What MUST Stay Identical (Regardless of Host)
+
+These layers carry zero Vercel coupling and MUST NOT be touched during a platform migration. Any drift here means the migration is doing too much at once.
+
+- **Database schema** (§4) — including `processed_events`, `job_queue`, RLS policies, `last_heartbeat_at`, `display_views`/`metric_source`
+- **Token encryption + rotation** (§11.2)
+- **Webhook signature verification** (§8.5, §11.3) and the 1 MiB pre-signature body guard (§6.7, §8.5.3)
+- **Idempotency keys** (§9.5) and the `ON CONFLICT DO NOTHING` enqueue contract
+- **Trace-ID propagation** (§9.5.1), `withDbRetry` (§9.5.2), `sanitizeForLogs` (§11.8), HTTP security headers (§11.9)
+- **AI engine purity contract** (§7.1) and the heuristic fallback (§7.5) — they explicitly forbid external coupling
+
+### 14.8.4 Phased Migration Order (When the Time Comes)
+
+The order below is non-negotiable: each phase MUST be green in production for **at least 24 hours** before starting the next. Reversibility is preserved through phase 4.
+
+1. **Phase A — Cron extraction.** Move every `vercel.json` Cron entry to either a Railway Cron Service or `node-cron` invocations inside a new `worker` service. Keep the Next.js app on Vercel. Verify all scheduled jobs (§6.5, §6.6) fire on the new schedule.
+2. **Phase B — Worker extraction.** Deploy the queue worker as a Railway long-running service that connects to the **same Supabase database**. Disable the Vercel `/api/queue/process` cron trigger. Confirm `job_queue` throughput is identical and that the dead-letter queue depth stays flat for 24h.
+3. **Phase C — Web app cutover.** Deploy the Next.js app to Railway behind a temporary subdomain (e.g. `railway.reel-logic.app`). Run smoke tests against the RLS suite (§11.6), webhook handlers, and Stripe checkout end-to-end. Update **Instagram OAuth redirect URI** and **Stripe webhook endpoint** to point at the new host as the final step.
+4. **Phase D — DNS flip.** Move the apex/`www` DNS record from Vercel to Railway (or Cloudflare proxy in front of Railway). Keep the Vercel deployment running but unrouted for **7 days** as instant rollback.
+5. **Phase E — Refactor unlocks.** Only AFTER Phase D is stable: collapse the §9.3 bounded batch runner into a plain daemon loop, delete the warmup cron (§14.6 #3), and tighten zombie-lock windows per §14.8.2. This is a code change inside the worker service and does not touch Vercel artifacts.
+
+### 14.8.5 Pre-Migration Checklist
+
+Before Phase A begins, the following MUST be true. If any item is uncertain, resolve it first — discovering them mid-migration is dangerous.
+
+- [ ] All env vars in §5.5 are reproduced in Railway's variable store, including `TOKEN_ENCRYPTION_KEYS` (zero-downtime key rotation must not regress).
+- [ ] Supabase project is hosted independently of Vercel (it is — confirm).
+- [ ] Stripe webhook signing secret is rotated **after** Phase C, not during, to avoid double-active endpoints racing on the same `event.id`.
+- [ ] `INSTAGRAM_REDIRECT_URI` and Meta App Dashboard webhook URL are updated in Phase C, with the **previous URI kept whitelisted for 7 days** for in-flight OAuth callbacks.
+- [ ] `CRON_SECRET` is rotated when moving cron triggers between platforms (do not reuse — old Vercel cron credentials should die with the old environment).
+- [ ] Sentry/Logflare projects are not Vercel-integration-only; ensure log ingestion works via direct SDK.
+
+### 14.8.6 Explicit Non-Goals
+
+To prevent scope creep during a migration, the following are explicitly **out of scope** for a Vercel → Railway move and MUST be handled as separate, later projects:
+
+- Switching away from Supabase (database, Auth, RLS) — that is a far larger migration.
+- Replacing Next.js with another framework.
+- Introducing Redis or any new infrastructure component (the §1 hard constraint still holds).
+- Multi-region deployment (Railway supports it, but it changes RLS latency assumptions in §3 and §11.6).
+
 ---
 
 # §15 — FAILURE STATE ENGINE
