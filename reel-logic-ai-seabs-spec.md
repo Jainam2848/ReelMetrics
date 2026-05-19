@@ -981,7 +981,6 @@ import { z } from "zod";
 
 const envSchema = z.zodObject({
   DATABASE_URL: z.string().url(),
-  NEXTAUTH_SECRET: z.string().min(16),
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
@@ -2149,6 +2148,7 @@ WITH next_job AS (
     FROM job_queue
     WHERE (status = 'pending' AND scheduled_at <= now())
        OR (status = 'processing' AND locked_at < now() - interval '5 minutes')
+       OR (status = 'processing' AND last_heartbeat_at < now() - interval '90 seconds')
     ORDER BY priority DESC, scheduled_at ASC
     LIMIT 1
     FOR UPDATE SKIP LOCKED
@@ -2157,7 +2157,8 @@ UPDATE job_queue
 SET
     status = 'processing',
     locked_at = now(),
-    locked_by = $1  -- worker_id
+    locked_by = $1,  -- worker_id
+    last_heartbeat_at = now()
 FROM next_job
 WHERE job_queue.id = next_job.id
 RETURNING job_queue.*;
@@ -2169,7 +2170,7 @@ To run efficiently in serverless environments (like Vercel) without standard lon
 
 ### 9.3.1 Architectural Bounded Execution Principles
 - **Vercel Timeout Prevention:** Next.js serverless functions have strict execution timeout limits (typically 15s to 60s). The worker tracks its execution duration and exits cleanly after **15 seconds** to prevent abrupt execution termination, which would leave orphaned locks in the database.
-- **Zombie Lock Recovery:** Claimed jobs have a 5-minute lock expiration. If a worker crashes or is timed out by Vercel, the claiming query automatically makes the job available for reprocessing after 5 minutes of inactivity (`locked_at < now() - interval '5 minutes'`).
+- **Zombie Recovery (Lock + Heartbeat):** Claimed jobs are eligible for reprocessing if either the lock exceeds 5 minutes (`locked_at < now() - interval '5 minutes'`) or the worker heartbeat stalls for more than 90 seconds (`last_heartbeat_at < now() - interval '90 seconds'`), covering both timeout and crash scenarios.
 - **Promise-Based Concurrent Processing:** The worker processes a batch of jobs using a concurrent promise queue with a limit (e.g., 3 concurrent jobs).
 
 ### 9.3.2 Serverless Webhook Handler Endpoint (`app/api/queue/process/route.ts`)
@@ -3409,7 +3410,6 @@ INSTAGRAM_VERIFY_TOKEN=                 # Meta webhook hub verification token
 
 # ─── OpenAI ───
 OPENAI_API_KEY=
-OPENAI_ORG_ID=
 
 # ─── Stripe ───
 STRIPE_SECRET_KEY=
