@@ -742,9 +742,12 @@ CREATE UNIQUE INDEX idx_processed_events_id ON processed_events(event_id);
 ALTER TABLE instagram_accounts
     ALTER COLUMN access_token_enc TYPE BYTEA;
 
--- Application-level encryption (TypeScript):
--- encrypt: aes256gcm.encrypt(token, process.env.TOKEN_ENCRYPTION_KEY)
--- decrypt: aes256gcm.decrypt(encrypted, process.env.TOKEN_ENCRYPTION_KEY)
+-- Application-level encryption (TypeScript): see §11.2 for full implementation.
+-- Keys are loaded from TOKEN_ENCRYPTION_KEYS (JSON map of version → 32-byte hex key)
+-- with ACTIVE_KEY_VERSION selecting which key encrypts new writes. Ciphertext is
+-- stored as "<keyVersion>:<iv>:<authTag>:<ciphertext>" to enable zero-downtime rotation.
+-- encrypt: encryptToken(token)              // uses KEYS_MAP[ACTIVE_KEY_VERSION]
+-- decrypt: decryptToken(encryptedString)    // resolves key from version prefix
 ```
 
 ## 4.4 Advanced Concurrency, Normalization, & RLS Policies
@@ -988,12 +991,50 @@ const envSchema = z.zodObject({
   OPENAI_API_KEY: z.string().min(1),
   STRIPE_SECRET_KEY: z.string().min(1),
   STRIPE_WEBHOOK_SECRET: z.string().min(1),
+  STRIPE_PRICE_CREATOR: z.string().min(1),  // Stripe Price ID for Creator plan
+  STRIPE_PRICE_PRO: z.string().min(1),      // Stripe Price ID for Pro plan
+  STRIPE_PRICE_AGENCY: z.string().min(1),   // Stripe Price ID for Agency plan
   RESEND_API_KEY: z.string().min(1),
   CRON_SECRET: z.string().min(16),
-  TOKEN_ENCRYPTION_KEY: z.string().length(64), // AES-256 hex key
+  // Encryption keys are stored as a JSON map of key versions to 32-byte hex keys
+  // to support zero-downtime key rotation. The active version is selected by
+  // ACTIVE_KEY_VERSION; historical versions remain in the map so previously
+  // encrypted ciphertexts can still be decrypted. See §11.2 for runtime usage.
+  TOKEN_ENCRYPTION_KEYS: z
+    .string()
+    .refine(
+      (raw) => {
+        try {
+          const parsed = JSON.parse(raw) as Record<string, string>;
+          if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return false;
+          const entries = Object.entries(parsed);
+          if (entries.length === 0) return false;
+          // Each value MUST be a 64-character hex string (32 bytes for AES-256)
+          return entries.every(([, v]) => typeof v === "string" && /^[0-9a-fA-F]{64}$/.test(v));
+        } catch {
+          return false;
+        }
+      },
+      {
+        message:
+          'TOKEN_ENCRYPTION_KEYS must be a JSON object mapping version strings to 64-char hex keys, e.g. \'{"v1":"<64-hex>","v2":"<64-hex>"}\'',
+      }
+    ),
+  ACTIVE_KEY_VERSION: z.string().min(1).default("v1"),
 });
 
 export const env = envSchema.parse(process.env);
+
+// Cross-field validation: ACTIVE_KEY_VERSION must reference a key that exists
+// in TOKEN_ENCRYPTION_KEYS, otherwise encryption will fail at first use.
+{
+  const keys = JSON.parse(env.TOKEN_ENCRYPTION_KEYS) as Record<string, string>;
+  if (!keys[env.ACTIVE_KEY_VERSION]) {
+    throw new Error(
+      `ACTIVE_KEY_VERSION="${env.ACTIVE_KEY_VERSION}" is not present in TOKEN_ENCRYPTION_KEYS. Configure the active key before boot.`
+    );
+  }
+}
 ```
 
 Any import of `lib/env.ts` will automatically trigger schema validation. The application entry point (e.g. Next.js layout or instrumentation hook) MUST import this file so that missing variables cause a crash-fast boot failure rather than silent runtime errors.
@@ -3374,12 +3415,20 @@ OPENAI_ORG_ID=
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+STRIPE_PRICE_CREATOR=                   # Stripe Price ID for Creator plan (price_xxx)
+STRIPE_PRICE_PRO=                       # Stripe Price ID for Pro plan (price_xxx)
+STRIPE_PRICE_AGENCY=                    # Stripe Price ID for Agency plan (price_xxx)
 
 # ─── Email (Resend) ───
 RESEND_API_KEY=
 
 # ─── Security ───
-TOKEN_ENCRYPTION_KEY=                   # 32-byte hex string for AES-256-GCM
+# JSON map of key versions to 32-byte (64 hex char) AES-256-GCM keys. Required
+# for zero-downtime key rotation: historical versions stay in the map so old
+# ciphertexts remain decryptable while new writes use ACTIVE_KEY_VERSION.
+# Example: TOKEN_ENCRYPTION_KEYS='{"v1":"<64-hex>","v2":"<64-hex>"}'
+TOKEN_ENCRYPTION_KEYS=
+ACTIVE_KEY_VERSION=v1                   # Version prefix used for new encryptions
 
 # ─── App ───
 NEXT_PUBLIC_APP_URL=
