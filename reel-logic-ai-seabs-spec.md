@@ -981,12 +981,20 @@ import { z } from "zod";
 
 const envSchema = z.zodObject({
   DATABASE_URL: z.string().url(),
+  // Direct (non-pooled) DB URL used by migrations, RLS test scripts, and
+  // long-running maintenance jobs. Optional: falls back to DATABASE_URL if
+  // the platform exposes a single pooled connection string.
+  SUPABASE_DB_URL: z.string().url().optional(),
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   INSTAGRAM_CLIENT_ID: z.string().min(1),
   INSTAGRAM_CLIENT_SECRET: z.string().min(1),
   INSTAGRAM_APP_SECRET: z.string().min(1),
+  // Required for Meta webhook hub challenge verification. Missing values cause
+  // ALL Instagram webhook deliveries to fail silently, so this MUST be enforced
+  // at boot rather than discovered in production.
+  INSTAGRAM_VERIFY_TOKEN: z.string().min(16),
   OPENAI_API_KEY: z.string().min(1),
   STRIPE_SECRET_KEY: z.string().min(1),
   STRIPE_WEBHOOK_SECRET: z.string().min(1),
@@ -1436,10 +1444,11 @@ During development, the Instagram Graph API MUST be accessed within the **Meta D
 To safeguard Vercel serverless functions against maximum execution limits and payload size ceilings (4.5MB payload constraint), incoming Instagram webhook payloads MUST be parsed and enqueued immediately as lightweight job tickets with zero inline processing.
 
 ### Batch Splitting Specifications:
-1. **Zero Processing in Webhook Thread**: The incoming HTTP request webhook thread MUST only verify the payload signature (`HMAC-SHA256`) and validate the basic payload format. It MUST NOT make any Graph API queries, database writes for Reels, or LLM calls in-flight.
-2. **Immediate Enqueueing**: Parse the event list inside the webhook payload (which can bundle up to 100 media change items) and split the batch into **individual database queue entries** immediately using the `PROCESS_WEBHOOK` job type.
-3. **HTTP 200 Return Gate**: The webhook receiver endpoint MUST return an `HTTP 200 OK` status back to Meta under a strict **3.0-second timeout window** to prevent webhook re-delivery triggers and server congestion.
-4. **Asynchronous Worker Handling**: The background worker process subsequently claims each `PROCESS_WEBHOOK` job, resolves the specific media metrics by calling the Instagram Graph API asynchronously, updates the Reels table, and schedules scoring downstream.
+1. **Hard Body Size Limit (Pre-Signature)**: BEFORE invoking HMAC verification or parsing JSON, the handler MUST inspect `Content-Length` and reject any request whose body exceeds **1 MiB** with `HTTP 413 Payload Too Large`. This prevents CPU/memory exhaustion from malicious oversized payloads that would otherwise be hashed and parsed unnecessarily. Streaming reads MUST short-circuit once the threshold is exceeded so the full body is never buffered. Note: the 4.5 MB Vercel platform ceiling is an upper bound — the application-level limit is intentionally tighter because legitimate Meta payloads never exceed 100 change items (~200 KB).
+2. **Zero Processing in Webhook Thread**: The incoming HTTP request webhook thread MUST only verify the payload signature (`HMAC-SHA256`) and validate the basic payload format. It MUST NOT make any Graph API queries, database writes for Reels, or LLM calls in-flight.
+3. **Immediate Enqueueing**: Parse the event list inside the webhook payload (which can bundle up to 100 media change items) and split the batch into **individual database queue entries** immediately using the `PROCESS_WEBHOOK` job type.
+4. **HTTP 200 Return Gate**: The webhook receiver endpoint MUST return an `HTTP 200 OK` status back to Meta under a strict **3.0-second timeout window** to prevent webhook re-delivery triggers and server congestion.
+5. **Asynchronous Worker Handling**: The background worker process subsequently claims each `PROCESS_WEBHOOK` job, resolves the specific media metrics by calling the Instagram Graph API asynchronously, updates the Reels table, and schedules scoring downstream.
 
 ### Webhook Idempotency & Duplicate Prevention:
 Because Meta may retry webhook requests or send duplicate notifications for the same event, the webhook enqueuer MUST derive a deterministic idempotency key for each queued `PROCESS_WEBHOOK` job.
@@ -1676,7 +1685,7 @@ async function callLLMPure<T>(params: {
   const { prompt, outputSchema, model = "gpt-4o-mini" } = params;
   const startTime = Date.now();
   let rawResponse: string;
-  let usage: any;
+  let usage: OpenAI.CompletionUsage | undefined;
 
   try {
     const completion = await withTimeout(
@@ -1691,9 +1700,10 @@ async function callLLMPure<T>(params: {
     );
     rawResponse = completion.choices[0].message.content || "";
     usage = completion.usage;
-  } catch (error: any) {
-    console.error("LLM call failed:", error);
-    return { success: false, error: error?.message || "Unknown OpenAI error" };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown OpenAI error";
+    console.error("LLM call failed:", sanitizeForLogs(message));
+    return { success: false, error: message };
   }
 
   try {
@@ -1703,12 +1713,13 @@ async function callLLMPure<T>(params: {
     return {
       success: true,
       data: parsed,
-      tokensUsed: usage?.total_tokens || 0,
+      tokensUsed: usage?.total_tokens ?? 0,
       costUsd: actualCost,
       latencyMs: Date.now() - startTime,
     };
-  } catch (parseError: any) {
-    console.error("LLM output parsing or schema validation failed:", parseError);
+  } catch (parseError: unknown) {
+    const message = parseError instanceof Error ? parseError.message : String(parseError);
+    console.error("LLM output parsing or schema validation failed:", sanitizeForLogs(message));
     return { success: false, error: "AI output schema validation error" };
   }
 }
@@ -1862,6 +1873,67 @@ To optimize API usage and provide instantaneous page loads, Reel scoring MUST en
 
 ## 7.7 Prompt Consistency & Quality Gate
 All LLM prompts (scoring, strategy, trends) are subject to automated verification checks to prevent regression, drifting, or unexpected formatting errors. The AI engine must ensure that outputs match the defined schemas with extremely low variance. See [§16.2 AI Prompt Evaluation Framework](file:///d:/Desktop/reel-logic-ai/reel-logic-ai-seabs-spec.md#L3461) for the detailed verification test suite implementation in `scripts/test-prompts.ts`.
+
+## 7.8 Circuit Breaker for External Dependencies
+Every outbound call to a third-party API (Instagram Graph API, OpenAI, Stripe, Resend) MUST be wrapped in a per-dependency circuit breaker to prevent retry storms and cascading failures when an upstream provider degrades.
+
+### State Machine
+| State | Behavior |
+|---|---|
+| **CLOSED** | Normal — requests flow through; failures increment a rolling counter. |
+| **OPEN** | All calls fail-fast with `CircuitOpenError`; worker MUST route to heuristic fallback (§7.5) or reschedule the job with backoff. |
+| **HALF_OPEN** | After the cool-down, a single probe request is allowed; success closes the circuit, failure reopens it. |
+
+### Thresholds (Defaults)
+| Dependency | Failure window | Failures to trip | Cool-down | Probe interval |
+|---|---|---|---|---|
+| OpenAI | 60 s | 5 | 300 s | 30 s |
+| Instagram Graph API | 60 s | 5 | 300 s | 30 s |
+| Stripe | 120 s | 3 | 600 s | 60 s |
+| Resend | 60 s | 5 | 180 s | 30 s |
+
+```typescript
+// lib/circuit-breaker.ts — single-process in-memory breaker.
+// State is shared across requests inside one Vercel function instance; jobs
+// that need cross-instance coordination should additionally check a `circuit_state`
+// row in Postgres before issuing the call.
+export class CircuitBreaker {
+  private failures = 0;
+  private openedAt: number | null = null;
+  constructor(
+    private readonly name: string,
+    private readonly opts: { threshold: number; windowMs: number; cooldownMs: number }
+  ) {}
+
+  async exec<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.openedAt !== null) {
+      const elapsed = Date.now() - this.openedAt;
+      if (elapsed < this.opts.cooldownMs) {
+        throw new CircuitOpenError(this.name);
+      }
+      // HALF_OPEN — allow a single probe.
+    }
+    try {
+      const result = await fn();
+      this.failures = 0;
+      this.openedAt = null;
+      return result;
+    } catch (err) {
+      this.failures += 1;
+      if (this.failures >= this.opts.threshold) {
+        this.openedAt = Date.now();
+        await metrics.increment("circuit.opened", { name: this.name });
+      }
+      throw err;
+    }
+  }
+}
+```
+
+**Operational requirements:**
+- Breaker trips MUST emit a `circuit.opened` metric with the dependency name and a Sentry alert at `warning` severity.
+- The heuristic fallback engine (§7.5) MUST be invoked when the OpenAI breaker is OPEN — users never see an error page because of a transient OpenAI outage.
+- Jobs that hit an OPEN Instagram breaker MUST `reschedule(now + cooldownMs)` rather than incrementing the retry counter (the failure is not the job's fault).
 
 ---
 
@@ -2040,10 +2112,35 @@ stripe listen --forward-to localhost:3000/api/webhooks/stripe
 This generates a local webhook signing secret starting with `whsec_` which must be stored in `.env.local` as `STRIPE_WEBHOOK_SECRET` for signature verification to succeed locally.
 
 ### 8.5.3 Webhook Handler Implementation
+
+**Body Size Guard (Pre-Signature):** All webhook endpoints (Stripe and Instagram) MUST reject requests larger than **1 MiB** before any signature verification or JSON parsing. Stripe events are typically <50 KB; the cap is deliberately conservative to absorb unusual payloads while blocking DoS attempts that would otherwise force the server to hash multi-megabyte bodies. Use Next.js route segment `export const runtime = "nodejs"` plus the helper below:
+
+```typescript
+const MAX_WEBHOOK_BODY_BYTES = 1 * 1024 * 1024; // 1 MiB
+
+async function readBoundedBody(req: NextRequest): Promise<string> {
+  const contentLength = Number(req.headers.get("content-length") ?? "0");
+  if (contentLength > MAX_WEBHOOK_BODY_BYTES) {
+    throw new HttpError(413, "Payload too large");
+  }
+  const body = await req.text();
+  if (Buffer.byteLength(body, "utf8") > MAX_WEBHOOK_BODY_BYTES) {
+    throw new HttpError(413, "Payload too large");
+  }
+  return body;
+}
+```
+
 ```typescript
 // MANDATORY: Verify Stripe webhook signatures
 async function handleStripeWebhook(req: NextRequest): Promise<NextResponse> {
-  const body = await req.text();
+  let body: string;
+  try {
+    body = await readBoundedBody(req);
+  } catch (err) {
+    if (err instanceof HttpError) return new NextResponse(err.message, { status: err.status });
+    throw err;
+  }
   const signature = req.headers.get("stripe-signature");
 
   if (!signature) {
@@ -2090,18 +2187,44 @@ async function handleStripeWebhook(req: NextRequest): Promise<NextResponse> {
 // POST /api/webhooks/stripe/retry
 // Only accessible to administrators (role = "admin") to re-play failed events manually.
 async function handleManualRetry(req: NextRequest): Promise<NextResponse> {
-  const { eventId } = await req.json();
+  // 1. AuthN — MUST validate the caller via Supabase server client.
+  const supabase = createServerClient(/* cookies/headers */);
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
 
-  // Find the event in the processed_events table and delete it to reset idempotency
+  // 2. AuthZ — MUST require an `admin` role. Roles are sourced from the
+  //    `users.role` column (enum: 'user' | 'admin') and mirrored into the JWT
+  //    via a Supabase custom claim (`app_metadata.role`). NEVER trust a
+  //    client-supplied role field on the request body.
+  const role = (user.app_metadata as { role?: string } | null)?.role;
+  if (role !== "admin") {
+    await auditLog.write({
+      actorId: user.id,
+      action: "stripe.retry.denied",
+      reason: "non_admin",
+    });
+    return new NextResponse("Forbidden", { status: 403 });
+  }
+
+  // 3. Validate input schema (avoid trusting raw JSON).
+  const bodyText = await readBoundedBody(req);
+  const { eventId } = z
+    .object({ eventId: z.string().startsWith("evt_").min(10) })
+    .parse(JSON.parse(bodyText));
+
+  // 4. Audit BEFORE side-effects so denial-of-history is impossible.
+  await auditLog.write({
+    actorId: user.id,
+    action: "stripe.retry.invoked",
+    targetEventId: eventId,
+  });
+
+  // 5. Reset idempotency record, refetch from Stripe, reprocess, remark.
   await db.delete(processedEvents).where(eq(processedEvents.eventId, eventId));
-
-  // Fetch event payload from Stripe
   const event = await stripe.events.retrieve(eventId);
-
-  // Re-process the event payload
   await processStripeEvent(event);
-
-  // Mark the event as processed again
   await markEventProcessedAtom(event.id);
 
   return new NextResponse("Event re-processed successfully", { status: 200 });
@@ -2198,9 +2321,10 @@ export async function POST(req: NextRequest) {
       processedJobsCount: processedCount,
       durationMs: Date.now() - startTime
     });
-  } catch (error: any) {
-    console.error(`[Serverless Worker ${workerId}] Fatal execution error:`, error);
-    return NextResponse.json({ status: "error", error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown worker error";
+    console.error(`[Serverless Worker ${workerId}] Fatal execution error:`, sanitizeForLogs(message));
+    return NextResponse.json({ status: "error", error: message }, { status: 500 });
   }
 }
 
@@ -2264,8 +2388,12 @@ class ServerlessQueueWorker {
   private async runJobAsynchronously(job: Job): Promise<void> {
     try {
       await this.processJob(job);
-    } catch (error: any) {
-      console.error(`[Worker ${this.workerId}] Job ${job.id} failed:`, error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(
+        `[Worker ${this.workerId}] Job ${job.id} failed:`,
+        sanitizeForLogs(message)
+      );
     } finally {
       this.activeJobsCount--;
     }
@@ -2282,11 +2410,12 @@ class ServerlessQueueWorker {
       // Execute within a strict per-job timeout limit (e.g. 10s)
       await withTimeout(handler(job.payload), 10_000);
       await this.completeJob(job);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
       if (job.retry_count < job.max_retries) {
-        await this.retryJob(job, error);
+        await this.retryJob(job, err);
       } else {
-        await this.deadLetterJob(job, error);
+        await this.deadLetterJob(job, err);
       }
     }
   }
@@ -2390,31 +2519,26 @@ async function enqueueJob(params: {
   priority?: number;              // 0 (low) – 10 (critical)
   scheduledAt?: Date;
   maxRetries?: number;
+  traceId?: string;               // Propagated from the originating request
 }): Promise<string | null> {
-  // Check for duplicate
-  const existing = await db.select()
-    .from(jobQueue)
-    .where(eq(jobQueue.idempotency_key, params.idempotencyKey))
-    .limit(1);
-
-  if (existing.length > 0) {
-    // Already queued — no-op
-    return null;
-  }
-
-  const [job] = await db.insert(jobQueue)
+  // Race-safe insert: rely on the UNIQUE index on idempotency_key + ON CONFLICT
+  // DO NOTHING rather than a read-then-write (which has a TOCTOU race).
+  const inserted = await db.insert(jobQueue)
     .values({
       job_type: params.type,
-      payload: params.payload,
+      // trace_id MUST be embedded in the payload so worker logs can be
+      // correlated end-to-end with the API request that enqueued the job.
+      payload: { ...params.payload, trace_id: params.traceId ?? null },
       idempotency_key: params.idempotencyKey,
       priority: params.priority ?? 5,
       scheduled_at: params.scheduledAt ?? new Date(),
       max_retries: params.maxRetries ?? 3,
       status: "pending",
     })
-    .returning();
+    .onConflictDoNothing({ target: jobQueue.idempotency_key })
+    .returning({ id: jobQueue.id });
 
-  return job.id;
+  return inserted[0]?.id ?? null;
 }
 
 // Idempotency key examples:
@@ -2422,7 +2546,55 @@ async function enqueueJob(params: {
 // SYNC_ACCOUNT_MANUAL:    `sync:manual:${accountId}:${timestamp_ms}` (minimum 5-minute application-level throttle window)
 // SCORE_REEL:             `score:${reelId}:${version}`
 // STRATEGY:               `strategy:${accountId}:${periodKey}`
+//
+// Retry-safety: when a job is retried by the worker, the SAME idempotency key
+// is reused — duplicate work is prevented by the job_queue row's lifecycle
+// (status transitions), NOT by minting a new key. Re-enqueues from external
+// triggers (webhooks, crons) that arrive while the original row still exists
+// are silently dropped by ON CONFLICT DO NOTHING, which is the correct
+// behavior. Operators forcing a manual replay MUST first delete the dead
+// row (see §8.5.3 admin retry).
 ```
+
+### 9.5.1 Cross-Boundary Trace Correlation
+- Every API route MUST generate (or accept upstream via `x-trace-id`) a UUID v4 trace ID and write it into the structured-log MDC.
+- When that route enqueues a job, the trace ID MUST be passed through `enqueueJob({ traceId })` and persisted into `payload.trace_id`.
+- The worker MUST hydrate the trace ID from the payload at the start of `processJob()` and emit it on every log line until the job terminates. This produces a single grep-able correlation key across `api → queue → worker → external API` in Sentry/Logflare.
+
+### 9.5.2 Transient Database Error Retry Wrapper
+Postgres can return transient errors that are safe to retry within the same transaction boundary:
+
+| SQLSTATE | Meaning | Retry? |
+|---|---|---|
+| `40001` | `serialization_failure` | YES (caller retries the tx) |
+| `40P01` | `deadlock_detected` | YES |
+| `57P03` | `cannot_connect_now` (startup) | YES (short backoff) |
+| `08006` | connection failure | YES (short backoff) |
+| Any other | application error | NO |
+
+```typescript
+async function withDbRetry<T>(fn: () => Promise<T>, opts = { maxAttempts: 3 }): Promise<T> {
+  const transientCodes = new Set(["40001", "40P01", "57P03", "08006"]);
+  let attempt = 0;
+  let lastErr: unknown;
+  while (attempt < opts.maxAttempts) {
+    try {
+      return await fn();
+    } catch (err) {
+      const code = (err as { code?: string } | null)?.code;
+      if (!code || !transientCodes.has(code)) throw err;
+      lastErr = err;
+      attempt += 1;
+      // Full jitter exponential backoff: 50ms, 100–200ms, 200–400ms…
+      const base = 50 * 2 ** (attempt - 1);
+      await sleep(Math.floor(Math.random() * base) + base);
+    }
+  }
+  throw lastErr;
+}
+```
+
+All worker job handlers and webhook side-effect paths MUST wrap their transactions in `withDbRetry` so transient contention does not cascade into spurious dead-letter entries.
 
 ---
 
@@ -2912,6 +3084,72 @@ All user-facing tables MUST have Row-Level Security (RLS) enabled. To ensure RLS
 ## 11.7 GDPR Data Export Schema
 
 To satisfy GDPR Article 20 (Right to Data Portability), the platform MUST expose an authenticated endpoint (`GET /api/auth/me/data-export`) that compiles all historical user activity and metrics into a machine-readable JSON structure.
+
+## 11.8 Log Sanitization (Mandatory Secret Redaction)
+
+Application logs travel to multiple sinks (Vercel logs, Sentry, Logflare). To prevent token/credential exfiltration via stack traces, error messages, or echoed request bodies, every log call MUST flow through `sanitizeForLogs()` before reaching `console.*` or the logger transport.
+
+```typescript
+// lib/log-sanitize.ts
+// MUST be imported by the central logger and by callLLMPure / fetch wrappers.
+// New secret patterns MUST be appended here whenever a new provider is added.
+const SECRET_PATTERNS: Array<{ name: string; re: RegExp }> = [
+  { name: "stripe-live-key",       re: /\bsk_live_[A-Za-z0-9]{16,}\b/g },
+  { name: "stripe-test-key",       re: /\bsk_test_[A-Za-z0-9]{16,}\b/g },
+  { name: "stripe-webhook-secret", re: /\bwhsec_[A-Za-z0-9]{20,}\b/g },
+  { name: "stripe-publishable",    re: /\bpk_(?:live|test)_[A-Za-z0-9]{16,}\b/g },
+  { name: "openai-key",            re: /\bsk-(?:proj-)?[A-Za-z0-9_\-]{20,}\b/g },
+  { name: "meta-graph-token",      re: /\bEAA[A-Za-z0-9]{20,}\b/g },          // Facebook/Instagram Graph tokens
+  { name: "ig-long-lived-token",   re: /\bIGQV[A-Za-z0-9_\-]{20,}\b/g },
+  { name: "supabase-service-role", re: /\beyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\b/g }, // JWTs
+  { name: "aes-key-hex",           re: /\b[0-9a-fA-F]{64}\b/g },              // TOKEN_ENCRYPTION_KEYS values
+  { name: "bearer-header",         re: /Bearer\s+[A-Za-z0-9._\-]+/gi },
+];
+
+export function sanitizeForLogs(input: unknown): string {
+  let s = typeof input === "string" ? input : safeStringify(input);
+  for (const { name, re } of SECRET_PATTERNS) {
+    s = s.replace(re, `<redacted:${name}>`);
+  }
+  return s;
+}
+```
+
+**Requirements:**
+- The application's structured logger MUST install `sanitizeForLogs` as the final serialization step for every log level (`info`/`warn`/`error`).
+- `console.error(err)` inside `callLLMPure`, webhook handlers, and `fetch` wrappers MUST pass `err.message` through `sanitizeForLogs` (never the raw `err` object, which may serialize the request headers).
+- A unit test (`tests/log-sanitize.test.ts`) MUST assert that each of the patterns above is correctly redacted, and that a known fake token cannot be reconstructed from the redacted output.
+- The redaction marker MUST include the rule name (e.g. `<redacted:stripe-live-key>`) so audits can confirm coverage without exposing the original value.
+
+## 11.9 HTTP Security Headers (Defense-in-Depth)
+
+All responses — including API routes, server-rendered pages, and webhook acknowledgements — MUST set the following headers via Next.js middleware (`middleware.ts`). These complement the network-layer guarantees in §11.1 Layer 1.
+
+| Header | Required Value | Purpose |
+|---|---|---|
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` | Force HTTPS for 2 years; prevents protocol downgrade. |
+| `X-Content-Type-Options` | `nosniff` | Block MIME confusion attacks. |
+| `X-Frame-Options` | `DENY` | Prevent clickjacking via `<iframe>` embedding. |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Stop leaking authenticated paths to third parties. |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=()` | Disable browser APIs the app never uses. |
+| `Content-Security-Policy` | See block below | Mitigate XSS / injected resource loads. |
+| `Cross-Origin-Opener-Policy` | `same-origin` | Isolate browsing context from popups (mitigates Spectre-class leaks). |
+
+**Baseline CSP** (adjust the Stripe + Instagram allow-list as the integrations grow):
+
+```
+default-src 'self';
+script-src  'self' https://js.stripe.com https://*.vercel-insights.com;
+style-src   'self' 'unsafe-inline';
+img-src     'self' data: blob: https://*.cdninstagram.com https://scontent.cdninstagram.com;
+connect-src 'self' https://api.openai.com https://api.stripe.com https://graph.instagram.com https://graph.facebook.com https://*.supabase.co wss://*.supabase.co;
+frame-src   https://js.stripe.com;
+frame-ancestors 'none';
+base-uri    'self';
+form-action 'self';
+```
+
+A migration test (`tests/security-headers.test.ts`) MUST assert every header above is present on a representative API route, a server-rendered page, and the `/api/webhooks/*` endpoints.
 
 ### Export Policy & Security Safeguards:
 1. **Token/Credential Exclusion**: To prevent severe security leaks, the export payload MUST strictly exclude all access tokens, encrypted access tokens, passwords, and security keys.
