@@ -2852,32 +2852,97 @@ App Shell
 
 ## 10.5 Animation & Interaction Spec
 
+### Speed-Preserving Motion Graphics Guidelines
+
+To ensure the Reel Logic AI frontend platform delivers jaw-dropping micro-interactions and transitions without introducing visual latency or impacting critical Core Web Vitals (LCP, CLS, INP), all motion graphics implementations must adhere strictly to these architectural constraints:
+
+#### 1. Compositor-Only Rendering (Strict 60/120fps Mandate)
+- **Rule**: Only animate CSS properties processed entirely by the compositor layer: **`transform`** (translate, scale, rotate, skew) and **`opacity`**.
+- **Prohibited Animated Properties**: Never animate properties that trigger browser **Reflow/Layout** or **Repaint** cycles. This includes:
+  - Layout positions: `top`, `left`, `right`, `bottom`, `margin`, `padding`
+  - Dimensions: `width`, `height`, `min-width`, `max-width`, `border-width`
+  - Visual details: `box-shadow` (animate a high-performance pseudo-element's opacity instead), `filter`
+- **GPU Promotion**: Promote heavily animated components to their own compositor layer using hardware acceleration hints:
+  ```css
+  will-change: transform, opacity;
+  transform: translateZ(0); /* For legacy browser GPU activation */
+  backface-visibility: hidden;
+  ```
+
+#### 2. Framer Motion Dynamic Ingestion (LazyMotion Pattern)
+- **Constraint**: Normal synchronous imports of `framer-motion` cause massive initial page load bundle inflation (~30KB+ gzipped). This degrades Lighthouse scores and increases First Input Delay (FID) / Interaction to Next Paint (INP).
+- **Architecture**: Enforce the `<LazyMotion>` dynamic loading architecture globally.
+  - Wrap the root layout in `<LazyMotion features={domAnimation} strict>` where `domAnimation` contains only basic layout animations (transforms, scales, opacities) and drops dragging or layout calculations.
+  - Dynamically load the animation engine. Never import from the direct synchronous `"framer-motion"` unless dynamic elements are wrapped inside this dynamic context.
+
+#### 3. Standardized Spring Physics Registry
+- All interactive visual elements must use cohesive spring physics rather than artificial linear curves:
+  - **`springGentle`**: Stiffness `80`, Damping `15`, Mass `1` (Default for subtle panel slides and fades)
+  - **`springBouncy`**: Stiffness `150`, Damping `12`, Mass `1` (Used sparingly for playful element reveals)
+  - **`springSnappy`**: Stiffness `200`, Damping `20`, Mass `0.8` (Default for instant hover/click responses)
+
+#### 4. Interaction & Accessibility Gates (Prefers-Reduced-Motion)
+- Always respect user OS preferences for reduced motion by leveraging the CSS media query or React state checks:
+  ```css
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0s !important;
+      transition-duration: 0s !important;
+      animation-iteration-count: 1 !important;
+    }
+  }
+  ```
+- Focus rings, active keyboard elements, and layout changes must immediately pop into place when reduced motion is enabled.
+
+#### 5. Animation Presets & Registry
 ```typescript
-// Micro-animations (Framer Motion or CSS)
+// Pre-gated, lightweight, performance-safe animation configuration templates
 const ANIMATIONS = {
-  // Page transitions
-  pageEnter: { opacity: [0, 1], y: [20, 0], duration: 300 },
-  pageExit: { opacity: [1, 0], y: [0, -10], duration: 200 },
+  // Page Transitions (Fade + subtle slide-up)
+  pageEnter: {
+    initial: { opacity: 0, y: 15 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -10 },
+    transition: { type: "spring", stiffness: 100, damping: 18 }
+  },
 
-  // Cards
-  cardHover: { scale: 1.02, shadow: "var(--shadow-lg)", duration: 200 },
-  cardPress: { scale: 0.98, duration: 100 },
+  // Premium Bento Grid Card Hover & Press
+  cardHover: {
+    whileHover: { scale: 1.02, y: -4 },
+    whileTap: { scale: 0.98 },
+    transition: { type: "spring", stiffness: 220, damping: 18 }
+  },
 
-  // Score reveal
-  scoreCount: { duration: 1200, easing: "easeOutExpo" }, // Count from 0 to score
-  scoreArc: { duration: 1500, easing: "easeOutCubic" },   // Gauge fill animation
+  // Dashboard Staggered Reveals
+  staggerContainer: {
+    animate: { transition: { staggerChildren: 0.05 } }
+  },
+  staggerItem: {
+    initial: { opacity: 0, y: 10 },
+    animate: { opacity: 1, y: 0 },
+    transition: { type: "spring", stiffness: 150, damping: 16 }
+  },
 
-  // Notifications
-  notifSlide: { x: [100, 0], opacity: [0, 1], duration: 300 },
-  notifExit: { x: [0, 100], opacity: [1, 0], duration: 200 },
+  // Gauge Fill (Compositor-friendly transform-origin stroke-dasharray animation)
+  gaugeReveal: {
+    initial: { pathLength: 0 },
+    animate: { pathLength: 1 },
+    transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] } // Custom easeOutExpo
+  },
 
-  // Loading
-  skeletonPulse: { opacity: [0.3, 0.7, 0.3], duration: 1500, repeat: Infinity },
+  // Notifications bell / Alerts
+  bellShank: {
+    animate: { rotate: [0, -10, 10, -10, 10, 0] },
+    transition: { duration: 0.5, ease: "easeInOut" }
+  },
 
-  // Strategy calendar
-  dayStagger: { delay: (i: number) => i * 100 }, // Stagger day entries
+  // Shimmer Skeleton pulsing loader (CSS keyframe based to offload main thread completely)
+  skeletonShimmer: {
+    animation: "shimmer 1.8s infinite linear"
+  }
 };
 ```
+
 
 ## 10.6 Mobile Responsiveness
 

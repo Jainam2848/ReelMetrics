@@ -1713,15 +1713,22 @@ grep -r "skip.rate\|skip_rate\|skipRate" components/dashboard/
 # - Cards stack vertically
 # - Touch targets ≥ 44px
 
-# CHECK 9: Animations present
-grep -r "framer-motion\|motion\.\|animate" components/dashboard/
-# Expected: Score gauge, cards, and page transitions use framer-motion
+# CHECK 9: Animations present and performant (LazyMotion Enforced)
+grep -r "LazyMotion\|motion-provider" app/\(dashboard\)/
+# Expected: Root layout.tsx wraps components inside LazyMotion dynamic animation provider.
+# Also check that components DO NOT synchronously import raw 'motion' elements directly from 'framer-motion':
+# grep -rn "import.*motion.*from 'framer-motion'" components/dashboard/ app/\(dashboard\)/
+# Expected: 0 hits. All pages/components must import from "@/components/shared/performance-motion" instead.
 
-# CHECK 10: Production build
+# CHECK 10: Prohibited Layout Properties check in animations
+# Verify that animate configs do not target width, height, top, left, margins, paddings, etc.
+# Expected: All Framer Motion targets focus strictly on 'scale', 'opacity', 'x', 'y', 'rotate'.
+
+# CHECK 11: Production build and bundle size boundaries
 npm run build
-# Expected: Build succeeds with 0 errors
+# Expected: Build succeeds with 0 errors and First Load JS per route remains under 250KB.
 
-# CHECK 11: Normalized views & division-by-zero guards
+# CHECK 12: Normalized views & division-by-zero guards
 grep -r "display_views\|metric_source" app/\(dashboard\)/ components/dashboard/
 # Expected: Components fetch and display normalized view fields
 # Verify that all calculations dividing by views include strict checks to return null/0 when views are zero.
@@ -1730,17 +1737,19 @@ grep -r "display_views\|metric_source" app/\(dashboard\)/ components/dashboard/
 ## Gate Criteria
 
 - [ ] `npx tsc --noEmit` → 0 errors
-- [ ] `npm run build` → succeeds
-- [ ] All 8 dashboard pages render
-- [ ] No business logic in components
-- [ ] Loading states on every async operation
-- [ ] Error boundaries on every page
+- [ ] `npm run build` → succeeds with First Load JS budgets < 250KB per route
+- [ ] All 8 dashboard pages render successfully
+- [ ] No business logic inside React components (delegated to data hooks)
+- [ ] Loading states on every single asynchronous state change
+- [ ] Error boundaries properly configured on every sub-route/layout
 - [ ] 9 scoring dimensions in UI (including skip rate)
 - [ ] reels_skip_rate reframed as a core data-driven AI strategy moat representing proprietary strategic insight in the dashboard UI and copy
 - [ ] All UI widgets and charts support the normalized views fields (display_views and metric_source) with robust division-by-zero fallbacks
-- [ ] Mobile responsive (bottom tab bar, stacked cards)
-- [ ] Animations working (score gauge, cards, page transitions)
-- [ ] Dark mode styling with design system colors
+- [ ] Mobile responsive layout optimized (bottom tab bar touch targets ≥ 44x44px, stacked grids)
+- [ ] Animations strictly follow compositor-only property constraints (scale, opacity, x, y, rotate)
+- [ ] Zero direct synchronous imports of raw `motion` from `framer-motion` in user-facing components (delegated to dynamic LazyMotion client wrapper `performance-motion`)
+- [ ] Dark mode styling aligned with Outfit/Inter typography and design system colors
+
 
 ---
 
