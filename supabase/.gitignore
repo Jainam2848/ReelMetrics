@@ -1,0 +1,4 @@
+# Supabase local-only state — never commit.
+.branches
+.temp
+seed-data

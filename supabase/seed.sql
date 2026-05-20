@@ -1,0 +1,3 @@
+-- Local development seed data.
+-- This file is executed automatically by `supabase db reset` and `supabase start`.
+-- Add deterministic test fixtures here once the schema is in place.
