@@ -13,6 +13,48 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // Public Bundle Separation Boundary (spec §14.7)
+  {
+    files: [
+      "app/\\(public\\)/**/*.ts",
+      "app/\\(public\\)/**/*.tsx",
+      "app/(public)/**/*.ts",
+      "app/(public)/**/*.tsx"
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/lib/db",
+              message: "Public pages must not import database connections or schemas to safeguard bundle sizes.",
+            },
+            {
+              name: "@/lib/supabase",
+              message: "Public pages must not import Supabase clients to safeguard bundle sizes.",
+            },
+            {
+              name: "@/lib/supabase/client",
+              message: "Public pages must not import Supabase clients to safeguard bundle sizes.",
+            },
+            {
+              name: "@/lib/supabase/server",
+              message: "Public pages must not import Supabase clients to safeguard bundle sizes.",
+            },
+            {
+              name: "@/lib/supabase/admin",
+              message: "Public pages must not import Supabase admin client to safeguard bundle sizes.",
+            },
+            {
+              name: "@/lib/security/encryption",
+              message: "Public pages must not import encryption keys or routines inside public bundles.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

@@ -40,6 +40,10 @@ async function seed() {
       avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d'
     }).returning();
 
+    if (!userA || !userB) {
+      throw new Error('Failed to insert test users during seeding.');
+    }
+
     console.log(`✅ Seeded users: Alice (${userA.id}), Bob (${userB.id})`);
 
     // 3. Seed Subscriptions
@@ -81,6 +85,10 @@ async function seed() {
       syncStatus: 'completed',
       lastSyncedAt: new Date()
     }).returning();
+
+    if (!igAccountA || !igAccountB) {
+      throw new Error('Failed to insert Instagram accounts during seeding.');
+    }
 
     console.log('✅ Seeded Instagram accounts connected to users.');
 
@@ -186,6 +194,9 @@ async function seed() {
         accountId: igAccountA.id,
         ...rData
       }).returning();
+      if (!r) {
+        throw new Error('Failed to insert Alice\'s reel.');
+      }
       seededAliceReels.push(r);
     }
     console.log('✅ Seeded Alice\'s reels successfully.');
@@ -291,6 +302,9 @@ async function seed() {
         accountId: igAccountB.id,
         ...rData
       }).returning();
+      if (!r) {
+        throw new Error('Failed to insert Bob\'s reel.');
+      }
       seededBobReels.push(r);
     }
     console.log('✅ Seeded Bob\'s reels successfully.');
@@ -298,9 +312,15 @@ async function seed() {
     // 7. Seed Reel Scores for Alice's and Bob's Reels
     console.log('🧠 Seeding reel analysis scores (AI reports)...');
     
+    const firstAliceReel = seededAliceReels[0];
+    const firstBobReel = seededBobReels[0];
+    if (!firstAliceReel || !firstBobReel) {
+      throw new Error('Failed to retrieve seeded reels for scoring.');
+    }
+
     // Alice's unboxing reel score
     await db.insert(reelScores).values({
-      reelId: seededAliceReels[0].id,
+      reelId: firstAliceReel.id,
       overallScore: 82,
       hookScore: 85,
       skipRateScore: 78,
@@ -324,7 +344,7 @@ async function seed() {
 
     // Bob's viral SaaS reel score
     await db.insert(reelScores).values({
-      reelId: seededBobReels[0].id,
+      reelId: firstBobReel.id,
       overallScore: 94,
       hookScore: 96,
       skipRateScore: 92,

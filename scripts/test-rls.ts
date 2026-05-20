@@ -8,7 +8,7 @@ import {
   plans,
   jobQueue
 } from '../lib/db/schema';
-import { sql, eq } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
 async function runTests() {
   console.log('🧪 Starting Row-Level Security (RLS) validation tests...\n');
@@ -63,7 +63,7 @@ async function runTests() {
       const profiles = await tx.select().from(users);
       assertCondition(
         'Alice can view her own profile only',
-        profiles.length === 1 && profiles[0].id === alice.id
+        profiles.length === 1 && profiles[0]?.id === alice.id
       );
 
       const bobProfileAsAlice = profiles.find(p => p.id === bob.id);
@@ -76,7 +76,7 @@ async function runTests() {
       const accounts = await tx.select().from(instagramAccounts);
       assertCondition(
         'Alice can view her own Instagram account only',
-        accounts.length === 1 && accounts[0].userId === alice.id
+        accounts.length === 1 && accounts[0]?.userId === alice.id
       );
 
       // 4. Reels Isolation Tests
@@ -125,8 +125,9 @@ async function runTests() {
         throw new Error('RLS_FAILED_TO_BLOCK_WRITE');
       });
       assertCondition('RLS blocks Alice from inserting an Instagram account for Bob', false);
-    } catch (err: any) {
-      if (err.message === 'RLS_FAILED_TO_BLOCK_WRITE') {
+    } catch (err) {
+      const isRlsFailed = err instanceof Error && err.message === 'RLS_FAILED_TO_BLOCK_WRITE';
+      if (isRlsFailed) {
         assertCondition('RLS blocks Alice from inserting an Instagram account for Bob', false);
       } else {
         assertCondition(
@@ -155,14 +156,14 @@ async function runTests() {
       const profiles = await tx.select().from(users);
       assertCondition(
         'Bob can view his own profile only',
-        profiles.length === 1 && profiles[0].id === bob.id
+        profiles.length === 1 && profiles[0]?.id === bob.id
       );
 
       // 3. Instagram Account Tests
       const accounts = await tx.select().from(instagramAccounts);
       assertCondition(
         'Bob can view his own Instagram account only',
-        accounts.length === 1 && accounts[0].userId === bob.id
+        accounts.length === 1 && accounts[0]?.userId === bob.id
       );
 
       // 4. Reels Isolation Tests
@@ -176,7 +177,7 @@ async function runTests() {
       const bobStrategies = await tx.select().from(strategies);
       assertCondition(
         'Bob can view his own strategies only',
-        bobStrategies.length === 1 && bobStrategies[0].userId === bob.id
+        bobStrategies.length === 1 && bobStrategies[0]?.userId === bob.id
       );
     });
 

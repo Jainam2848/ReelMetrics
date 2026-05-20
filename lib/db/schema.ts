@@ -37,7 +37,7 @@ export const plans = pgTable('plans', {
   maxAccounts: integer('max_accounts').notNull(),
   maxReels: integer('max_reels').notNull(),
   aiTier: text('ai_tier').notNull(),
-  features: jsonb('features').$type<Record<string, any>>(),
+  features: jsonb('features').$type<Record<string, unknown>>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -123,7 +123,7 @@ export const reelScores = pgTable('reel_scores', {
   trendScore: integer('trend_score'),
   captionScore: integer('caption_score'),
   timingScore: integer('timing_score'),
-  aiAnalysis: jsonb('ai_analysis').$type<Record<string, any>>(),
+  aiAnalysis: jsonb('ai_analysis').$type<Record<string, unknown>>(),
   modelVersion: text('model_version'),
   tokensUsed: integer('tokens_used'),
   costUsd: decimal('cost_usd', { precision: 10, scale: 6 }),
@@ -142,7 +142,7 @@ export const strategies = pgTable('strategies', {
     .notNull()
     .references(() => instagramAccounts.id, { onDelete: 'cascade' }),
   strategyType: text('strategy_type'), // "weekly" | "monthly" | "campaign"
-  content: jsonb('content').$type<Record<string, any>>(),
+  content: jsonb('content').$type<Record<string, unknown>>(),
   periodStart: timestamp('period_start', { withTimezone: true }),
   periodEnd: timestamp('period_end', { withTimezone: true }),
   modelVersion: text('model_version'),
@@ -157,7 +157,7 @@ export const strategies = pgTable('strategies', {
 export const jobQueue = pgTable('job_queue', {
   id: uuid('id').primaryKey().defaultRandom(),
   jobType: text('job_type').notNull(),
-  payload: jsonb('payload').$type<Record<string, any>>(),
+  payload: jsonb('payload').$type<Record<string, unknown>>(),
   status: text('status').notNull(), // 'pending' | 'processing' | 'completed' | 'failed'
   priority: integer('priority').notNull().default(0),
   maxRetries: integer('max_retries').notNull().default(3),
@@ -200,7 +200,7 @@ export const auditLog = pgTable('audit_log', {
   action: text('action').notNull(),
   resourceType: text('resource_type').notNull(),
   resourceId: uuid('resource_id'),
-  metadata: jsonb('metadata').$type<Record<string, any>>(),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>(),
   ipAddress: text('ip_address'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
