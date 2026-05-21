@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { subscriptions, users } from "@/lib/db/schema";
+import { subscriptions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { stripe } from "@/lib/billing/stripe-helpers";
 import { PlanId } from "@/lib/billing/plans";
@@ -71,7 +71,7 @@ export class BillingService {
     }
 
     // Server-side validation check: Retrieve fresh subscription directly from Stripe API
-    const stripeSub = (await stripe.subscriptions.retrieve(stripeSubId)) as any;
+    const stripeSub = (await stripe.subscriptions.retrieve(stripeSubId)) as Stripe.Subscription;
 
     const resolvedUserId = userId || stripeSub.metadata?.userId;
     const resolvedPlanId = planId || (stripeSub.metadata?.planId as PlanId) || "free";
@@ -127,7 +127,7 @@ export class BillingService {
   /**
    * Webhook handler: Handles subscription changes (e.g. upgrades, downgrades).
    */
-  static async handleSubscriptionUpdated(subscription: any): Promise<void> {
+  static async handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
     const stripeSubId = subscription.id;
     const stripeCustomerId = subscription.customer as string;
     const userId = subscription.metadata?.userId;
@@ -248,7 +248,7 @@ export class BillingService {
    */
   static async handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
     const stripeCustomerId = invoice.customer as string;
-    const stripeSubId = (invoice as any).subscription as string | undefined;
+    const stripeSubId = invoice.subscription as string | null | undefined;
 
     if (!stripeCustomerId) return;
 
@@ -287,7 +287,7 @@ export class BillingService {
    */
   static async handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
     const stripeCustomerId = invoice.customer as string;
-    const stripeSubId = (invoice as any).subscription as string | undefined;
+    const stripeSubId = invoice.subscription as string | null | undefined;
 
     if (!stripeCustomerId) return;
 

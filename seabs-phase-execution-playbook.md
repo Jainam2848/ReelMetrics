@@ -82,6 +82,20 @@ Create the Next.js project, install all dependencies, configure TypeScript, Tail
 
 > **How:** Read each skill's SKILL.md before running the agent prompt. The skills contain validation checks and sharp-edge warnings that prevent common mistakes.
 
+## 🚦 Steps Before Execution
+
+Complete **all** of these before running the agent prompt:
+
+1. **Choose your working directory** — Decide the parent folder where the project will live. Open a terminal in that directory.
+2. **Verify Node.js version** — Run `node -v` and confirm Node.js 18+ is installed. If not, install it first.
+3. **Verify npm version** — Run `npm -v` and confirm npm 9+ is installed.
+4. **Install Docker Desktop** — Supabase local dev requires Docker. Run `docker info` to confirm Docker is running. If Docker is not installed or not running, install/start it first.
+5. **Install Supabase CLI** — Run `npx supabase --version` to confirm the CLI is available, or install it globally with `npm install -g supabase`.
+6. **Install Stripe CLI** (optional but recommended for Phase 4) — Download from [stripe.com/docs/stripe-cli](https://stripe.com/docs/stripe-cli). Verify with `stripe --version`.
+7. **Read the skill SKILL.md files** — Open and read the SKILL.md for each skill listed in the "Activate Skills" table above (`nextjs-best-practices`, `shadcn`, `tailwind-patterns`, `powershell-windows`).
+8. **Prepare `.env.local` values** — You don't need real API keys yet, but prepare placeholder values for `SUPABASE_URL`, `SUPABASE_ANON_KEY`, etc. so the env validator can parse on first boot.
+9. **Confirm Git is initialized** — Run `git --version`. After scaffold, you'll want to make your first commit.
+
 ## Agent Prompt
 
 ```
@@ -112,6 +126,7 @@ ENVIRONMENT VARIABLE VALIDATION SENTINEL (lib/env.ts):
   - SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
   - SUPABASE_DB_URL, DATABASE_URL (for migrations)
   - INSTAGRAM_CLIENT_ID, INSTAGRAM_CLIENT_SECRET, INSTAGRAM_REDIRECT_URI
+  - TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, TIKTOK_REDIRECT_URI
   - OPENAI_API_KEY
   - STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_CREATOR, STRIPE_PRICE_PRO, STRIPE_PRICE_AGENCY
   - RESEND_API_KEY
@@ -127,20 +142,20 @@ app/
 ├── (auth)/signup/
 ├── (auth)/callback/
 ├── (dashboard)/
-│   ├── reels/[id]/
+│   ├── posts/[id]/
 │   ├── strategy/[id]/
 │   ├── analytics/
 │   ├── accounts/
 │   ├── billing/
 │   └── settings/
-├── api/auth/instagram/callback/
+├── api/auth/social/[platform]/callback/
 ├── api/auth/me/
-├── api/accounts/[id]/reels/
+├── api/accounts/[id]/posts/
 ├── api/accounts/[id]/sync/
 ├── api/accounts/[id]/strategy/
 ├── api/accounts/[id]/analytics/
 ├── api/accounts/[id]/trends/
-├── api/reels/[id]/score/
+├── api/posts/[id]/score/
 ├── api/strategies/[id]/
 ├── api/billing/subscription/
 ├── api/billing/checkout/
@@ -148,6 +163,7 @@ app/
 ├── api/billing/usage/
 ├── api/webhooks/stripe/
 ├── api/webhooks/instagram/
+├── api/webhooks/tiktok/
 ├── api/health/deep/
 components/ui/
 components/dashboard/
@@ -259,6 +275,16 @@ Validate the product requirements are locked and create the architecture decisio
 > - "Cost is a feature — measure cost per query, use smaller models where possible"
 > - "Every LLM output must be validated against a Zod schema"
 
+## 🚦 Steps Before Execution
+
+Complete **all** of these before running the agent prompt:
+
+1. **Confirm Phase 0 gate passed** — All Phase 0 gate criteria checkboxes must be checked. Run `npx tsc --noEmit` one more time to confirm zero errors.
+2. **Read the SEABS spec** — Open [reel-logic-ai-seabs-spec.md](./reel-logic-ai-seabs-spec.md) and read sections §1.2 (Problems), §1.4 (Target Users), §1.6 (Pricing Tiers), §2.1 (Architecture), §2.2 (Tech Stack), §6.6 (API Deprecations), §11 (Security), §12.1 (Cost Estimates), §18 (Module Boundaries). These are directly referenced in the agent prompt.
+3. **Create the `docs/` directory** — Run `mkdir docs` if it doesn't already exist (it should from Phase 0 scaffold).
+4. **Read the skill SKILL.md files** — Open and read the SKILL.md for `ai-product`, `architect-review`, `concise-planning`, `documentation`.
+5. **No code changes expected** — This phase is documentation-only. Confirm you understand that no source code files will be modified.
+
 ## Agent Prompt
 
 ```
@@ -273,8 +299,8 @@ TASK: Create two documents:
    - Feature matrix per pricing tier (Free/Creator/Pro/Agency from spec §1.6)
    - User stories with acceptance criteria for MVP (minimum 15 stories)
    - Non-functional requirements (performance, security, availability)
-   - Instagram API constraints and rate limits (200 calls/hr/user)
-   - API deprecation notices (plays→views, reels_skip_rate from spec §6.6)
+   - Instagram and TikTok API constraints and rate limits (200 calls/hr/user for Instagram, 10 calls/min/user limit with 24-hr token expiry and 5-min sync cooldown for TikTok)
+   - API deprecation notices (plays→views, skip_rate/reels_skip_rate from spec §6.6)
 
    RULES for user stories:
    - Format: "As a [user], I want to [action] so that [outcome]"
@@ -348,8 +374,20 @@ Create the complete Drizzle ORM schema, SQL migrations generated via drizzle-kit
 > **Key `database-design` checks to apply:**
 > - Every FK has an index
 > - Partial indexes on `job_queue(status, scheduled_at) WHERE status = 'pending'`
-> - UNIQUE constraint on `reels(ig_media_id)` for upsert deduplication
+> - UNIQUE constraint on `posts(platform, platform_media_id)` for upsert deduplication
 > - `updated_at` trigger on every table — not optional
+
+## 🚦 Steps Before Execution
+
+Complete **all** of these before running the agent prompt:
+
+1. **Confirm Phase 1 gate passed** — PRD has ≥15 user stories, ADR tech stack matches spec, module boundaries documented.
+2. **Verify local Supabase is running** — Run `npx supabase status`. All services (db, auth, storage, etc.) must show as running. If not, run `npx supabase start` and wait for it to boot.
+3. **Confirm database connection** — Verify you can connect to the local Supabase Postgres instance. Run: `psql postgresql://postgres:postgres@localhost:54322/postgres -c "SELECT 1;"` (or use the Supabase Studio UI at http://localhost:54323).
+4. **Read the SEABS spec §4** — Open the spec and read the entire §4 (Database Schema) section including §4.1 (Tables) and §4.2 (Indexes, RLS, Triggers). The agent prompt references these directly.
+5. **Read the skill SKILL.md files** — Open and read the SKILL.md for `database-design`, `database`, `database-optimizer`, `neon-postgres`.
+6. **Verify Drizzle is installed** — Run `npx drizzle-kit --version` to confirm drizzle-kit is available. If not, it should have been installed in Phase 0.
+7. **Backup any existing data** — If you have data from previous attempts in the local DB, export it or reset with `npx supabase db reset`.
 
 ## Agent Prompt
 
@@ -372,20 +410,20 @@ MIGRATION WORKFLOW:
 1. FILE: lib/db/schema.ts
    The complete Drizzle schema with ALL tables from spec §4.1:
    - users (id, email, full_name, avatar_url, created_at, updated_at)
-   - instagram_accounts (id, user_id FK, ig_user_id, username, access_token_enc BYTEA, token_expires_at, token_version INT [default 1, for OCC], followers_count, last_synced_at, sync_status, created_at, updated_at)
-   - reels (id, account_id FK, ig_media_id UNIQUE, caption, media_url, permalink, timestamp, views_count, total_views, display_views INT, metric_source TEXT [enum: 'legacy_plays' | 'unified_views'], likes_count, comments_count, shares_count, saves_count, public_reposts, skip_rate NUMERIC, reach, engagement_rate, fetched_at, created_at, updated_at)
-   - reel_scores (id, reel_id FK, overall_score, hook_score, skip_rate_score, retention_score, cta_score, visual_score, audio_score, trend_score, caption_score, timing_score, ai_analysis JSONB, model_version, tokens_used, cost_usd, scored_at, created_at, updated_at)
+   - social_accounts (id, user_id FK, platform TEXT [enum: 'instagram' | 'tiktok'], platform_user_id TEXT, username TEXT, access_token_enc BYTEA, refresh_token_enc BYTEA, token_expires_at TIMESTAMPTZ, token_version INT [default 1, for OCC], followers_count INT, last_synced_at TIMESTAMPTZ, sync_status TEXT, created_at, updated_at)
+   - posts (id, account_id FK, platform TEXT, platform_media_id TEXT, caption TEXT, media_url TEXT, permalink TEXT, timestamp TIMESTAMPTZ, views_count INT, total_views INT, display_views INT, metric_source TEXT [enum: 'legacy_plays' | 'unified_views'], likes_count INT, comments_count INT, shares_count INT, saves_count INT, public_reposts INT, skip_rate NUMERIC, completion_rate NUMERIC, reach INT, engagement_rate NUMERIC, fetched_at TIMESTAMPTZ, created_at, updated_at)
+   - post_scores (id, post_id FK, overall_score NUMERIC, hook_score NUMERIC, skip_rate_score NUMERIC, completion_rate_score NUMERIC, retention_score NUMERIC, cta_score NUMERIC, visual_score NUMERIC, audio_score NUMERIC, trend_score NUMERIC, caption_score NUMERIC, timing_score NUMERIC, ai_analysis JSONB, model_version TEXT, tokens_used INT, cost_usd NUMERIC, scored_at TIMESTAMPTZ, created_at, updated_at)
    - strategies (id, user_id FK, account_id FK, strategy_type TEXT, content JSONB, period_start, period_end, model_version, tokens_used, cost_usd, generated_at, created_at, updated_at)
    - subscriptions (id, user_id FK, plan_id, stripe_sub_id, stripe_customer_id, status, current_period_start, current_period_end, cancel_at, created_at, updated_at)
-   - plans (id TEXT PK, name, price_monthly, max_accounts, max_reels, ai_tier, features JSONB)
+   - plans (id TEXT PK, name, price_monthly, max_accounts, monthly_ai_limit, ai_tier, features JSONB)
    - job_queue (id, job_type, payload JSONB, status, priority, max_retries, retry_count, locked_at, locked_by, last_heartbeat_at TIMESTAMPTZ, scheduled_at, completed_at, failed_at, error_message, dead_letter BOOLEAN, idempotency_key, created_at)
-   - usage_tracking (id, user_id FK, period_month TEXT, ai_calls_count, ai_tokens_used, ai_cost_usd NUMERIC, reels_analyzed, strategies_gen, api_calls_count, updated_at)
+   - usage_tracking (id, user_id FK, period_month TEXT, ai_calls_count, ai_tokens_used, ai_cost_usd NUMERIC, posts_analyzed, strategies_gen, api_calls_count, updated_at)
    - audit_log (id, user_id FK, action, resource_type, resource_id, metadata JSONB, ip_address, created_at)
    - processed_events (id, event_id UNIQUE, processed_at, created_at, updated_at)
 
    RULES:
    - Every table: id UUID DEFAULT gen_random_uuid(), created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-   - Every FK referencing `users(id)` MUST use `ON DELETE CASCADE` (for subscriptions, instagram_accounts, strategies, usage_tracking) to prevent GDPR orphaned data, except `audit_log.user_id` which must use `ON DELETE SET NULL` to retain immutable compliance audit trails anonymously.
+   - Every FK referencing `users(id)` MUST use `ON DELETE CASCADE` (for subscriptions, social_accounts, strategies, usage_tracking) to prevent GDPR orphaned data, except `audit_log.user_id` which must use `ON DELETE SET NULL` to retain immutable compliance audit trails anonymously.
    - Use pgTable from drizzle-orm/pg-core
    - Export all tables and types
    - Add Drizzle relations (one-to-many, many-to-one)
@@ -399,20 +437,22 @@ MIGRATION WORKFLOW:
    - ALL indexes from spec §4.2 (FK indexes, query pattern indexes, unique indexes)
      - Must include index on `job_queue(last_heartbeat_at) WHERE status = 'processing'` (`idx_job_queue_heartbeat`)
      - Must include index on `audit_log(created_at)` (`idx_audit_log_created_at`)
+     - Must include unique index on `posts(platform, platform_media_id)` (`idx_posts_platform_media`)
+     - Must include unique index on `social_accounts(platform, platform_user_id)` (`idx_social_accounts_platform_user`)
    - RLS enabled on EVERY table (from spec §4.2, including processed_events)
    - RLS policies using auth.uid() for user-facing tables
-   - Seed data for the plans table:
+   - Seed data for the plans table (profitable cross-platform tiers):
      INSERT INTO plans VALUES
-     ('free', 'Free', 0, 1, 10, 'gpt-4o-mini', '{"trendDetection":false,...}'),
-     ('creator', 'Creator', 29, 1, 100, 'gpt-4o-mini', '{"trendDetection":false,"contentCalendar":true,...}'),
-     ('pro', 'Pro', 79, 3, 500, 'gpt-4o', '{"trendDetection":true,"contentCalendar":true,...}'),
-     ('agency', 'Agency', 199, 10, 2000, 'gpt-4o', '{"trendDetection":true,"contentCalendar":true,"teamAccess":true,"whiteLabel":true,"priorityAi":true}');
+     ('free', 'Free', 0, 1, 0, 'gpt-4o-mini', '{"trendDetection":false,"contentCalendar":false}'),
+     ('creator', 'Creator', 39, 2, 50, 'gpt-4o-mini', '{"trendDetection":false,"contentCalendar":true}'),
+     ('pro', 'Pro', 89, 6, 200, 'gpt-4o', '{"trendDetection":true,"contentCalendar":true}'),
+     ('agency', 'Agency', 249, 20, 800, 'gpt-4o', '{"trendDetection":true,"contentCalendar":true,"teamAccess":true,"whiteLabel":true,"priorityAi":true}');
 
 3. FILE: lib/db/seed.ts
    A TypeScript seed script that inserts test data:
    - 2 test users
-   - 1 Instagram account per user
-   - 5 reels per account with realistic metrics (views, skip_rate, engagement)
+   - 1 social account per user (e.g. 1 Instagram Business, 1 TikTok Creator)
+   - 5 posts per account with realistic metrics (views, skip_rate / completion_rate, engagement)
    - 1 subscription per user (one free, one creator)
    - Usage tracking records
 
@@ -479,9 +519,9 @@ npx tsx lib/db/seed.ts
 # CHECK 7: No forbidden column names
 # Verify: no column called "plays_count" or "impressions" exists
 # All view metrics use "views_count" and "total_views"
-# skip_rate column exists on reels table
-# public_reposts column exists on reels table
-# skip_rate_score column exists on reel_scores table
+# skip_rate and completion_rate columns exist on posts table
+# public_reposts column exists on posts table
+# skip_rate_score and completion_rate_score exist on post_scores table
 
 # CHECK 8: RLS Integration Isolation Tests
 npx tsx scripts/test-rls.ts
@@ -500,10 +540,10 @@ npx tsx scripts/test-rls.ts
 - [ ] Plans table seeded with 4 tiers
 - [ ] Seed script runs without errors
 - [ ] No deprecated column names (no `plays_count` or `impressions` without normalization)
-- [ ] `token_version` column exists on `instagram_accounts` for OCC
-- [ ] `display_views` and `metric_source` columns exist on `reels` with conditional safe engagement rate calculation
+- [ ] `token_version` column exists on `social_accounts` for OCC
+- [ ] `display_views` and `metric_source` columns exist on `posts` with conditional safe engagement rate calculation
 - [ ] `last_heartbeat_at` exists on `job_queue` for liveness detection
-- [ ] `skip_rate` and `public_reposts` columns exist on reels table
+- [ ] `skip_rate`, `completion_rate`, and `public_reposts` columns exist on posts table
 - [ ] RLS verification script (`scripts/test-rls.ts`) executes and passes all security assertions
 
 ---
@@ -529,6 +569,18 @@ Build the authentication system, API middleware, response helpers, rate limiting
 > - ✅ Use `createServerClient` from `@supabase/ssr` with cookie handling
 > - ✅ Add `revalidatePath('/', 'layout')` after auth state changes
 > - ✅ Middleware must refresh session on every request
+
+## 🚦 Steps Before Execution
+
+Complete **all** of these before running the agent prompt:
+
+1. **Confirm Phase 2 gate passed** — All database tables created, RLS enabled on every table, seeds run, `scripts/test-rls.ts` passes, `npx tsc --noEmit` is clean.
+2. **Verify local Supabase is still running** — Run `npx supabase status` and confirm all services are green.
+3. **Verify database has seed data** — Connect to the local DB and run `SELECT count(*) FROM plans;` — expected: 4 rows (free, creator, pro, agency).
+4. **Read the SEABS spec §5** — Open the spec and read §5.1 (Response Contract), §5.4 (Error Codes), §11.7 (GDPR Data Export), §12.4 (Free-Tier Abuse Safeguards), §14.7 (Public Bundle Separation).
+5. **Read the skill SKILL.md files** — Open and read the SKILL.md for `nextjs-supabase-auth`, `api-patterns`, `backend-architect`, `senior-fullstack`. Pay special attention to the `nextjs-supabase-auth` skill — it has critical rules about `getUser()` vs `getSession()`.
+6. **Confirm `.env.local` has Supabase keys** — Run `npx supabase status` and copy the `anon key`, `service_role key`, and `API URL` into your `.env.local` file as `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_URL`.
+7. **Start the dev server** — Run `npm run dev` in a separate terminal to confirm the app boots without errors before making changes.
 
 ## Agent Prompt
 
@@ -584,10 +636,10 @@ TASK: Create the following files:
 
 10. FREE-TIER ABUSE SAFEGUARDS:
     - In signup and connection flows, enforce the abuse prevention gating rules from spec §12.4:
-      - Block Instagram linking/AI features for free-tier users if the email is not verified (`email_confirmed_at` is null).
-      - Enforce a strict one-to-one constraint on Instagram Business Account ID (`ig_user_id`) linking (fail with `ACCOUNT_ALREADY_LINKED` if linked elsewhere).
+      - Block social account linking/AI features for free-tier users if the email is not verified (`email_confirmed_at` is null).
+      - Enforce a strict one-to-one constraint on Platform User ID (`platform_user_id`) linking per platform (fail with `ACCOUNT_ALREADY_LINKED` if linked elsewhere).
       - Enforce in-memory or DB-backed IP-level signup rate limits (max 3 per IP per day).
-      - Cap free tier ingestion at a maximum of 15 reels.
+      - Cap free tier ingestion at a maximum of 10 posts.
 
 11. PUBLIC BUNDLE SEPARATION BOUNDARY:
     - Enforce the separation from spec §14.7. Public pages (landing, docs, pricing) must not import Supabase clients, database connections, or schema definitions. All shared layouts must shake out heavy dashboard dependencies.
@@ -597,7 +649,7 @@ TASK: Create the following files:
     Service layer for auth operations:
     - getCurrentUser(supabase): Get user from session
     - updateProfile(userId, data): Update user profile
-    - deleteAccount(userId): Cascade delete all user data (accounts, reels, scores, strategies, subscriptions, usage, audit logs)
+    - deleteAccount(userId): Cascade delete all user data (accounts, posts, scores, strategies, subscriptions, usage, audit logs)
 
 13. FILE: lib/validators/common.ts
     Common Zod schemas:
@@ -719,6 +771,23 @@ Complete Stripe integration with checkout, customer portal, webhook handling, pl
 > - Return 200 even on internal errors (prevent Stripe retries)
 > - Separate webhook handler per event type for maintainability
 
+## 🚦 Steps Before Execution
+
+Complete **all** of these before running the agent prompt:
+
+1. **Confirm Phase 3 gate passed** — Auth middleware works, `/api/health` returns success, `/api/auth/me` returns 401 without session, all response shapes match spec, zero `any` types, RLS tests pass.
+2. **Create a Stripe account** — Go to [dashboard.stripe.com](https://dashboard.stripe.com) and create a free account if you don't have one. Stay in **test mode**.
+3. **Get Stripe test keys** — From the Stripe Dashboard → Developers → API keys, copy your `sk_test_...` (Secret Key) and `pk_test_...` (Publishable Key).
+4. **Create Stripe Products and Prices** — In the Stripe Dashboard (test mode), create 3 products with recurring monthly prices:
+   - Creator: $39/month → copy the `price_...` ID → set as `STRIPE_PRICE_CREATOR` in `.env.local`
+   - Pro: $89/month → copy the `price_...` ID → set as `STRIPE_PRICE_PRO` in `.env.local`
+   - Agency: $249/month → copy the `price_...` ID → set as `STRIPE_PRICE_AGENCY` in `.env.local`
+5. **Set Stripe env vars in `.env.local`** — Add `STRIPE_SECRET_KEY=sk_test_...`, `STRIPE_WEBHOOK_SECRET` (will be set after step 6), and the 3 `STRIPE_PRICE_*` vars.
+6. **Install and configure Stripe CLI** — Run `stripe login` to authenticate. Then run `stripe listen --forward-to localhost:3000/api/webhooks/stripe` to get the webhook signing secret (`whsec_...`). Set it as `STRIPE_WEBHOOK_SECRET` in `.env.local`.
+7. **Read the SEABS spec §8** — Open the spec and read §8.2 (Webhook Events), §8.3 (Plan Limits), §8.4 (Usage Tracking), §8.5 (Webhook Security).
+8. **Read the skill SKILL.md files** — Open and read the SKILL.md for `stripe-integration`, `payment-integration`, `api-patterns`.
+9. **Keep Stripe CLI listener running** — Leave `stripe listen --forward-to localhost:3000/api/webhooks/stripe` running in a separate terminal throughout this phase.
+
 ## Agent Prompt
 
 ```
@@ -726,7 +795,7 @@ You are a senior backend engineer building the Stripe billing integration for Re
 
 CONTEXT:
 - Stripe Subscriptions with Checkout Sessions
-- 4 plans: Free ($0), Creator ($29), Pro ($79), Agency ($199)
+- 4 plans: Free ($0), Creator ($39), Pro ($89), Agency ($249)
 - Webhook-driven state management (spec §8.2)
 - Usage tracking per billing period (spec §8.4)
 - Plan limits enforced at API layer (spec §8.3)
@@ -737,14 +806,14 @@ PREREQUISITE: Phase 2 (database) and Phase 3 (auth + middleware) complete.
 TASK: Create these files:
 
 1. FILE: lib/billing/plans.ts
-   - Export PLAN_LIMITS object from spec §8.3 (all 4 plans with maxAccounts, maxReelsAnalyzed, maxStrategies, maxAiCalls, aiModel, features)
+   - Export PLAN_LIMITS object from spec §8.3 (all 4 plans with maxAccounts, maxPostsAnalyzed, monthlyAiLimit, maxStrategies, aiModel, features, budgetCap)
    - Export type PlanId = "free" | "creator" | "pro" | "agency"
    - Export function getPlanLimits(planId: PlanId): PlanLimits
 
 2. FILE: lib/billing/usage-tracker.ts
    - getCurrentPeriodUsage(userId: string): Promise<UsageRecord>
    - incrementUsage(userId: string, field: UsageField, amount?: number): Promise<void>
-   - checkUsageLimit(userId: string, operation: "reel_analysis" | "strategy_generation" | "ai_call"): Promise<{ allowed: boolean, remaining: number, limit: number }>
+   - checkUsageLimit(userId: string, operation: "post_analysis" | "strategy_generation" | "ai_call"): Promise<{ allowed: boolean, remaining: number, limit: number }>
    - resetUsageForPeriod(userId: string, periodMonth: string): Promise<void>
 
 3. FILE: lib/billing/stripe-helpers.ts
@@ -834,10 +903,10 @@ grep -r "ON CONFLICT DO NOTHING" app/api/webhooks/stripe/
 
 # CHECK 6: Plan limits match spec
 # Manually verify PLAN_LIMITS matches spec §8.3 exactly:
-# Free: 1 account, 10 reels, 0 strategies, 10 AI calls
-# Creator: 1 account, 100 reels, 4 strategies, 150 AI calls
-# Pro: 3 accounts, 500 reels, 12 strategies, 600 AI calls
-# Agency: 10 accounts, 2000 reels, 40 strategies, 2500 AI calls
+# Free: Max 1 account (IG or TikTok), 0 AI analyses, 0 strategies, $0.00 LLM cap
+# Creator: Max 2 accounts, 50 AI analyses, 4 strategies, $8.00 LLM cap
+# Pro: Max 6 accounts, 200 AI analyses, 12 strategies, $25.00 LLM cap
+# Agency: Max 20 accounts (up to 10 clients), 800 AI analyses, 40 strategies, $75.00 LLM cap
 
 # CHECK 7: Usage check function exists and works
 # Verify checkUsageLimit returns { allowed, remaining, limit }
@@ -867,11 +936,11 @@ curl http://localhost:3000/api/billing/usage          # (with auth)
 
 ---
 
-# PHASE 5 — INSTAGRAM INGESTION
+# PHASE 5 — SOCIAL INGESTION PIPELINE (INSTAGRAM & TIKTOK)
 
 ## Goal
 
-Build the complete Instagram data pipeline: OAuth2 flow, token management with AES-256-GCM encryption, data sync, rate limit handling, and webhook subscription. After this phase, users can connect their Instagram account and Reels data is automatically fetched and stored.
+Build the complete cross-platform social data ingestion pipeline: OAuth2 authorization flows for both Instagram and TikTok (Display API v2), token lifecycle management with AES-256-GCM encryption, data sync, rate limit handling, and webhook subscriptions. After this phase, users can connect their Instagram and TikTok accounts, and their short-form video metrics (Instagram Reels and TikTok Videos) are automatically fetched, normalized, and stored.
 
 ## 🔧 Activate Skills
 
@@ -888,19 +957,48 @@ Build the complete Instagram data pipeline: OAuth2 flow, token management with A
 > - `gdpr-data-handling`: On account disconnect, encrypted tokens MUST be purged (not just soft-deleted)
 > - `security-auditor`: Audit log entry for every OAuth flow completion and token refresh
 
+## 🚦 Steps Before Execution
+
+Complete **all** of these before running the agent prompt:
+
+1. **Confirm Phase 4 gate passed** — Billing module compiles, has zero imports from ai/queue/ingestion, Stripe webhook verifies signatures, all 5 events handled, idempotent processing works, plan limits match spec, all billing API routes return correct shapes.
+2. **Create developer applications on both platforms**:
+   - **Meta Developer Portal**: Go to [developers.facebook.com](https://developers.facebook.com) → My Apps → Create App. Add the "Instagram" product and configure Instagram Business Login.
+   - **TikTok Developer Portal**: Go to [developers.tiktok.com](https://developers.tiktok.com) → My Apps → Create App. Add the "TikTok Display API" product.
+3. **Configure Redirect URIs**:
+   - Meta App → Instagram → Basic Display: Add `http://localhost:3000/api/auth/social/instagram/callback`
+   - TikTok App → Display API → Redirect URI: Add `http://localhost:3000/api/auth/social/tiktok/callback`
+4. **Configure Sandbox/Test Users**:
+   - Set up Meta Test Users in Roles → Test Users with linked Instagram Business Accounts.
+   - Set up TikTok Sandbox accounts under TikTok App Dashboard → Sandbox.
+5. **Set Environment Variables in `.env.local`**:
+   - `INSTAGRAM_CLIENT_ID` and `INSTAGRAM_CLIENT_SECRET`
+   - `INSTAGRAM_REDIRECT_URI=http://localhost:3000/api/auth/social/instagram/callback`
+   - `INSTAGRAM_VERIFY_TOKEN` (random secret string for Meta webhooks verification)
+   - `TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET`
+   - `TIKTOK_REDIRECT_URI=http://localhost:3000/api/auth/social/tiktok/callback`
+6. **Generate encryption keys** — Create a 32-byte hex key for token encryption. Run: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Set it as `TOKEN_ENCRYPTION_KEYS={"v1":"<your-hex-key>"}` and `ACTIVE_KEY_VERSION=v1` in `.env.local`.
+7. **Install ngrok or localtunnel** (for webhook testing) — Run `npx ngrok http 3000` or `npx localtunnel --port 3000` to get a public HTTPS URL. You'll need this to configure the Instagram Webhook callback URL in the Meta Dashboard.
+8. **Read the SEABS spec §6** — Open the spec and read the entire §6 section including §6.2 (Token Management), §6.3 (Data Fetching), §6.4 (Rate Limiting), §6.5 (Engagement Calculations), §6.6 (API Deprecations), and §6.8 (TikTok Display API Integration & Rate Limits).
+9. **Read the skill SKILL.md files** — Open and read the SKILL.md for `secrets-management`, `gdpr-data-handling`, `security-auditor`, `constant-time-analysis`.
+
 ## Agent Prompt
 
 ```
-You are a senior backend engineer building the Instagram data ingestion pipeline for Reel Logic AI.
+You are a senior backend engineer building the social data ingestion pipeline for Reel Logic AI.
 
 CONTEXT:
-- Instagram Graph API v22.0+ (spec §6)
-- CRITICAL: plays and impressions are DEPRECATED as of April 2025. Use "views" and "total_views" (spec §6.6)
-- NEW metrics: reels_skip_rate, public_reposts (spec §6.6)
-- OAuth2 with long-lived tokens (60 days), AES-256-GCM encryption at rest
-- Rate limit: 200 calls/hour/user with exponential backoff
-- Token refresh at day 53 (7-day buffer before 60-day expiry)
-- META APP DEVELOPER SANDBOX WARNING: Because the app is in developer/sandbox mode, the integration must be executed using designated Meta Test Users and Business Accounts. In development, public user accounts cannot connect until Meta App Review formally approves `instagram_business_basic` and `instagram_manage_insights` scopes.
+- Instagram Graph API v22.0+ & TikTok Display API v2 (spec §6)
+- Unified cross-platform database schema: social_accounts, posts, post_scores (spec §4)
+- CRITICAL (Instagram): plays and impressions are DEPRECATED. Use "views" and "total_views" (spec §6.6)
+- NEW metrics (Instagram): reels_skip_rate, public_reposts (spec §6.6)
+- NEW metrics (TikTok): completion_rate, views, likes, comments, shares, saves
+- OAuth2 with access token encryption (AES-256-GCM) at rest
+- Instagram long-lived tokens (60 days) with token refresh at day 53.
+- TikTok access tokens (24 hours expiry) with daily refresh exchange using refresh_token.
+- TikTok strict rate limit handling: 10 calls per minute per user limit, utilizing sequential background queue workers.
+- 5-minute manual sync cooldown lock stored on social_accounts.last_synced_at to prevent rapid API requests.
+- Rate limits: check headers, implement exponential backoff on HTTP 429.
 
 PREREQUISITE: Phases 0-3 complete (project, database, auth).
 
@@ -915,80 +1013,85 @@ TASK: Create these files:
    - NEVER log decrypted tokens
 
 2. FILE: lib/services/token-manager.ts
-   Token lifecycle management from spec §6.2:
-   - shouldRefresh(account): boolean — true if token expires within 7 days
-   - refreshToken(account): Promise<string> — exchange for new 60-day token. Must use pessimistic transaction-level database locking (`pg_try_advisory_xact_lock` or row locking) on the token record during refresh to prevent concurrent workers from initiating redundant token invalidations.
+   Token lifecycle management from spec §6.2 & §6.8.1:
+   - shouldRefresh(account: SocialAccount): boolean:
+     - For Instagram: true if token expires within 7 days.
+     - For TikTok: true if token expires within 2 hours or is checked on daily cron.
+   - refreshToken(account: SocialAccount): Promise<string> — exchanges for a new token (Meta API or TikTok POST /oauth/token/ endpoint). Must use pessimistic transaction-level database locking (pg_try_advisory_xact_lock or row locking) on the token record during refresh to prevent concurrent workers from initiating redundant token invalidations.
    - Enforce Optimistic Concurrency Control (OCC) during token updates using `token_version` column to prevent overlapping cron and manual updates.
-   - handleInvalidToken(account): Promise<void> — mark account as disconnected, notify user
-   - Refresh constraint: token must be ≥24 hours old to refresh
+   - handleInvalidToken(account: SocialAccount): Promise<void> — mark account as disconnected, notify user
+   - Refresh constraint: token must be >=24 hours old (Instagram) or expiring (TikTok) to refresh.
 
-3. FILE: lib/ingestion/reel-fetcher.ts
-   Instagram API data fetcher from spec §6.3:
-   - fetchUserReels(accessToken, igUserId, limit?): Promise<RawReel[]>
-   - fetchReelInsights(accessToken, mediaId): Promise<RawInsights>
-   - API fields for media: id, caption, media_type, timestamp, permalink, media_url, like_count, comments_count
-   - Insights fields (v22.0+): views, total_views, reach, saved, shares, total_interactions, reels_skip_rate, public_reposts
-   - Filter: media_type = VIDEO only
-   - Rate limit handling: check X-Business-Use-Case-Usage header, backoff on 429
+3. FILE: lib/ingestion/post-fetcher.ts
+   Unified API data fetcher from spec §6.3 & §6.8.2:
+   - fetchInstagramPosts(accessToken, platformUserId, limit?): Promise<RawInstagramPost[]>
+   - fetchTikTokVideos(accessToken, platformUserId, limit?): Promise<RawTikTokVideo[]>
+   - Sequential Polling: TikTok video list fetching is queued and processed sequentially to adhere to the strict 10 calls/minute/user TikTok limit.
+   - Rate limit handling: check headers, exponential backoff on HTTP 429 (1min -> 2min -> 4min -> 8min -> 15min max).
 
 4. FILE: lib/ingestion/data-normalizer.ts
-   Transform raw IG API data to internal schema:
-   - normalizeReel(rawReel, rawInsights): Partial<Reel>
-   - calculateEngagementRate from spec §6.5 (using views_count, NOT plays_count)
-   - calculateWeightedEngagement from spec §6.5 (includes public_reposts weight)
-   - getViewMetric() from spec §6.6 (check media creation date for deprecated fields)
-   - Handle Nullable `reels_skip_rate`: explicitly map missing or undefined `reels_skip_rate` to `null` to prevent database schema errors, allowing fallback default mapping during scoring.
+   Transform raw social API data to the normalized `posts` database structure:
+   - normalizeInstagramPost(rawPost, rawInsights): Partial<Post>
+   - normalizeTikTokVideo(rawVideo): Partial<Post>
+   - calculateEngagementRate from spec §6.5 (using views_count, NOT plays_count). Handles display_views = 0 case by returning NULL.
+   - calculateWeightedEngagement (includes public_reposts or TikTok shares/saves weights)
+   - Handle Nullable metrics: explicitly map missing or undefined skip_rate (Instagram) or completion_rate (TikTok) to null to prevent database schema errors, allowing fallback default mapping during scoring.
 
 5. FILE: lib/services/ingestion.service.ts
    Main ingestion orchestrator:
    - syncAccount(userId, accountId): Promise<SyncResult> — full sync flow
-   - Deduplicate by ig_media_id (upsert)
-   - Queue AI scoring jobs for new/updated reels
+   - Enforce 5-minute manual sync cooldown by checking `social_accounts.last_synced_at` and throwing `SYNC_COOLDOWN_ACTIVE` if called within 5 minutes.
+   - Deduplicate by unique constraint `(platform, platform_media_id)` (upsert)
+   - Queue AI scoring jobs for new/updated posts
    - Update last_synced_at on account
    - Track API calls in usage_tracking
 
-6. FILE: app/api/auth/instagram/route.ts
-   - POST: Generate Instagram OAuth URL and redirect
-   - Scopes: instagram_business_basic, instagram_manage_insights, pages_show_list, pages_read_engagement
+6. FILE: app/api/auth/social/[platform]/route.ts
+   - POST: Generate OAuth URL and redirect for platform ("instagram" or "tiktok").
+   - Instagram Scopes: instagram_business_basic, instagram_manage_insights, pages_show_list, pages_read_engagement
+   - TikTok Scopes: video.list, user.info.basic, user.info.stats
 
-7. FILE: app/api/auth/instagram/callback/route.ts
-   - GET: Handle OAuth callback
-   - Exchange code for short-lived token → exchange for long-lived token
-   - Validate Account Type: Call Graph API `/me/accounts?fields=instagram_business_account,name` using the token.
-   - If `instagram_business_account` is missing, immediately abort registration, revoke token to clean up, and return redirect with error code `INSTAGRAM_NOT_BUSINESS_ACCOUNT`.
-   - Encrypt token with AES-256-GCM before storage
-   - Create instagram_accounts record
-   - Queue initial sync job
+7. FILE: app/api/auth/social/[platform]/callback/route.ts
+   - GET: Handle OAuth callback for platform ("instagram" or "tiktok").
+   - Exchange code for tokens (Meta OAuth exchange or TikTok POST /oauth/token/ flow).
+   - Validate Account Type:
+     - For Instagram: Call Graph API `/me/accounts?fields=instagram_business_account,name`. If missing, abort registration and return `INSTAGRAM_NOT_BUSINESS_ACCOUNT`.
+     - For TikTok: Call `/user/info/` to verify profile.
+   - Encrypt token with AES-256-GCM before storage.
+   - Create or update social_accounts record using OCC.
+   - Queue initial sync job.
 
 8. FILE: app/api/webhooks/instagram/route.ts
-   - GET: Hub verification (hub.mode, hub.verify_token, hub.challenge) using the `INSTAGRAM_VERIFY_TOKEN` environment variable to authenticate Meta's request.
-   - POST: Webhook event handling with signature verification (HMAC-SHA256 using App Secret). Webhooks must execute batch-splitting on the massive Meta webhook payload, immediately enqueuing individual `PROCESS_WEBHOOK` jobs to the queue, returning HTTP 200 OK within 3 seconds. For each job, derive a deterministic idempotency key as `webhook:${mediaId}:${changeField}:${hashOrTimestamp}` to prevent duplicate processing via `ON CONFLICT (idempotency_key) DO NOTHING`.
+   - GET: Hub verification (hub.mode, hub.verify_token, hub.challenge) using the `INSTAGRAM_VERIFY_TOKEN` env var.
+   - POST: Webhook event handling with signature verification (HMAC-SHA256 using App Secret). Executes batch-splitting on the Meta webhook payload, immediately enqueuing individual `PROCESS_WEBHOOK` jobs to the queue, returning HTTP 200 OK within 3 seconds. For each job, derive a deterministic idempotency key to prevent duplicate processing via `ON CONFLICT (idempotency_key) DO NOTHING`.
+
+8a. FILE: app/api/webhooks/tiktok/route.ts
+    - POST: TikTok Webhook handler. Verifies webhook signatures using TikTok verification signatures (HMAC-SHA256). Immediately enqueues payload changes, returning HTTP 200 OK.
 
 9. FILE: app/api/accounts/route.ts
-   - GET: List user's connected Instagram accounts
+   - GET: List user's connected social accounts (both Instagram and TikTok)
    - POST: Connect new account (redirects to OAuth)
 
 10. FILE: app/api/accounts/[id]/route.ts
-    - GET: Single account details
-    - DELETE: Disconnect account (delete tokens, keep historical data)
+    - GET: Single social account details
+    - DELETE: Disconnect account (delete encrypted tokens, keep historical data, cascade deletes cleanly per GDPR)
 
 11. FILE: app/api/accounts/[id]/sync/route.ts
-    - POST: Trigger manual sync
+    - POST: Trigger manual sync (enforcing the 5-minute cooldown)
 
 12. FILE: lib/validators/account.schema.ts
-    Zod schemas for account-related requests.
+    Zod schemas for social account management.
 
-RATE LIMITING (from spec §6.4):
-- 200 calls per hour per user
-- Check X-Business-Use-Case-Usage header
-- Exponential backoff on 429: 1min → 2min → 4min → 8min → 15min (max)
-- Reserve 10 calls for critical operations (token refresh)
+RATE LIMITING:
+- Instagram: 200 calls per hour per user.
+- TikTok: 10 calls per minute per user.
+- Sequential polling queue workers for all active TikTok updates.
+- Exponential backoff on HTTP 429: 1min → 2min → 4min → 8min → 15min (max).
 
 SECURITY:
-- Token encryption: AES-256-GCM, unique IV per operation
-- Webhook verification: HMAC-SHA256 with App Secret, constant-time comparison
-- Never log access tokens (encrypted or decrypted)
-- Never expose tokens in API responses
+- Token encryption: AES-256-GCM, unique IV per operation.
+- Webhook verification: HMAC-SHA256, constant-time comparison (crypto.timingSafeEqual).
+- Never log access tokens (encrypted or decrypted) or expose tokens in API responses.
 ```
 
 ## Output Artifacts
@@ -996,15 +1099,16 @@ SECURITY:
 | File | Description |
 |---|---|
 | `lib/security/encryption.ts` | AES-256-GCM encrypt/decrypt |
-| `lib/services/token-manager.ts` | Token lifecycle |
-| `lib/ingestion/reel-fetcher.ts` | Instagram API fetcher |
+| `lib/services/token-manager.ts` | Token lifecycle (Instagram 60-day, TikTok daily refresh) |
+| `lib/ingestion/post-fetcher.ts` | Instagram Graph API & TikTok Display API fetcher |
 | `lib/ingestion/data-normalizer.ts` | Data normalization |
-| `lib/services/ingestion.service.ts` | Sync orchestrator |
-| `app/api/auth/instagram/route.ts` | OAuth start |
-| `app/api/auth/instagram/callback/route.ts` | OAuth callback |
+| `lib/services/ingestion.service.ts` | Sync orchestrator (with 5min manual sync cooldown lock) |
+| `app/api/auth/social/[platform]/route.ts` | OAuth initiation |
+| `app/api/auth/social/[platform]/callback/route.ts` | OAuth callback |
 | `app/api/webhooks/instagram/route.ts` | IG webhook handler |
-| `app/api/accounts/**` | Account CRUD routes |
-| `lib/validators/account.schema.ts` | Account validation |
+| `app/api/webhooks/tiktok/route.ts` | TikTok webhook handler |
+| `app/api/accounts/**` | Account CRUD and manually triggered sync routes |
+| `lib/validators/account.schema.ts` | Account validation schema |
 
 ## Checks & Tests
 
@@ -1018,17 +1122,17 @@ npx tsc --noEmit
 # Verify rotation: encrypt with active key, rotate active key, decrypt historical token successfully using old key mapped in TOKEN_ENCRYPTION_KEYS.
 
 # CHECK 3: No deprecated metric names in fetcher
-grep -r "plays\b" lib/ingestion/reel-fetcher.ts
-grep -r "impressions" lib/ingestion/reel-fetcher.ts
+grep -r "plays\b" lib/ingestion/post-fetcher.ts
+grep -r "impressions" lib/ingestion/post-fetcher.ts
 # Expected: 0 results (or only in legacy fallback comments)
 
 # CHECK 4: New metrics present in fetcher
-grep -r "views\|reels_skip_rate\|public_reposts\|total_views" lib/ingestion/reel-fetcher.ts
-# Expected: All 4 present
+grep -r "views\|skip_rate\|public_reposts\|completion_rate\|total_views" lib/ingestion/post-fetcher.ts
+# Expected: All 5 present
 
 # CHECK 5: Webhook signature verification
-grep -r "timingSafeEqual\|createHmac" app/api/webhooks/instagram/ lib/security/
-# Expected: At least 1 match for constant-time comparison
+grep -r "timingSafeEqual\|createHmac" app/api/webhooks/ lib/security/
+# Expected: At least 1 match for constant-time comparison in webhook handlers
 
 # CHECK 6: Token never logged
 grep -r "console.log.*token\|console.log.*access_token" lib/ app/
@@ -1041,21 +1145,26 @@ grep -r "plays_count" lib/ingestion/data-normalizer.ts
 # Expected: 0 results (or only in legacy migration comment)
 
 # CHECK 8: OAuth scopes correct
-grep -r "instagram_business_basic" app/api/auth/instagram/
-# Expected: At least 1 match (NOT instagram_basic)
+grep -r "instagram_business_basic" app/api/auth/social/
+grep -r "video.list" app/api/auth/social/
+# Expected: All scopes present
 
 # CHECK 9: Webhook Local Tunneling configuration
-# For local testing of Instagram Webhooks, check if local tunnel (ngrok or localtunnel) can be mapped:
+# Verify local webhook endpoints can receive payloads locally:
 # ngrok http 3000
-# Expected: Command runs, provides a public HTTPS URL which can be set as the Webhook callback URL in the Meta Developer Dashboard.
+# Expected: Command runs, provides a public HTTPS URL which can be set as the Webhook callback URL in developer dashboards.
 
 # CHECK 10: Optimistic Concurrency & Pessimistic Locks
 grep -r "token_version\|pg_try_advisory_xact_lock" lib/services/token-manager.ts
 # Expected: OCC update check and pessimistic locking implemented for token refreshes
 
 # CHECK 11: Webhook Batch Splitting & Response Time Limit
-grep -r "PROCESS_WEBHOOK" app/api/webhooks/instagram/
+grep -r "PROCESS_WEBHOOK" app/api/webhooks/
 # Expected: Payload batch is split and immediately enqueued, returning 200 OK within 3s
+
+# CHECK 12: Manual Sync 5-minute Cooldown Lock
+# Trigger two sync requests sequentially within 5 seconds.
+# Expected: Second request fails immediately returning SYNC_COOLDOWN_ACTIVE.
 ```
 
 ## Gate Criteria
@@ -1063,15 +1172,17 @@ grep -r "PROCESS_WEBHOOK" app/api/webhooks/instagram/
 - [ ] `npx tsc --noEmit` → 0 errors
 - [ ] Encryption round-trip works with key-version prefix (`keyVersion:iv:authTag:ciphertext`) and supports multi-key rotation
 - [ ] No deprecated metrics in API calls (`plays`, `impressions`)
-- [ ] New metrics present (`views`, `reels_skip_rate`, `public_reposts`, `total_views`)
-- [ ] Webhook uses constant-time comparison for signatures
+- [ ] New metrics present (`views`, `skip_rate`, `completion_rate`, `public_reposts`, `total_views`)
+- [ ] Webhook uses constant-time comparison for signatures on both Instagram and TikTok webhooks
 - [ ] Tokens never logged
 - [ ] Engagement rate uses `views_count` not `plays_count`
-- [ ] OAuth scopes use `instagram_business_basic` (not `instagram_basic`)
-- [ ] Rate limit handling with exponential backoff implemented
+- [ ] OAuth scopes use `instagram_business_basic` for Instagram and `video.list` / `user.info.basic` / `user.info.stats` for TikTok
+- [ ] Rate limit handling with exponential backoff implemented on both platforms
+- [ ] TikTok 10 calls/minute sequential queue polling worker implemented
+- [ ] 5-minute manual sync cooldown lock enforced on sync routes
 - [ ] Optimistic Concurrency Control (`token_version`) and pessimistic locking (`pg_try_advisory_xact_lock` or row locking) verified for token refreshes
-- [ ] Webhook immediately splits batches and enqueues individual jobs, returning HTTP 200 OK under 3 seconds
-- [ ] Developer Sandbox checklist locked: Developer warning for Meta Sandbox / Test Accounts noted prior to App Review approval.
+- [ ] Webhooks immediately split batches and enqueue individual jobs, returning HTTP 200 OK under 3 seconds
+- [ ] Developer Sandbox checklists locked: Developer warnings for Meta and TikTok Sandbox / Test Accounts noted prior to App Review approval.
 - [ ] Webhook routing verified to handle `ngrok`/`localtunnel` dynamic hosts for local verification.
 
 ---
@@ -1095,6 +1206,19 @@ Build the PostgreSQL-based job queue using SKIP LOCKED, worker system, dead lett
 > - `locked_at` timeout: stale lock detection at 5-minute threshold prevents zombie jobs
 > - `SKIP LOCKED` ensures zero contention between concurrent workers
 
+## 🚦 Steps Before Execution
+
+Complete **all** of these before running the agent prompt:
+
+1. **Confirm Phase 5 gate passed** — Encryption round-trip works, no deprecated metrics, webhook uses constant-time comparison, tokens never logged, OAuth scopes correct, OCC and pessimistic locking verified.
+2. **Verify local Supabase is still running** — Run `npx supabase status`. All services must be green.
+3. **Confirm `job_queue` table exists** — Connect to the local DB and run `SELECT count(*) FROM job_queue;` — expected: 0 rows (table exists but is empty).
+4. **Verify `last_heartbeat_at` column exists** — Run `SELECT column_name FROM information_schema.columns WHERE table_name = 'job_queue' AND column_name = 'last_heartbeat_at';` — expected: 1 row.
+5. **Read the SEABS spec §9** — Open the spec and read the entire §9 section (Queue Engine) including §9.2 (SKIP LOCKED), §9.3 (Worker), §9.4 (Idempotency Keys, IQueueEngine interface).
+6. **Read the skill SKILL.md files** — Open and read the SKILL.md for `database-optimizer`, `database`, `debugger`.
+7. **Set `CRON_SECRET` in `.env.local`** — Generate a random secret: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Add it as `CRON_SECRET` in `.env.local`. This secures the cron and queue processing endpoints.
+8. **Confirm no forbidden queue packages** — Run `npm ls redis ioredis bull bullmq amqplib kafkajs 2>&1` — all must return empty/not found.
+
 ## Agent Prompt
 
 ```
@@ -1103,7 +1227,7 @@ You are a senior backend engineer building a PostgreSQL-based job queue for Reel
 CONTEXT:
 - NO Redis, NO Kafka, NO Bull/BullMQ — PostgreSQL only (spec §2.2 HARD CONSTRAINT)
 - Uses SELECT ... FOR UPDATE SKIP LOCKED for concurrent-safe job claiming (spec §9.2)
-- Job types: SYNC_ACCOUNT, SCORE_REEL, GENERATE_STRATEGY, REFRESH_TOKEN, SEND_EMAIL, PROCESS_WEBHOOK
+- Job types: SYNC_ACCOUNT, SCORE_POST, GENERATE_STRATEGY, REFRESH_TOKEN, SEND_EMAIL, PROCESS_WEBHOOK
 - Idempotency keys prevent duplicate processing (spec §9.4)
 - Dead letter queue for jobs that exceed max retries (spec §9.3)
 - Exponential backoff on retries: 1s, 2s, 4s... max 5 minutes
@@ -1114,7 +1238,7 @@ TASK: Create these files:
 
 1. FILE: lib/queue/types.ts
    Type definitions & Migration Seam:
-   - JobType enum: SYNC_ACCOUNT, SCORE_REEL, GENERATE_STRATEGY, REFRESH_TOKEN, SEND_EMAIL, PROCESS_WEBHOOK
+   - JobType enum: SYNC_ACCOUNT, SCORE_POST, GENERATE_STRATEGY, REFRESH_TOKEN, SEND_EMAIL, PROCESS_WEBHOOK
    - JobStatus: "pending" | "processing" | "completed" | "failed" | "dead_letter"
    - Job interface matching job_queue table schema
    - JobHandler type: (payload: Record<string, unknown>) => Promise<void>
@@ -1173,12 +1297,12 @@ TASK: Create these files:
 5. FILE: app/api/cron/token-refresh/route.ts
    A secure GET route running daily to enqueue token refreshes:
    - Verifies `Authorization: Bearer CRON_SECRET` headers.
-   - Queries `instagram_accounts` for records expiring within 7 days, and enqueues `REFRESH_TOKEN` jobs.
+   - Queries `social_accounts` for records expiring within 7 days, and enqueues `REFRESH_TOKEN` jobs.
 
 6. FILE: app/api/cron/ingest/route.ts
    A secure GET route running hourly to enqueue data ingestion:
    - Verifies `Authorization: Bearer CRON_SECRET` headers.
-   - Enqueues `SYNC_ACCOUNT` jobs for all active connected Instagram accounts.
+   - Enqueues `SYNC_ACCOUNT` jobs for all active connected social accounts (both Instagram and TikTok).
 
 7. FILE: lib/queue/dead-letter.ts
    Dead letter queue management:
@@ -1219,7 +1343,7 @@ RETURNING job_queue.*;
 IDEMPOTENCY KEYS (from spec §9.4):
 - SYNC_ACCOUNT_SCHEDULED: sync:scheduled:{accountId}:{dateHour}
 - SYNC_ACCOUNT_MANUAL: sync:manual:{accountId}:{timestamp_ms} (minimum 5-minute application-level throttle window)
-- SCORE_REEL: score:{reelId}:{version}
+- SCORE_POST: score:{postId}:{version}
 - GENERATE_STRATEGY: strategy:{accountId}:{periodKey}
 ```
 
@@ -1298,7 +1422,7 @@ grep -r "interface IQueueEngine" lib/queue/types.ts
 
 ## Goal
 
-Build the AI scoring engine, strategy generator, prompt templates, output parsing, fallback system, and cost tracking. After this phase, Reels can be scored across 9 dimensions and personalized strategies can be generated.
+Build the AI scoring engine, strategy generator, prompt templates, output parsing, fallback system, and cost tracking. After this phase, posts (Instagram Reels and TikTok Videos) can be scored across 9 dimensions and personalized strategies can be generated.
 
 ## 🔧 Activate Skills
 
@@ -1319,9 +1443,23 @@ Build the AI scoring engine, strategy generator, prompt templates, output parsin
 > 7. **Timeout 30s** — LLM call timeout, then fallback
 >
 > **`llm-evaluation` checks to add:**
-> - Define test cases for scoring prompt (known good/bad Reels → expected score ranges)
+> - Define test cases for scoring prompt (known good/bad posts → expected score ranges)
 > - Define test cases for strategy prompt (known account data → expected strategy shape)
-> - Track scoring consistency: same reel scored 3x should produce scores within ±10 range
+> - Track scoring consistency: same post scored 3x should produce scores within ±10 range
+
+## 🚦 Steps Before Execution
+
+Complete **all** of these before running the agent prompt:
+
+1. **Confirm Phase 6 gate passed** — SKIP LOCKED with zombie-recovery works, idempotency keys prevent duplicates, dead letter queue functional, serverless batch processing loop implemented, `IQueueEngine` interface defined.
+2. **Get an OpenAI API key** — Go to [platform.openai.com](https://platform.openai.com) → API Keys → Create new secret key. Copy the `sk-...` key.
+3. **Add billing to OpenAI** — Ensure your OpenAI account has a payment method and sufficient credits. The prompt evaluation test script will make real API calls.
+4. **Set OpenAI env vars in `.env.local`** — Add `OPENAI_API_KEY=sk-...` to your `.env.local` file.
+5. **Verify queue handler skeleton exists** — Confirm `lib/queue/handlers.ts` exists and has skeleton handler registrations from Phase 6.
+6. **Read the SEABS spec §7** — Open the spec and read the entire §7 section (AI/LLM Engine) including §7.2 (Scoring Dimensions — all 9 including skip_rate and completion_rate), §7.3 (Strategy Generation), §7.4 (LLM Wrapper), §7.5 (Fallback System), §7.6 (SWR Caching). Also read §12.3 (Cost Tracking) and §18 RULE 3 / §19 (Module Boundaries).
+7. **Read the skill SKILL.md files** — Open and read the SKILL.md for `ai-product`, `ai-engineer`, `llm-evaluation`, `gemini-api-dev`. The `ai-product` skill is the primary skill for this phase.
+8. **Estimate API costs** — The test script will score 10 mock posts with multiple passes. Estimated cost: ~$0.50–$2.00 depending on model and token usage. Confirm you're comfortable with this spend on your OpenAI account.
+9. **Keep dev server running** — Ensure `npm run dev` is active in a separate terminal.
 
 ## Agent Prompt
 
@@ -1330,7 +1468,7 @@ You are a senior AI engineer building the LLM-powered scoring and strategy engin
 
 CONTEXT:
 - OpenAI GPT-4o-mini (primary, cost-effective) and GPT-4o (premium tier)
-- 9 scoring dimensions including skip_rate_score (spec §7.2, updated for April 2025)
+- 9 scoring dimensions including skip_rate_score (IG Reels) and completion_rate_score (TikTok Videos) (spec §7.2, updated for April 2025)
 - Strategy generation produces structured content calendars (spec §7.3)
 - Every LLM call goes through a wrapper (spec §7.4)
 - AI module is a PURE FUNCTION: no DB writes, no external API calls (spec §7.1)
@@ -1350,19 +1488,19 @@ BOUNDARY RULE (spec §18 RULE 3, spec §19):
 TASK: Create these files:
 
 1. FILE: lib/ai/prompts/scoring.ts
-   Export REEL_SCORING_PROMPT from spec §7.2 (updated version with 9 dimensions including skip_rate).
-   Include template variable markers: {caption}, {timestamp}, {views_count}, {skip_rate}, {likes_count}, etc.
-   Export function buildScoringPrompt(reelData, accountContext): string
+   Export POST_SCORING_PROMPT from spec §7.2 (updated version with 9 dimensions including skip_rate for Reels and completion_rate for TikTok Videos).
+   Include template variable markers: {caption}, {timestamp}, {views_count}, {skip_rate}, {completion_rate}, {likes_count}, etc.
+   Export function buildScoringPrompt(postData, accountContext): string
 
 2. FILE: lib/ai/prompts/strategy.ts
-   Export STRATEGY_PROMPT from spec §7.3 (updated with avg_views, avg_skip_rate).
+   Export STRATEGY_PROMPT from spec §7.3 (updated with avg_views, avg_skip_rate, avg_completion_rate).
    Export function buildStrategyPrompt(accountData, performanceData, strategyConfig): string
 
 3. FILE: lib/ai/output-parser.ts
    Zod schemas for LLM output validation:
-   - ReelScoreSchema from spec §7.2 (updated with skip_rate dimension + skip_rate_analysis)
+   - PostScoreSchema from spec §7.2 (updated with skip_rate / completion_rate dimension + audience_retention_analysis)
    - StrategyOutputSchema from spec §7.3
-   - parseScoringOutput(rawJson: string): ReelScore (with Zod validation)
+   - parseScoringOutput(rawJson: string): PostScore (with Zod validation)
    - parseStrategyOutput(rawJson: string): StrategyOutput (with Zod validation)
 
 4. FILE: lib/ai/cost-calculator.ts
@@ -1373,12 +1511,12 @@ TASK: Create these files:
 
 5. FILE: lib/ai/fallback.ts
    Deterministic fallback system from spec §7.5:
-   - generateScoringFallback(reelMetrics, avgEngagementRate): HeuristicScoreResult (explicitly returning `source: "heuristic"` and calculating basic scores from metrics)
+   - generateScoringFallback(postMetrics, avgEngagementRate): HeuristicScoreResult (explicitly returning `source: "heuristic"` and calculating basic scores from metrics)
    - generateStrategyFallback(): StrategyFallback (basic suggestions from historical data)
 
 6. FILE: lib/ai/scoring-engine.ts
    Main scoring function (PURE function):
-   - scoreReel(params: { reelData, accountContext, model? }): Promise<ReelScore | HeuristicScoreResult>
+   - scorePost(params: { postData, accountContext, model? }): Promise<PostScore | HeuristicScoreResult>
    - Enforce pure function: No DB calls, no environment usage reads. Simply wraps LLM call -> validate -> fallback on failure.
 
 7. FILE: lib/ai/strategy-generator.ts
@@ -1397,7 +1535,7 @@ TASK: Create these files:
 
 9. FILE: lib/services/scoring.service.ts
    Service layer that orchestrates AI scoring with DB reads/writes and caching:
-   - scoreReel(userId, reelId, options?: { forceRefresh?: boolean }): fetches reel data, implements Stale-While-Revalidate (SWR) cache read (24hr expiry, async bg queue sync triggers), checks user monthly AI credits budget (using `checkUsageLimit` from Phase 4), logs usage metrics post-call, handles 1-hour force-refresh cooldown (blocks with 429 if requested too early), calls AI engine, and saves score to DB.
+   - scorePost(userId, postId, options?: { forceRefresh?: boolean }): fetches post data, implements Stale-While-Revalidate (SWR) cache read (24hr expiry, async bg queue sync triggers), checks user monthly AI credits budget (using `checkUsageLimit` from Phase 4), logs usage metrics post-call, handles 1-hour force-refresh cooldown (blocks with 429 if requested too early), calls AI engine, and saves score to DB.
    - This file bridges the boundary between the pure AI engine and the stateful database.
 
 10. FILE: lib/services/strategy.service.ts
@@ -1406,13 +1544,13 @@ TASK: Create these files:
 
 11. FILE: scripts/test-prompts.ts
     Prompt evaluation test suite script that:
-    - Feeds 10 mock reels of varying metrics (views, skips, comments) into the AI scoring engine.
+    - Feeds 10 mock posts of varying metrics (views, skips, completion rates, comments) into the AI scoring engine.
     - Validates output conformity across 9 dimensions, score range bounds, and schema correctness.
-    - Runs multiple passes on a single reel to calculate and verify low variance (consistency checking).
+    - Runs multiple passes on a single post to calculate and verify low variance (consistency checking).
 
 REGISTER QUEUE HANDLERS:
 Update lib/queue/handlers.ts to register real handlers:
-- SCORE_REEL → calls scoringService.scoreReel()
+- SCORE_POST → calls scoringService.scorePost()
 - GENERATE_STRATEGY → calls strategyService.generateStrategy()
 
 AI OUTPUT VALIDATION RULES:
@@ -1426,7 +1564,7 @@ AI OUTPUT VALIDATION RULES:
 
 | File | Description |
 |---|---|
-| `lib/ai/prompts/scoring.ts` | Reel scoring prompt (9 dimensions) |
+| `lib/ai/prompts/scoring.ts` | Post scoring prompt (9 dimensions) |
 | `lib/ai/prompts/strategy.ts` | Strategy generation prompt |
 | `lib/ai/output-parser.ts` | Zod schemas + parsers |
 | `lib/ai/cost-calculator.ts` | LLM cost tracking |
@@ -1465,7 +1603,7 @@ grep -r "\.parse\|\.safeParse" lib/ai/output-parser.ts
 # Expected: At least 2 matches (scoring + strategy)
 
 # CHECK 6: 9 scoring dimensions present
-grep -r "skip_rate" lib/ai/prompts/scoring.ts lib/ai/output-parser.ts
+grep -r "skip_rate\|completion_rate" lib/ai/prompts/scoring.ts lib/ai/output-parser.ts
 # Expected: At least 2 matches
 
 # CHECK 7: JSON mode enforced
@@ -1486,7 +1624,7 @@ grep -r "0.00015\|0.0006\|0.005\|0.015" lib/ai/cost-calculator.ts
 
 # CHECK 11: Prompt evaluation test suite runs
 npx tsx scripts/test-prompts.ts
-# Expected: Runs successfully, validating 9-dimension scoring and prompt consistency across 10 mock reels.
+# Expected: Runs successfully, validating 9-dimension scoring and prompt consistency across 10 mock posts.
 ```
 
 ## Gate Criteria
@@ -1496,10 +1634,10 @@ npx tsx scripts/test-prompts.ts
 - [ ] Budget check runs before every LLM call inside the service layer
 - [ ] Fallback system works on LLM failure and returns `source: "heuristic"`
 - [ ] Zod validates all LLM outputs
-- [ ] 9 scoring dimensions including `skip_rate`
+- [ ] 9 scoring dimensions including `skip_rate` and `completion_rate`
 - [ ] JSON mode enforced on LLM calls
 - [ ] Temperature = 0.3
-- [ ] Queue handlers registered for SCORE_REEL and GENERATE_STRATEGY
+- [ ] Queue handlers registered for SCORE_POST and GENERATE_STRATEGY
 - [ ] Stale-While-Revalidate (SWR) cache read/refresh logic (24hr expiry, async revalidation, 1hr force-refresh cooldown) enforced in services
 - [ ] Cost calculation uses correct model pricing
 - [ ] Prompt evaluation script (`scripts/test-prompts.ts`) runs successfully and passes all validations
@@ -1541,6 +1679,24 @@ Build the complete dashboard UI: layout, all pages, components, charts, animatio
 > - Color contrast ratio ≥ 4.5:1 for text
 > - Score colors (red/yellow/green) also have icon/text indicators (not color-only)
 
+## 🚦 Steps Before Execution
+
+Complete **all** of these before running the agent prompt:
+
+1. **Confirm Phase 7 gate passed** — AI module has zero DB imports, budget checks work, fallback returns `source: "heuristic"`, Zod validates outputs, 9 scoring dimensions present, JSON mode enforced, temperature 0.3, SWR caching logic in services, prompt evaluation script passes.
+2. **Verify ALL backend APIs are functional** — Run the following curl checks to confirm the backend is responsive:
+   ```
+   curl -s http://localhost:3000/api/health   # Expected: 200 OK with {"status":"healthy"}
+   ```
+3. **Install Google Fonts locally** (optional) — The design system uses Inter, Outfit, and JetBrains Mono. These will be loaded via `next/font` or Google Fonts CDN, but confirm you can access [fonts.google.com](https://fonts.google.com) from your network.
+4. **Review the design system** — Read the SEABS spec §10.1 (Design System) for exact color palette, typography, spacing, and glassmorphism parameters. Key colors: brand purple `#6C5CE7`, green `#00B894`, pink `#FD79A8`.
+5. **Read the SEABS spec §10** — Open the spec and read the entire §10 section (Frontend) including §10.2 (Sidebar), §10.3 (Page Specs), §10.4 (Components), §10.5 (Animation Spec), §10.6 (Responsive Breakpoints).
+6. **Read the skill SKILL.md files** — Open and read the SKILL.md for `frontend-design`, `react-patterns`, `shadcn`, `design-spells`, `react-component-performance`, `tailwind-patterns`, `mobile-design`, `wcag-audit-patterns`, `animejs-animation`. This is the most skill-intensive phase.
+7. **Verify shadcn/ui is initialized** — Check that `components.json` exists and shadcn/ui components can be added. Run `npx shadcn@latest add button --dry-run` to confirm (or similar).
+8. **Prepare a test user session** — Create a test user via the Supabase Dashboard (or signup flow) so you can log in and see dashboard pages rendered with real data.
+9. **Seed realistic test data** — Run `npx tsx lib/db/seed.ts` to ensure the database has test posts, scores, strategies, and usage data for the UI to display.
+10. **Resize your browser** — Have Chrome DevTools open with the device toolbar ready. You'll need to test at 375px (mobile), 768px (tablet), and 1280px (desktop) widths.
+
 ## Agent Prompt
 
 ```
@@ -1557,12 +1713,12 @@ CONTEXT:
 - Glassmorphism effects for cards
 - Mobile-first responsive design
 
-DATA-DRIVEN AI STRATEGY MOAT (REEL SKIP RATE):
-- Rather than displaying "reels_skip_rate" as a simple raw API metric, portray it in the UI and dashboard copy as a core component of a larger data-driven AI strategy moat representing proprietary strategic insight. Frame it as the "Strategic Skip Resistance" or "Audience Retention Moat Index" to emphasize hook effectiveness and viewer capture.
+DATA-DRIVEN AI STRATEGY MOAT (POST SKIP & COMPLETION RATES):
+- Rather than displaying "skip_rate" or "completion_rate" as simple raw API metrics, portray them in the UI and dashboard copy as core components of a larger data-driven AI strategy moat representing proprietary strategic insight. Frame Instagram Reel skip rate as the "Strategic Skip Resistance" or "Audience Retention Moat Index" to emphasize hook effectiveness. Frame TikTok completion rate as the "Strategic Video Completion Retention Index" to represent viewer capture and audience locking capability.
 
 VIEW METRIC NORMALIZATION & ROBUSTNESS:
-- All charts, metrics cards, reels cards, and list tables must support the normalized views fields (display_views and metric_source) from the database/API.
-- Implement robust division-by-zero guards when computing metrics like engagement rate or skip rate. If display_views is 0 or null, return null or a safe custom display (e.g. "—" or "0.00%") instead of NaN or UI crashes.
+- All charts, metrics cards, post cards (cross-platform with badges), and list tables must support the normalized views fields (display_views and metric_source) from the database/API.
+- Implement robust division-by-zero guards when computing metrics like engagement rate, skip rate, or completion rate. If display_views is 0 or null, return null or a safe custom display (e.g. "—" or "0.00%") instead of NaN or UI crashes.
 
 PREREQUISITE: Phases 0-7 complete (all API routes exist).
 Before beginning frontend implementation, execute a curl sanity check to ensure the backend is responsive:
@@ -1572,8 +1728,8 @@ TASK: Build these files following the page specs from spec §10.3:
 
 LAYOUT:
 1. app/(dashboard)/layout.tsx — Dashboard shell with:
-   - Collapsible sidebar (from spec §10.2): Dashboard, My Reels, Strategy, Analytics, Accounts, Billing, Settings
-   - Top bar: breadcrumb, account switcher dropdown, notifications bell, user avatar
+   - Collapsible sidebar (from spec §10.2): Dashboard, My Posts, Strategy, Analytics, Accounts, Billing, Settings
+   - Top bar: breadcrumb, account switcher dropdown (to toggle/manage connected Instagram and TikTok accounts), notifications bell, user avatar
    - Mobile: sidebar collapses to bottom tab bar
    - Use glassmorphism for sidebar background
 
@@ -1581,7 +1737,7 @@ COMPONENTS (components/dashboard/):
 2. metric-card.tsx — Stat card with value, label, delta arrow, trend. Support display_views and metric_source. Skeleton loading state. (spec §10.4)
 3. score-gauge.tsx — Circular arc gauge for scores 1-100. Animated fill on mount. Color: green >70, yellow >40, red ≤40.
 4. dimension-bar.tsx — Horizontal bar for 1-10 dimension scores. 9 dimensions. Color-coded.
-5. reel-card.tsx — Card showing reel thumbnail placeholder, caption truncated, key metrics (display_views, skip rate reframed as Moat Index, ER), score badge. Click to navigate. Safe division-by-zero logic.
+5. post-card.tsx — Card showing post thumbnail placeholder with platform indicator badge (Instagram vs. TikTok), caption truncated, key metrics (display_views, skip rate / completion rate reframed as Moat Index, ER), score badge. Click to navigate. Safe division-by-zero logic.
 6. strategy-card.tsx — Day/time card with content type, topic, hook suggestion, estimated engagement indicator.
 7. trend-chart.tsx — Line chart using Recharts. 7/30/90 day toggle. Responsive. Show engagement rate over time. Safe division-by-zero checks.
 8. usage-meter.tsx — Progress bar showing used/total. Warning at 80% (yellow), critical at 95% (red).
@@ -1590,23 +1746,23 @@ COMPONENTS (components/dashboard/):
 
 COMPONENTS (components/shared/):
 11. error-boundary.tsx — Error boundary with retry button. Never shows stack traces to user.
-12. account-switcher.tsx — Dropdown to switch between connected Instagram accounts.
+12. account-switcher.tsx — Dropdown to switch between connected social accounts (both Instagram and TikTok).
 
 PAGES:
 13. app/(dashboard)/page.tsx — Dashboard (spec §10.3):
-    - 4 metric cards: Total Views (display_views), Avg Engagement, Avg Skip Rate (reframed as Strategic Skip Resistance with color indicator), AI Credits Left
+    - 4 metric cards: Total Views (display_views), Avg Engagement, Avg Retention Moat (reframed as Strategic Skip Resistance for Instagram / Video Completion Index for TikTok with color indicator), AI Credits Left
     - Engagement trend chart (30 days default)
-    - Top Reels list (top 5 by score)
+    - Top Posts list (top 5 by score, displaying platform indicator badges)
     - This week's plan summary (from latest strategy)
 
-14. app/(dashboard)/reels/page.tsx — Reels list:
-    - Grid of reel-cards, sortable by date/engagement/display_views/skip_rate
+14. app/(dashboard)/posts/page.tsx — Posts list:
+    - Grid of post-cards, with platform filtering tabs (All, Instagram, TikTok) and sortable by date/engagement/display_views/skip_rate/completion_rate
     - Pagination
     - "Score All" bulk action button
 
-15. app/(dashboard)/reels/[id]/page.tsx — Reel detail (spec §10.3):
-    - Left: reel info (caption, metrics: display_views, metric_source, skip rate as Moat Index with indicator, likes, comments, shares, saves, reposts)
-    - Right: AI score gauge + 9 dimension bars + AI analysis text
+15. app/(dashboard)/posts/[id]/page.tsx — Post detail (spec §10.3):
+    - Left: post info (caption, platform indicator badge, metrics: display_views, metric_source, skip rate or completion rate as Moat Index with indicator, likes, comments, shares, saves, public_reposts)
+    - Right: AI score gauge + 9 dimension bars + AI analysis text (evaluating hook effectiveness, pacing, audio, and visual trends)
     - Bottom: AI recommendations (strength + opportunity)
 
 16. app/(dashboard)/strategy/page.tsx — Strategy (spec §10.3):
@@ -1628,7 +1784,7 @@ PAGES:
 
 19. app/(dashboard)/billing/page.tsx — Billing:
     - Current plan card with features
-    - Usage meters (reels analyzed, strategies, AI calls)
+    - Usage meters (posts analyzed, strategies, AI calls)
     - Upgrade/downgrade buttons → Stripe Checkout
     - "Manage Subscription" → Stripe Portal
 
@@ -1639,7 +1795,7 @@ PAGES:
     - Delete account button with confirmation modal
 
 HOOKS:
-21. hooks/use-reels.ts — SWR/fetch hook for reels data. Returns display_views and metric_source.
+21. hooks/use-posts.ts — SWR/fetch hook for posts data (supporting both Instagram and TikTok posts). Returns display_views and metric_source.
 22. hooks/use-strategy.ts — Hook for strategy data
 23. hooks/use-analytics.ts — Hook for analytics data
 24. hooks/use-subscription.ts — Hook for subscription + usage
@@ -1705,7 +1861,7 @@ grep -r "skip.rate\|skip_rate\|skipRate" components/dashboard/
 # Verify skip rate is framed as a strategic moat / hook retention index rather than a basic metric
 
 # CHECK 7: 9 dimensions rendered (not 8)
-# Manually check reel detail page renders 9 dimension bars
+# Manually check post detail page renders 9 dimension bars
 
 # CHECK 8: Mobile responsive
 # Resize browser to 375px width — verify:
@@ -1742,8 +1898,8 @@ grep -r "display_views\|metric_source" app/\(dashboard\)/ components/dashboard/
 - [ ] No business logic inside React components (delegated to data hooks)
 - [ ] Loading states on every single asynchronous state change
 - [ ] Error boundaries properly configured on every sub-route/layout
-- [ ] 9 scoring dimensions in UI (including skip rate)
-- [ ] reels_skip_rate reframed as a core data-driven AI strategy moat representing proprietary strategic insight in the dashboard UI and copy
+- [ ] 9 scoring dimensions in UI (including skip rate for Reels and completion rate for TikTok Videos)
+- [ ] skip_rate and completion_rate reframed as a core data-driven AI strategy moat representing proprietary strategic insight in the dashboard UI and copy
 - [ ] All UI widgets and charts support the normalized views fields (display_views and metric_source) with robust division-by-zero fallbacks
 - [ ] Mobile responsive layout optimized (bottom tab bar touch targets ≥ 44x44px, stacked grids)
 - [ ] Animations strictly follow compositor-only property constraints (scale, opacity, x, y, rotate)
@@ -1770,6 +1926,18 @@ Add structured logging, health checks, Sentry error tracking, and alert-ready me
 > - Every log entry: `{ timestamp, level, service, traceId, userId?, action, duration_ms?, error? }` — structured JSON only
 > - Never log PII, tokens, or secrets (enforced by `security-auditor` from Phase 5)
 > - Alert thresholds documented in comments for future Grafana/PagerDuty setup
+
+## 🚦 Steps Before Execution
+
+Complete **all** of these before running the agent prompt:
+
+1. **Confirm Phase 8 gate passed** — All 8 dashboard pages render, no business logic in components, loading states on every async operation, error boundaries configured, 9 scoring dimensions in UI, mobile responsive, animations use compositor-only properties, `npm run build` succeeds under 250KB per route.
+2. **Create a Sentry account** — Go to [sentry.io](https://sentry.io) and create a free account. Create a new project for Next.js.
+3. **Get Sentry DSN** — From the Sentry project settings, copy the DSN URL. Add it as `SENTRY_DSN` in `.env.local`.
+4. **Install Sentry SDK** (if not already) — The agent will handle this, but verify `@sentry/nextjs` is in your `package.json`. If not, note it for the agent.
+5. **Read the SEABS spec §13** — Open the spec and read §13.1 (Structured Logging), §13.2 (Health Checks), §13.3 (Alert Rules).
+6. **Read the skill SKILL.md files** — Open and read the SKILL.md for `grafana-dashboards`, `analytics-tracking`.
+7. **Verify health endpoint baseline** — Run `curl http://localhost:3000/api/health` and confirm it returns the current simple response. This phase will enhance it.
 
 ## Agent Prompt
 
@@ -1799,6 +1967,8 @@ TASK:
    - checkDatabase(): Promise<"ok" | "degraded">
    - checkOpenAI(): Promise<"ok" | "degraded">
    - checkStripe(): Promise<"ok" | "degraded">
+   - checkInstagramAPI(): Promise<"ok" | "degraded">
+   - checkTikTokAPI(): Promise<"ok" | "degraded">
    - checkQueueHealth(): Promise<{ pending, processing, deadLetter }>
 
 4. FILE: app/api/health/route.ts — UPDATE existing:
@@ -1806,7 +1976,7 @@ TASK:
 
 5. FILE: app/api/health/deep/route.ts
    Deep health from spec §13.2:
-   - Check database, auth, OpenAI, Stripe, queue
+   - Check database, auth, OpenAI, Stripe, Instagram API, TikTok API, queue
    - Return status per dependency
    - Include queue depth and dead letter count
 
@@ -1825,7 +1995,7 @@ ALERT RULES (document in comments, implement monitoring later):
 - LLM cost >150% daily average → Warning
 - Queue >100 pending for >10 min → Warning
 - >10 dead letters in 1 hour → Critical
-- Token refresh failure 3x → Critical
+- Instagram or TikTok token refresh failure 3x → Critical
 - >5% 5xx in 5 minutes → Critical
 ```
 
@@ -1851,7 +2021,7 @@ curl http://localhost:3000/api/health
 
 # CHECK 3: Deep health shows all dependencies
 curl http://localhost:3000/api/health/deep
-# Expected: Shows database, auth, openai, stripe, queue status
+# Expected: Shows database, auth, openai, stripe, instagram, tiktok, queue status
 
 # CHECK 4: Logger never logs tokens
 grep -r "token\|password\|secret" lib/telemetry/logger.ts
@@ -1865,7 +2035,7 @@ grep -r "token\|password\|secret" lib/telemetry/logger.ts
 
 - [ ] `npx tsc --noEmit` → 0 errors
 - [ ] `/api/health` returns healthy status
-- [ ] `/api/health/deep` checks all dependencies
+- [ ] `/api/health/deep` checks all dependencies (including Instagram and TikTok API connectivity)
 - [ ] Structured logging with traceId on every request
 - [ ] Sentry configured for error tracking
 - [ ] No sensitive data in logs
@@ -1899,6 +2069,35 @@ Set up CI/CD pipeline, staging deployment, production deployment with all gates 
 > - `npx eslint . --max-warnings 0` (lint)
 > - `npx next build` (build verification)
 > - Secret scan step (grep for hardcoded keys)
+
+## 🚦 Steps Before Execution
+
+Complete **all** of these before running the agent prompt:
+
+1. **Confirm Phase 9 gate passed** — Health endpoints work (shallow and deep), structured logging with traceId active, Sentry configured, no sensitive data in logs.
+2. **Create a Vercel account** — Go to [vercel.com](https://vercel.com) and create a free account if you don't have one. Link it to your GitHub account.
+3. **Create a GitHub repository** — If the project isn't already on GitHub, create a repo and push all code. Vercel deploys from GitHub.
+4. **Install Vercel CLI** — Run `npm i -g vercel` and authenticate with `vercel login`.
+5. **Link project to Vercel** — Run `vercel link` from the project root to connect it to your Vercel account and project.
+6. **Set ALL environment variables in Vercel Dashboard** — Go to Vercel Dashboard → Project → Settings → Environment Variables. Add every variable from `.env.example`:
+   - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`
+   - `INSTAGRAM_CLIENT_ID`, `INSTAGRAM_CLIENT_SECRET`, `INSTAGRAM_REDIRECT_URI`, `INSTAGRAM_VERIFY_TOKEN`
+   - `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI`
+   - `OPENAI_API_KEY`
+   - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_CREATOR`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_AGENCY`
+   - `RESEND_API_KEY`
+   - `TOKEN_ENCRYPTION_KEYS`, `ACTIVE_KEY_VERSION`
+   - `CRON_SECRET`
+   - `SENTRY_DSN`
+7. **Set up production Supabase** — Create a production Supabase project at [supabase.com](https://supabase.com). Get the production `SUPABASE_URL`, keys, and `DATABASE_URL`. Use these for the production environment in Vercel.
+8. **Configure Stripe for production** (when ready) — Switch from test mode to live mode in Stripe. Update `STRIPE_SECRET_KEY` to `sk_live_...` and create a production webhook endpoint pointing to `https://your-domain.com/api/webhooks/stripe`.
+9. **Read the SEABS spec §14** — Open the spec and read §14.3 (Deployment Gates), §14.5 (Disaster Recovery), §14.7 (Public Bundle Separation).
+10. **Read the skill SKILL.md files** — Open and read the SKILL.md for `vercel-deployment`, `github-actions-templates`, `github`, `deployment-pipeline-design`.
+11. **Run a full local CI check** — Before setting up CI/CD, manually run the full pipeline locally to confirm it passes:
+    ```
+    npx tsc --noEmit && npx eslint . --max-warnings 0 && npm run build
+    ```
+12. **Install autocannon** (for load testing) — Run `npm install -g autocannon` for the load testing verification check.
 
 ## Agent Prompt
 
@@ -1962,7 +2161,7 @@ TASK:
      3. Run the full database RLS verification suite (`scripts/test-rls.ts`) to ensure security rules remain intact post-restore.
 
 7. VERIFY: All environment variables set in Vercel dashboard:
-   - SUPABASE_*, INSTAGRAM_*, OPENAI_*, STRIPE_*, RESEND_*, TOKEN_ENCRYPTION_KEY
+   - SUPABASE_*, INSTAGRAM_*, TIKTOK_*, OPENAI_*, STRIPE_*, RESEND_*, TOKEN_ENCRYPTION_KEYS
 
 8. UPDATE: .env.example — ensure it documents every required var
 
@@ -2052,25 +2251,25 @@ After all 11 phases pass, verify the complete system:
 
 ### End-to-End Flows
 - [ ] User signs up → lands on dashboard
-- [ ] User connects Instagram → OAuth flow completes → account appears
-- [ ] Manual sync → Reels appear with views, skip_rate, engagement
-- [ ] Click "Score" on a Reel → AI scores with 9 dimensions → score saved
+- [ ] User connects Instagram and TikTok → OAuth flows complete → accounts appear
+- [ ] Manual sync → Social posts appear with views, skip_rate/completion_rate, engagement
+- [ ] Click "Score" on a Post → AI scores with 9 dimensions → score saved
 - [ ] Generate strategy → AI returns content calendar → strategy saved
 - [ ] Subscribe to Creator plan → Stripe Checkout → subscription active
-- [ ] Usage limits enforced → free user blocked after 10 AI calls
-- [ ] Token refresh → cron refreshes tokens before 60-day expiry
+- [ ] Usage limits enforced → free user blocked from AI calls, Creator capped at 50, Pro at 200, Agency at 800 (with LLM budget caps circuit breakers that downgrade users to mathematical heuristic scoring without halting the application)
+- [ ] Token refresh → cron refreshes tokens before expiry (60-day for Instagram, 24-hour daily dynamic refresh for TikTok)
 
 ### Security
 - [ ] RLS prevents cross-tenant data access
 - [ ] Encrypted tokens in DB (not plaintext)
-- [ ] Webhook signatures verified (Stripe + Instagram)
+- [ ] Webhook signatures verified (Stripe, Instagram, and TikTok)
 - [ ] Rate limiting active on all endpoints
 - [ ] Strict 10s maximum query execution timeout (statement_timeout) and 5s connection timeout active on all database endpoints
 - [ ] No secrets in source code or logs
 
 ### Resilience
-- [ ] LLM failure → fallback response shown (not crash) with source: "heuristic"
-- [ ] Instagram API 429 → exponential backoff (not crash)
+- [ ] LLM failure → fallback response shown (not crash) with source: "heuristic" (mathematical heuristic scoring triggers seamlessly if LLM budget cap is reached)
+- [ ] Instagram or TikTok API 429 → exponential backoff (not crash, respect TikTok rate limit of 10 calls/minute/user with sequential background polling and 5-min manual sync cooldown)
 - [ ] Stripe webhook replay → idempotent (no duplicate processing)
 - [ ] Queue worker crash → jobs released and re-claimed
 - [ ] Dead letter jobs → appear in DLQ for review

@@ -1,5 +1,5 @@
 import { createPortalSession } from "@/lib/billing/stripe-helpers";
-import { withAuth, withValidation, AuthenticatedRequest } from "@/lib/api/middleware";
+import { withAuth, withValidation, AuthenticatedRequest, RouteHandler } from "@/lib/api/middleware";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { z } from "zod";
 
@@ -17,7 +17,7 @@ async function handlePortal(request: AuthenticatedRequest) {
   let body: z.infer<typeof portalSchema>;
   try {
     body = await request.json();
-  } catch (err) {
+  } catch {
     return apiError("VALIDATION_ERROR", "Failed to retrieve parsed parameters.");
   }
 
@@ -36,5 +36,5 @@ async function handlePortal(request: AuthenticatedRequest) {
 }
 
 export const POST = withAuth(
-  withValidation(portalSchema, handlePortal as any)
+  withValidation(portalSchema, handlePortal as unknown as RouteHandler)
 );

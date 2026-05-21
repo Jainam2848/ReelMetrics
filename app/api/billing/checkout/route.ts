@@ -1,6 +1,6 @@
 import { createCheckoutSession } from "@/lib/billing/stripe-helpers";
 import { PlanId } from "@/lib/billing/plans";
-import { withAuth, withValidation, AuthenticatedRequest } from "@/lib/api/middleware";
+import { withAuth, withValidation, AuthenticatedRequest, RouteHandler } from "@/lib/api/middleware";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { z } from "zod";
 
@@ -19,7 +19,7 @@ async function handleCheckout(request: AuthenticatedRequest) {
   let body: z.infer<typeof checkoutSchema>;
   try {
     body = await request.json();
-  } catch (err) {
+  } catch {
     return apiError("VALIDATION_ERROR", "Failed to retrieve parsed parameters.");
   }
 
@@ -38,5 +38,5 @@ async function handleCheckout(request: AuthenticatedRequest) {
 }
 
 export const POST = withAuth(
-  withValidation(checkoutSchema, handleCheckout as any)
+  withValidation(checkoutSchema, handleCheckout as unknown as RouteHandler)
 );

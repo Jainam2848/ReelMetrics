@@ -55,7 +55,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   let rawBody: string;
   try {
     rawBody = await request.text();
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: "Failed to read request stream" }, { status: 400 });
   }
 

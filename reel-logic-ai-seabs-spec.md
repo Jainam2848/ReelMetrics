@@ -74,36 +74,38 @@ This document is the **single source of truth** for building Reel Logic AI. It i
 
 ## 1.1 One-Line Pitch
 
-> **Reel Logic AI** is an AI-powered Instagram strategy platform that analyzes your Reels performance, scores every piece of content, and generates personalized posting strategies — turning guesswork into data-driven growth.
+> **Reel Logic AI** is an AI-powered cross-platform strategy platform that analyzes your Instagram Reels and TikTok Videos, scores every piece of content, and generates personalized posting strategies — turning guesswork into data-driven growth.
 
 ## 1.2 Problem Statement
 
-Instagram creators and brands face three critical problems:
+Short-form video creators and brands face three critical cross-platform problems:
 
-1. **Blind posting** — No understanding of *why* certain Reels perform and others don't
-2. **Strategy paralysis** — Too much generic advice, no personalized action plan
-3. **Time sink** — Manual analysis of metrics across dozens of Reels is unsustainable
+1. **Blind posting** — No systematic understanding of *why* specific Reels or TikTok videos perform exceptionally well while others fail. Native dashboards obscure key hook metrics.
+2. **Strategy paralysis** — A flood of generic, uncontextualized growth advice that ignores individual account niches and platform differences (Instagram vs. TikTok).
+3. **Severe time sink** — Manually exporting, tracking, and analyzing video performance across multiple platforms (Instagram and TikTok) in spreadsheets is structurally unsustainable.
 
-## 1.3 Solution
+## 1.3 Solution & Staged Rollout
 
-Reel Logic AI solves this by:
+Reel Logic AI solves this with a staged rollout sequence, building on a unified cross-platform data model from day one. **We complete the Instagram system first**, followed immediately by the **TikTok expansion phase**.
 
 | Capability | How |
 |---|---|
-| **Automated ingestion** | Pulls all Reels data via Instagram Graph API v22.0+ on schedule |
-| **AI-powered scoring** | LLM analyzes each Reel across 9 dimensions (hook, skip rate, retention, CTA, etc.) |
-| **Skip rate intelligence** | Surfaces Instagram's `reels_skip_rate` — the % of viewers who scroll past within 3 seconds — a signal **no competitor exposes** |
-| **Strategy generation** | Produces weekly/monthly content calendars with timing, format, and topic recommendations |
-| **Trend detection** | Identifies what's working *for this specific account* vs. generic trends |
-| **Actionable dashboards** | Clean UI showing scores, trends, and next-best-actions |
+| **Cross-Platform Ingestion** | Pulls Instagram Reels via Meta Graph API v22.0+ and TikTok Videos via TikTok Display API v2+ on scheduled background routines. |
+| **9-Dimension AI Scoring** | LLM analyzes each Reel/Video across 9 key dimensions (hook quality, skip rate, CTA, retention, audio, trend, visual flow, caption, and timing). |
+| **Platform-Specific Insights** | Surfaces Instagram's `reels_skip_rate` (hook optimization) and TikTok's `tiktok_completion_rate` (retention optimization) — metrics **no competitor exposes together**. |
+| **Unified Strategy Engine** | Produces weekly/monthly cross-platform calendars with customized timing, formatting, and topic recommendations. |
+| **Trend & Experiment Alerts** | Identifies what is working *for this specific account* vs. generic industry noise. |
+| **Actionable Dashboard** | Dynamic dashboard badged by platform, showing composited quality scores and immediate next-best-actions. |
 
 ## 1.4 Target User
 
-| Segment | Description | Willingness to Pay |
+The platform targets three high-value customer segments, focusing on users who rely heavily on video content across both Instagram Reels and TikTok Videos:
+
+| Segment | Description | Target Willingness to Pay |
 |---|---|---|
-| **Primary** | Instagram creators (10K–500K followers) actively posting Reels | $29–99/mo |
-| **Secondary** | Social media managers handling 3–10 accounts | $99–299/mo |
-| **Tertiary** | D2C brands using Reels for organic growth | $149–499/mo |
+| **Primary** | **Creators & Influencers:** Solo creators (10K–500K followers) posting Reels and TikToks who need data-backed advice to sustain organic traffic. | $39.00 – $99.00 / month |
+| **Secondary** | **Social Media Managers (SMMs):** Professionals handling 3 to 10 distinct client brand profiles across multiple platforms. | $99.00 – $299.00 / month |
+| **Tertiary** | **Direct-to-Consumer (D2C) Brands:** D2C teams using short-form video as their core customer acquisition channel. | $149.00 – $499.00 / month |
 
 ## 1.5 Competitive Positioning
 
@@ -111,7 +113,7 @@ Reel Logic AI solves this by:
                     High AI Intelligence
                          ▲
                          │
-            Reel Logic AI │  (Target Position)
+            Reel Logic AI │  (Target Position - Cross-Platform)
                      ★    │
                          │
    ┌─────────────────────┼─────────────────────┐
@@ -122,34 +124,36 @@ Reel Logic AI solves this by:
 Low Specialization ──────┼────── High Breadth
    │                     │                     │
    │  Free tools         │         Hootsuite   │
-   │  IG native          │                     │
+   │  IG / TikTok native │                     │
    │                     │                     │
    └─────────────────────┼─────────────────────┘
                          │
                     Low AI Intelligence
 ```
 
-**Key differentiator:** Deep Reels-specific AI analysis with **skip rate intelligence** — the only platform surfacing Instagram's `reels_skip_rate` metric for hook optimization. Not a generic scheduling tool.
+**Key Differentiator:** Deep short-form video AI analysis utilizing **skip rate intelligence** (Instagram) and **completion rate analytics** (TikTok) to optimize the opening hooks and structural flow. Not a generic scheduler; Reel Logic AI is a content performance optimization engine.
 
-## 1.6 Business Model
+## 1.6 Business Model (Cost-Optimized & Highly Profitable)
 
-| Tier | Price | Features |
-|---|---|---|
-| **Free** | $0/mo | 1 account, last 10 Reels, basic metrics |
-| **Creator** | $29/mo | 1 account, unlimited history, AI scoring, weekly strategy |
-| **Pro** | $79/mo | 3 accounts, advanced strategy, trend detection, content calendar |
-| **Agency** | $199/mo | 10 accounts, team access, white-label reports, priority AI |
+Subscriptions are strictly cost-optimized and cap-monitored to guarantee profit margins (>90% Gross Margin) against LLM cost spikes.
+
+| Tier | Price | Connected Accounts | Ingested History | Monthly AI Analysis Limit | Monthly LLM Budget Cap | Key Features |
+|---|---|---|---|---|---|---|
+| **Free** | $0/mo | Max 1 (IG or TikTok) | Last 10 posts | 0 posts | $0.00 | Basic dashboard (no AI) |
+| **Creator** | **$39/mo** | Max 2 (e.g. 1 IG + 1 TikTok) | Unlimited history | **50 posts / month** | $8.00 | Weekly strategies, GPT-4o-mini |
+| **Pro** | **$89/mo** | Max 6 (e.g. 3 IG + 3 TikTok) | Unlimited history | **200 posts / month** | $25.00 | Cross-platform calendars, GPT-4o-mini |
+| **Agency** | **$249/mo** | Max 20 (up to 10 clients) | Unlimited history | **800 posts / month** | $75.00 | Custom white-label strategy briefs, GPT-4o |
 
 ## 1.7 VC Metrics That Matter
 
 | Metric | Target at Seed | Target at Series A |
 |---|---|---|
-| MRR | $15K | $100K+ |
+| MRR | $25K | $150K+ |
 | User count | 500 paid | 3,000 paid |
-| Churn | <8% monthly | <5% monthly |
-| LTV:CAC | >3:1 | >4:1 |
-| Gross margin | >65% | >75% |
-| NDR | >100% | >110% |
+| Churn | <5% monthly | <3% monthly |
+| LTV:CAC | >3:1 | >5:1 |
+| Gross margin | >90% (Strict LLM Caps) | >92% |
+| NDR | >100% | >115% |
 
 ---
 
@@ -202,7 +206,7 @@ Low Specialization ──────┼────── High Breadth
 | **Backend** | Next.js API Routes + Server Actions | Collocated, type-safe, no separate server |
 | **Database** | Supabase (PostgreSQL 15+) | RLS, Auth, Realtime, Storage — all-in-one |
 | **ORM** | Drizzle ORM | Type-safe, SQL-first, lightweight |
-| **Auth** | Supabase Auth (GoTrue) | OAuth2 for Instagram, session management |
+| **Auth** | Supabase Auth (GoTrue) | OAuth2 for Instagram (Meta Pages API) & TikTok Display API (v2), session management |
 | **Queue** | PostgreSQL SKIP LOCKED (custom) | No Redis/Kafka dependency, single-DB simplicity |
 | **AI/LLM** | OpenAI GPT-4o-mini (primary), GPT-4o (premium) | Best cost-performance ratio |
 | **Payments** | Stripe (Subscriptions + Checkout) | Industry standard, webhook-driven |
@@ -363,261 +367,218 @@ Where:
 Every phase MUST conform to this structure:
 
 ```typescript
+type AgentRole =
+  | "SCAFFOLD_ENGINEER"
+  | "DATABASE_ARCHITECT"
+  | "BACKEND_DEVELOPER"
+  | "BILLING_SPECIALIST"
+  | "INGESTION_ENGINEER"
+  | "QUEUE_ARCHITECT"
+  | "AI_ENGINEER"
+  | "FRONTEND_DESIGNER"
+  | "OBSERVABILITY_SPECIALIST"
+  | "DEPLOYMENT_MANAGER";
+
+interface Artifact {
+  path: string;
+  type: "implementation_plan" | "walkthrough" | "task" | "other";
+  description: string;
+}
+
+interface Validator {
+  name: string;
+  command: string;
+  expected_output: string;
+}
+
 interface Phase {
   id: string;                    // e.g., "PHASE_DATABASE"
   name: string;                  // Human-readable name
-  order: number;                 // Execution order (no gaps)
-  agent_role: AgentRole;         // Which agent executes
-  prompt: string;                // Execution instructions
-  input_artifacts: string[];     // Required inputs from prior phases
-  output_artifacts: Artifact[];  // Expected outputs
-  validation_suite: Validator[]; // Must-pass checks
-  rollback_point: string;        // Git tag or state snapshot
-  success_state: SystemState;    // State after successful completion
-  timeout_seconds: number;       // Max execution time
-  max_repair_attempts: number;   // Default: 3
+  order: number;                 // Execution order (0 to 10)
+  agent_role: AgentRole;         // Specialized role that executes the phase
+  prompt: string;                // Core task directive for the execution agent
+  input_artifacts: string[];     // Paths to required inputs from prior phases
+  output_artifacts: Artifact[];  // Deliverables produced upon phase completion
+  validation_suite: Validator[]; // Suite of commands to run to verify success
+  rollback_point: string;        // Git checkpoint tag for rollback
+  success_state: string;         // SystemState transitioned to upon completion
 }
-
-interface Artifact {
-  name: string;           // e.g., "schema.sql"
-  type: ArtifactType;     // "code" | "config" | "schema" | "test" | "doc"
-  path: string;           // Relative file path
-  validation_schema?: object; // JSON Schema for config artifacts
-}
-
-type AgentRole =
-  | "backend-engineer"
-  | "ai-engineer"
-  | "frontend-engineer"
-  | "devops-engineer"
-  | "security-engineer";
-
-type SystemState =
-  | "INIT"
-  | "PRD_VALIDATED"
-  | "ARCH_LOCKED"
-  | "DATABASE_READY"
-  | "BACKEND_READY"
-  | "BILLING_READY"
-  | "INGESTION_READY"
-  | "QUEUE_READY"
-  | "AI_READY"
-  | "FRONTEND_READY"
-  | "OBSERVABILITY_READY"
-  | "DEPLOYED";
 ```
 
-## 3.3 Complete Phase Registry
+## 3.3 Phase Registry
 
-### PHASE 1: PRD Validation
+The system execution checklist contains 11 chronological phases:
 
-```yaml
-id: PHASE_PRD
-order: 1
-agent: product-manager
-outputs:
-  - prd.md (validated product requirements)
-  - user-stories.md
-  - acceptance-criteria.md
-validation:
-  - all user stories have acceptance criteria
-  - no ambiguous requirements ("should", "maybe", "might")
-  - pricing tiers defined with feature matrix
-  - API rate limits documented
-success_state: PRD_VALIDATED
-```
+### Phase 0: Project Scaffold (`PHASE_SCAFFOLD`)
+- **Order**: 0
+- **Role**: `SCAFFOLD_ENGINEER`
+- **Goal**: Initialize environment, install locked libraries, establish project folders, and implement standard env var sentinels.
+- **Success State**: `INIT`
 
-### PHASE 2: Architecture Lock
+### Phase 1: PRD & Architecture Lock (`PHASE_PRD_LOCK`)
+- **Order**: 1
+- **Role**: `SCAFFOLD_ENGINEER`
+- **Goal**: Formalize user stories, lock down technology boundary conditions, and verify architecture limits before DB work starts.
+- **Success State**: `PRD_VALIDATED` & `ARCH_LOCKED`
 
-```yaml
-id: PHASE_ARCHITECTURE
-order: 2
-agent: backend-engineer
-inputs:
-  - prd.md
-outputs:
-  - architecture.md
-  - tech-stack.lock (immutable)
-  - directory-structure.md
-  - dependency-manifest.json
-validation:
-  - no forbidden dependencies (Redis, Kafka, RabbitMQ)
-  - all external APIs have fallback paths
-  - cost estimate per 1K users documented
-  - data flow diagram covers all user actions
-success_state: ARCH_LOCKED
-```
+### Phase 2: Database & Schema (`PHASE_DATABASE`)
+- **Order**: 2
+- **Role**: `DATABASE_ARCHITECT`
+- **Goal**: Generate normalized database tables, indexes, RLS policies, optimistic concurrency triggers, and seed datasets.
+- **Success State**: `DATABASE_READY`
 
-### PHASE 3: Database
+### Phase 3: Auth & Core Backend (`PHASE_AUTH_BACKEND`)
+- **Order**: 3
+- **Role**: `BACKEND_DEVELOPER`
+- **Goal**: Setup dynamic multi-platform OAuth routing, session middleware, profile CRUD, and local secure encryption layers.
+- **Success State**: `BACKEND_READY`
 
-```yaml
-id: PHASE_DATABASE
-order: 3
-agent: backend-engineer
-inputs:
-  - architecture.md
-  - prd.md
-outputs:
-  - migrations/*.sql
-  - schema.ts (Drizzle schema)
-  - seed.sql
-  - rls-policies.sql
-validation:
-  - every table has RLS policy
-  - every table has created_at, updated_at
-  - every FK has ON DELETE behavior defined
-  - no TEXT columns without length consideration
-  - tenant_id (user_id) on every user-facing table
-  - indexes on all FK columns and query patterns
-success_state: DATABASE_READY
-```
+### Phase 4: Billing & Stripe Integration (`PHASE_BILLING`)
+- **Order**: 4
+- **Role**: `BILLING_SPECIALIST`
+- **Goal**: Configure Stripe customer portal, hook handlers with idempotency key checks, subscription tiers, and circuit breaker.
+- **Success State**: `BILLING_READY`
 
-### PHASE 4: Backend API
+### Phase 5: Social Ingestion (`PHASE_INGESTION`)
+- **Order**: 5
+- **Role**: `INGESTION_ENGINEER`
+- **Goal**: Implement Instagram Graph API and TikTok Display API integrations, token refreshes, and manual cooldown-capped sync triggers.
+- **Success State**: `INGESTION_READY`
 
-```yaml
-id: PHASE_BACKEND
-order: 4
-agent: backend-engineer
-inputs:
-  - schema.ts
-  - prd.md
-outputs:
-  - app/api/**/*.ts (all API routes)
-  - lib/services/*.ts (business logic)
-  - lib/validators/*.ts (Zod schemas)
-  - middleware.ts
-validation:
-  - every endpoint has Zod input validation
-  - every endpoint has error handling (try/catch → typed error response)
-  - every endpoint checks auth (except public routes)
-  - every endpoint returns consistent response shape
-  - no business logic in API route handlers (delegated to services)
-success_state: BACKEND_READY
-```
+### Phase 6: Queue Engine & Workers (`PHASE_QUEUE`)
+- **Order**: 6
+- **Role**: `QUEUE_ARCHITECT`
+- **Goal**: Construct the standard database-backed job queue with advisory locking (`SKIP LOCKED`), heartbeats, and dead-letter queue.
+- **Success State**: `QUEUE_READY`
 
-### PHASE 5: Billing (Stripe)
+### Phase 7: AI Engine (`PHASE_AI`)
+- **Order**: 7
+- **Role**: `AI_ENGINEER`
+- **Goal**: Structure 9-dimension scoring prompt templates, strategy generators, dynamic LLM usage caps, and fallback heuristic engine.
+- **Success State**: `AI_READY`
 
-```yaml
-id: PHASE_BILLING
-order: 5
-agent: backend-engineer
-inputs:
-  - schema.ts
-  - prd.md (pricing tiers)
-outputs:
-  - lib/services/billing.service.ts
-  - app/api/webhooks/stripe/route.ts
-  - lib/billing/plans.ts
-  - lib/billing/usage-tracker.ts
-validation:
-  - webhook signature verification implemented
-  - all Stripe events handled
-```
+### Phase 8: Frontend (`PHASE_FRONTEND`)
+- **Order**: 8
+- **Role**: `FRONTEND_DESIGNER`
+- **Goal**: Develop high-fidelity cross-platform dashboards, premium badged displays, analytics charts, and Stripe checkouts.
+- **Success State**: `FRONTEND_READY`
+
+### Phase 9: Observability (`PHASE_OBSERVABILITY`)
+- **Order**: 9
+- **Role**: `OBSERVABILITY_SPECIALIST`
+- **Goal**: Configure logging levels, structured audit trails, system performance metrics, and threshold alert rules.
+- **Success State**: `OBSERVABILITY_READY`
+
+### Phase 10: Deployment & Launch (`PHASE_DEPLOYMENT`)
+- **Order**: 10
+- **Role**: `DEPLOYMENT_MANAGER`
+- **Goal**: Orchestrate multi-environment pipelines, build bundles, verify environment keys, and execute cold boot health checks.
+- **Success State**: `DEPLOYED`
+
+---
 
 # §4 — DATABASE SCHEMA & DATA MODEL
 
 ## 4.1 Entity Relationship Diagram
 
 ```
-┌─────────────────┐       ┌──────────────────┐       ┌─────────────────┐
-│     users        │       │  subscriptions    │       │   plans          │
-│─────────────────│       │──────────────────│       │─────────────────│
-│ id (PK, UUID)   │◄──┐  │ id (PK, UUID)    │       │ id (PK, text)   │
-│ email            │   │  │ user_id (FK, C)* │──────►│ name             │
-│ full_name        │   │  │ plan_id (FK)     │       │ price_monthly    │
-│ avatar_url       │   │  │ stripe_sub_id    │       │ max_accounts     │
-│ created_at       │   │  │ status           │       │ max_reels        │
-│ updated_at       │   │  │ current_period_*  │       │ ai_tier          │
-└────────┬────────┘   │  │ cancel_at         │       │ features (JSONB) │
-         │            │  └──────────────────┘       └─────────────────┘
-         │            │
-         │            │  ┌──────────────────┐
-         │            │  │ instagram_accounts│
-         │            └──│──────────────────│
-         │               │ id (PK, UUID)    │
-         │               │ user_id (FK, C)* │
-         │               │ ig_user_id       │
-         │               │ username          │
-         │               │ access_token_enc │ ← AES-256-GCM encrypted
-         │               │ token_expires_at │
-         │               │ token_version    │ ← default 1 (Optimistic Concurrency)
-         │               │ followers_count  │
-         │               │ last_synced_at   │
-         │               │ sync_status      │
-         │               └────────┬─────────┘
-         │                        │
-         │                        │
-         │               ┌────────▼─────────┐       ┌─────────────────┐
-         │               │     reels         │       │  reel_scores     │
-         │               │──────────────────│       │─────────────────│
-         │               │ id (PK, UUID)    │──────►│ id (PK, UUID)   │
-         │               │ account_id(FK,C)*│       │ reel_id (FK, C)*│
-         │               │ ig_media_id      │       │ overall_score    │
-         │               │ caption           │       │ hook_score       │
-         │               │ media_url         │       │ skip_rate_score  │
-         │               │ permalink         │       │ retention_score  │
-         │               │ timestamp         │       │ cta_score        │
-         │               │ views_count       │ ← replaces plays (deprecated Apr 2025)
-         │               │ total_views       │ ← aggregated across IG + FB crosspost
-         │               │ display_views     │ ← Normalized view field
-         │               │ metric_source     │ ← 'legacy_plays' | 'unified_views'
-         │               │ likes_count       │       │ visual_score     │
-         │               │ comments_count    │       │ audio_score      │
-         │               │ shares_count      │       │ trend_score      │
-         │               │ saves_count       │       │ caption_score    │
-         │               │ public_reposts    │       │ reach            │
-         │               │ skip_rate         │       │ engagement_rate  │
-         │               │ fetched_at        │       │ timing_score     │
-         │               └──────────────────┘       │ ai_analysis      │ ← JSONB
-         │                                          │ model_version    │
-         │                                          │ tokens_used      │
-         │                                          │ cost_usd         │
-         │                                          │ scored_at        │
-         │                                          └─────────────────┘
-         │
-         │               ┌──────────────────┐
-         │               │   strategies      │
-         │               │──────────────────│
-         └──────────────►│ id (PK, UUID)    │
-                         │ user_id (FK, C)* │
-                         │ account_id(FK,C)*│
-                         │ strategy_type    │ ← "weekly" | "monthly" | "campaign"
-                         │ content          │ ← JSONB (structured strategy)
-                         │ period_start     │
-                         │ period_end       │
-                         │ model_version    │
-                         │ tokens_used      │
-                         │ cost_usd         │
-                         │ generated_at     │
-                         └──────────────────┘
++-----------------+       +------------------+       +-----------------+
+|      users      |       |  subscriptions   |       |      plans      |
++-----------------+       +------------------+       +-----------------+
+| id (PK, UUID)   |<---+  | id (PK, UUID)    |       | id (PK, text)   |
+| email           |    |  | user_id (FK, C)* |------>| name            |
+| full_name       |    |  | plan_id (FK)     |       | price_monthly   |
+| avatar_url      |    |  | stripe_sub_id    |       | max_accounts    |
+| created_at      |    |  | status           |       | max_posts       |
+| updated_at      |    |  | current_period_* |       | ai_tier         |
++--------+--------+    |  | cancel_at        |       | features (JSONB)|
+         |             |  +------------------+       +-----------------+
+         |             |
+         |             |  +------------------+
+         |             |  | social_accounts  |
+         |             +--+------------------+
+         |                | id (PK, UUID)    |
+         |                | user_id (FK, C)* |
+         |                | platform (IG/TT) |
+         |                | platform_user_id |
+         |                | username         |
+         |                | access_token_enc | <-- AES-256-GCM encrypted
+         |                | refresh_token_enc| <-- AES-256-GCM encrypted (TikTok)
+         |                | token_expires_at |
+         |                | token_version    | <-- default 1 (OCC)
+         |                | followers_count  |
+         |                | last_synced_at   |
+         |                | sync_status      |
+         |                +--------+---------+
+         |                         |
+         |                         |
+         |                +--------v---------+       +-----------------+
+         |                |      posts       |       |   post_scores   |
+         |                +------------------+       +-----------------+
+         |                | id (PK, UUID)    |------>| id (PK, UUID)   |
+         |                | account_id(FK,C)*|       | post_id (FK, C)*|
+         |                | platform (IG/TT) |       | overall_score   |
+         |                | platform_media_id|       | hook_score      |
+         |                | caption          |       | skip_rate_score |
+         |                | media_url        |       | retention_score |
+         |                | permalink        |       | cta_score       |
+         |                | timestamp        |       | visual_score    |
+         |                | views_count      |       | audio_score     |
+         |                | display_views    |       | trend_score     |
+         |                | metric_source    |       | caption_score   |
+         |                | likes_count      |       | reach           |
+         |                | comments_count   |       | engagement_rate |
+         |                | shares_count     |       | timing_score    |
+         |                | saves_count      |       | ai_analysis     | <-- JSONB
+         |                | ig_skip_rate     |       | model_version   |
+         |                | tiktok_compl_rate|       | tokens_used     |
+         |                | public_reposts   |       | cost_usd        |
+         |                | fetched_at       |       | scored_at       |
+         |                +------------------+       +-----------------+
+         |
+         |                +------------------+
+         |                |    strategies    |
+         |                +------------------+
+         +--------------->| id (PK, UUID)    |
+                          | user_id (FK, C)* |
+                          | account_id(FK,C)*|
+                          | strategy_type    |
+                          | content (JSONB)  |
+                          | period_start     |
+                          | period_end       |
+                          | model_version    |
+                          | tokens_used      |
+                          | cost_usd         |
+                          | generated_at     |
+                          +------------------+
 
-┌──────────────────┐       ┌──────────────────┐       ┌──────────────────┐
-│   job_queue       │       │   usage_tracking  │       │ processed_events │
-│──────────────────│       │──────────────────│       │──────────────────│
-│ id (PK, UUID)    │       │ id (PK, UUID)    │       │ id (PK, UUID)    │
-│ job_type          │       │ user_id (FK, C)* │       │ event_id (UNIQUE)│
-│ payload (JSONB)  │       │ period_month     │       │ processed_at     │
-│ status           │       │ ai_calls_count   │       │ created_at       │
-│ priority         │       │ ai_tokens_used   │       │ updated_at       │
-│ max_retries      │       │ ai_cost_usd      │       └──────────────────┘
-│ retry_count      │       │ reels_analyzed   │
-│ locked_at        │       │ strategies_gen   │       *Note: (C) indicates FK
-│ locked_by        │       │ api_calls_count  │        configured with ON
-│ last_heartbeat_at│       │ updated_at       │        DELETE CASCADE logic
-│ scheduled_at     │       └──────────────────┘        for GDPR compliance.
-│ completed_at     │
-│ failed_at        │       ┌──────────────────┐
-│ error_message    │       │   audit_log       │
-│ dead_letter      │       │──────────────────│
-│ idempotency_key  │       │ id (PK, UUID)    │
-│ created_at       │       │ user_id (FK, S)* │ ← (S) indicates FK
-└──────────────────┘       │ action            │   configured with ON
-                           │ resource_type     │   DELETE SET NULL logic
-                           │ resource_id       │
-                           │ metadata (JSONB)  │
-                           │ ip_address        │
-                           │ created_at        │
-                           └──────────────────┘
++------------------+       +------------------+       +------------------+
+|    job_queue     |       |  usage_tracking  |       | processed_events |
++------------------+       +------------------+       +------------------+
+| id (PK, UUID)    |       | id (PK, UUID)    |       | id (PK, UUID)    |
+| job_type         |       | user_id (FK, C)* |       | event_id (UNIQUE)|
+| payload (JSONB)  |       | period_month     |       | processed_at     |
+| status           |       | ai_calls_count   |       | created_at       |
+| priority         |       | ai_tokens_used   |       | updated_at       |
+| max_retries      |       | ai_cost_usd      |       +------------------+
+| retry_count      |       | posts_analyzed   |
+| locked_at        |       | strategies_gen   |       *Note: (C) indicates FK
+| locked_by        |       | api_calls_count  |        configured with ON
+| last_heartbeat_at|       | updated_at       |        DELETE CASCADE logic
+| scheduled_at     |       +------------------+        for GDPR compliance.
+| completed_at     |
+| failed_at        |       +------------------+
+| error_message    |       |    audit_log     |
+| dead_letter      |       +------------------+
+| idempotency_key  |       | id (PK, UUID)    |
+| created_at       |       | user_id (FK, S)* | <-- (S) indicates FK
++------------------+       | action           |     configured with ON
+                           | resource_type    |     DELETE SET NULL logic
+                           | resource_id      |
+                           | metadata (JSONB) |
+                           | ip_address       |
+                           | created_at       |
+                           +------------------+
 ```
 
 ## 4.2 Critical Schema Rules
@@ -653,22 +614,22 @@ CREATE TRIGGER set_updated_at
 
 ```sql
 -- Example: users can only see their own data
-ALTER TABLE reels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view own reels"
-    ON reels FOR SELECT
+CREATE POLICY "Users can view own posts"
+    ON posts FOR SELECT
     USING (
         account_id IN (
-            SELECT id FROM instagram_accounts
+            SELECT id FROM social_accounts
             WHERE user_id = auth.uid()
         )
     );
 
-CREATE POLICY "Users can insert own reels"
-    ON reels FOR INSERT
+CREATE POLICY "Users can insert own posts"
+    ON posts FOR INSERT
     WITH CHECK (
         account_id IN (
-            SELECT id FROM instagram_accounts
+            SELECT id FROM social_accounts
             WHERE user_id = auth.uid()
         )
     );
@@ -680,11 +641,11 @@ CREATE POLICY "Users can insert own reels"
 To ensure perfect GDPR compliance and prevent orphan database rows, foreign keys MUST adhere to strict deletion rules:
 - **`ON DELETE CASCADE`**: Applied to all direct user data tables linked to a user account.
   - `subscriptions.user_id` REFERENCES `users(id) ON DELETE CASCADE`
-  - `instagram_accounts.user_id` REFERENCES `users(id) ON DELETE CASCADE`
+  - `social_accounts.user_id` REFERENCES `users(id) ON DELETE CASCADE`
   - `strategies.user_id` REFERENCES `users(id) ON DELETE CASCADE`
   - `usage_tracking.user_id` REFERENCES `users(id) ON DELETE CASCADE`
-  - `reels.account_id` REFERENCES `instagram_accounts(id) ON DELETE CASCADE`
-  - `reel_scores.reel_id` REFERENCES `reels(id) ON DELETE CASCADE`
+  - `posts.account_id` REFERENCES `social_accounts(id) ON DELETE CASCADE`
+  - `post_scores.post_id` REFERENCES `posts(id) ON DELETE CASCADE`
 - **`ON DELETE SET NULL`**: Applied to historical immutable audit logs to protect user identity while preserving audit trails for compliance.
   - `audit_log.user_id` REFERENCES `users(id) ON DELETE SET NULL`
 
@@ -707,14 +668,14 @@ ALTER TABLE processed_events ENABLE ROW LEVEL SECURITY;
 
 ```sql
 -- Foreign keys (always indexed)
-CREATE INDEX idx_reels_account_id ON reels(account_id);
-CREATE INDEX idx_reel_scores_reel_id ON reel_scores(reel_id);
-CREATE INDEX idx_instagram_accounts_user_id ON instagram_accounts(user_id);
+CREATE INDEX idx_posts_account_id ON posts(account_id);
+CREATE INDEX idx_post_scores_post_id ON post_scores(post_id);
+CREATE INDEX idx_social_accounts_user_id ON social_accounts(user_id);
 CREATE INDEX idx_subscriptions_user_id ON subscriptions(user_id);
 CREATE INDEX idx_strategies_user_id ON strategies(user_id);
 
 -- Query patterns & performance
-CREATE INDEX idx_reels_timestamp ON reels(account_id, timestamp DESC);
+CREATE INDEX idx_posts_timestamp ON posts(account_id, timestamp DESC);
 CREATE INDEX idx_job_queue_pending ON job_queue(status, scheduled_at)
     WHERE status = 'pending';
 CREATE INDEX idx_job_queue_locked ON job_queue(locked_at)
@@ -725,8 +686,8 @@ CREATE INDEX idx_usage_tracking_period ON usage_tracking(user_id, period_month);
 CREATE INDEX idx_audit_log_created_at ON audit_log(created_at); -- GDPR export speed
 
 -- Uniqueness constraints
-CREATE UNIQUE INDEX idx_reels_ig_media_id ON reels(ig_media_id);
-CREATE UNIQUE INDEX idx_ig_accounts_ig_user_id ON instagram_accounts(ig_user_id);
+CREATE UNIQUE INDEX idx_posts_platform_media ON posts(platform, platform_media_id);
+CREATE UNIQUE INDEX idx_social_accounts_platform_user ON social_accounts(platform, platform_user_id);
 CREATE UNIQUE INDEX idx_job_queue_idempotency ON job_queue(idempotency_key)
     WHERE idempotency_key IS NOT NULL;
 CREATE UNIQUE INDEX idx_processed_events_id ON processed_events(event_id);
@@ -739,11 +700,12 @@ CREATE UNIQUE INDEX idx_processed_events_id ON processed_events(event_id);
 -- Encryption key stored in environment variable, NEVER in database
 
 -- Column type: BYTEA (encrypted blob)
-ALTER TABLE instagram_accounts
-    ALTER COLUMN access_token_enc TYPE BYTEA;
+ALTER TABLE social_accounts
+    ALTER COLUMN access_token_enc TYPE BYTEA,
+    ALTER COLUMN refresh_token_enc TYPE BYTEA;
 
 -- Application-level encryption (TypeScript): see §11.2 for full implementation.
--- Keys are loaded from TOKEN_ENCRYPTION_KEYS (JSON map of version → 32-byte hex key)
+-- Keys are loaded from TOKEN_ENCRYPTION_KEYS (JSON map of version -> 32-byte hex key)
 -- with ACTIVE_KEY_VERSION selecting which key encrypts new writes. Ciphertext is
 -- stored as "<keyVersion>:<iv>:<authTag>:<ciphertext>" to enable zero-downtime rotation.
 -- encrypt: encryptToken(token)              // uses KEYS_MAP[ACTIVE_KEY_VERSION]
@@ -753,21 +715,21 @@ ALTER TABLE instagram_accounts
 ## 4.4 Advanced Concurrency, Normalization, & RLS Policies
 
 ### 4.4.1 Optimistic Concurrency Control & Token Lifecycle
-To prevent race conditions during token rotation, the `instagram_accounts` table enforces **Optimistic Concurrency Control (OCC)**:
+To prevent race conditions during token rotation, the `social_accounts` table enforces **Optimistic Concurrency Control (OCC)**:
 - **`token_version` (INTEGER, default 1)**: Incremented on every successful write. Update statements must assert:
   ```sql
-  UPDATE instagram_accounts 
-  SET access_token_enc = $1, token_expires_at = $2, token_version = token_version + 1, updated_at = now()
-  WHERE id = $3 AND token_version = $4;
+  UPDATE social_accounts 
+  SET access_token_enc = $1, refresh_token_enc = $2, token_expires_at = $3, token_version = token_version + 1, updated_at = now()
+  WHERE id = $4 AND token_version = $5;
   ```
   If 0 rows are updated, the transaction must rollback and abort due to a concurrent update conflict.
 - **Pessimistic Ingestion Locking**: Daily background token refreshes and account sync operations must acquire a standard PostgreSQL transaction-level advisory lock to block concurrent cron trigger processes:
   ```sql
-  SELECT pg_try_advisory_xact_lock(hashtext('token_refresh:' || id::text)) FROM instagram_accounts WHERE id = $1;
+  SELECT pg_try_advisory_xact_lock(hashtext('token_refresh:' || id::text)) FROM social_accounts WHERE id = $1;
   ```
 
 ### 4.4.2 View Normalization & Engagement Rate Calculation
-With the deprecation of `plays_count` and introduction of `views_count` (April 2025 API update), the system normalizes metrics on the `reels` table:
+With the deprecation of `plays_count` and introduction of `views_count` (April 2025 API update), the system normalizes metrics on the `posts` table:
 - **`display_views` (INTEGER)**: Represents the active view metric to show users. Map to `views_count` (primary) or fall back to legacy `plays_count` if `views_count` is absent.
 - **`metric_source` (VARCHAR/ENUM)**: Set to `'legacy_plays'` or `'unified_views'` depending on which API version supplied the data.
 - **Safe Engagement Rate (ER) Equation**: To prevent division-by-zero database crashes, the database and API services must compute engagement rate using a conditional check (returning `NULL` instead of failing if views are zero):
@@ -822,23 +784,23 @@ type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 ```
 Authentication & User:
-  POST   /api/auth/instagram          → Initiate Instagram OAuth
-  GET    /api/auth/instagram/callback  → OAuth callback handler
+  POST   /api/auth/social/:platform    → Initiate dynamic platform OAuth (instagram or tiktok)
+  GET    /api/auth/social/:platform/callback → OAuth callback handler
   GET    /api/auth/me                  → Current user profile
   PATCH  /api/auth/me                  → Update profile
   DELETE /api/auth/me                  → Delete account (GDPR)
 
-Instagram Accounts:
-  GET    /api/accounts                 → List connected accounts
+Social Accounts:
+  GET    /api/accounts                 → List connected accounts (social_accounts)
   POST   /api/accounts                 → Connect new account
   DELETE /api/accounts/:id             → Disconnect account
-  POST   /api/accounts/:id/sync       → Trigger manual sync
+  POST   /api/accounts/:id/sync       → Trigger manual sync (5-min cooldown)
 
-Reels:
-  GET    /api/accounts/:id/reels       → List reels (paginated)
-  GET    /api/reels/:id                → Single reel with scores
-  POST   /api/reels/:id/score         → Trigger AI scoring
-  GET    /api/reels/:id/score         → Get scoring result
+Posts (Reels & TikTok Videos):
+  GET    /api/accounts/:id/posts       → List platform posts (paginated)
+  GET    /api/posts/:id                → Single post with scores (post_scores)
+  POST   /api/posts/:id/score         → Trigger AI scoring (checks LLM caps)
+  GET    /api/posts/:id/score         → Get scoring result
 
 Strategy:
   GET    /api/accounts/:id/strategy    → Get current strategy
@@ -858,6 +820,7 @@ Billing:
 Webhooks (no auth — signature verified):
   POST   /api/webhooks/stripe          → Stripe events
   POST   /api/webhooks/instagram       → Instagram webhook events
+  POST   /api/webhooks/tiktok          → TikTok webhook events
 
 System:
   GET    /api/health                   → Health check (public)
@@ -1117,7 +1080,7 @@ Immediately after exchanging the short-lived token for the long-lived page token
    - If `instagram_business_account` is **missing**, or if it represents a personal profile that has not been converted to a Creator or Business profile, the system **MUST abort the login flow**.
 3. **Aborting and Cleanup:**
    - Revoke the authorized token immediately to maintain cleanliness.
-   - Do NOT create a record in `instagram_accounts`.
+   - Do NOT create a record in `social_accounts`.
    - Return a clear, user-friendly error code: `INSTAGRAM_NOT_BUSINESS_ACCOUNT`.
 
 ## 6.2 Token Lifecycle Management
@@ -1459,6 +1422,62 @@ Because Meta may retry webhook requests or send duplicate notifications for the 
    - `hashOrTimestamp`: A SHA-256 hash of the specific change event payload, or the event's raw timestamp (e.g., `entry[0].time`).
 2. **Conflict Handling**: When enqueuing, the database driver MUST use `ON CONFLICT (idempotency_key) DO NOTHING`. This guarantees that if duplicate webhooks are delivered concurrently or sequentially, only the first job is enqueued and processed, saving API credits and worker resources.
 
+## 6.8 TikTok Display API Integration & Rate Limits
+
+The system natively integrates with the **TikTok Display API v2** to sync video performance data and native user metrics. This integration runs concurrently with Instagram and matches the normalized `social_accounts`, `posts`, and `post_scores` tables.
+
+### 6.8.1 OAuth2 Flow & Daily Token Exchange
+
+TikTok's authentication schema operates under strict lifecycle parameters:
+1. **OAuth Scopes**:
+   - `user.info.basic`: Reads the authenticated creator's profile details (username, profile image).
+   - `user.info.stats`: Fetches total followers count to seed baseline sizing metrics.
+   - `video.list`: Retrieves the list of published videos, descriptions, timestamps, cover URLs, and unified views count.
+2. **Access Token Lifespan (24 Hours)**:
+   - Unlike Meta's 60-day tokens, TikTok's access tokens expire in **24 hours**.
+   - During OAuth callback, the system receives both an `access_token` and a `refresh_token` (valid for 1 year).
+3. **Daily Token Exchange Pipeline**:
+   - A daily cron job triggers token refresh for all TikTok accounts.
+   - Request exchange syntax:
+     ```http
+     POST https://open.tiktokapis.com/v2/oauth/token/
+     Content-Type: application/x-www-form-urlencoded
+
+     client_key={TIKTOK_CLIENT_KEY}&client_secret={TIKTOK_CLIENT_SECRET}&grant_type=refresh_token&refresh_token={DECRYPTED_REFRESH_TOKEN}
+     ```
+   - On success, the response returns a new 24-hour access token and a refreshed refresh token. The system encrypts both via AES-256-GCM and updates `social_accounts` using **Optimistic Concurrency Control (OCC)** (`token_version = token_version + 1`) to prevent concurrent session overwrites.
+
+### 6.8.2 Strict Rate Limits & Sequential Polling Strategy
+
+TikTok enforces strict rate limiting of **10 requests per minute** per connected creator profile on standard Display API endpoints. To guarantee safe and reliable operation without triggering errors:
+1. **Sequential Worker Polling**:
+   - Background sync workers MUST NOT parallelize API calls to the same connected creator.
+   - The queue processor fetches and claims syncing tickets sequentially.
+2. **Manual Sync Cooldown (5 Minutes)**:
+   - To prevent abuse and save API quota, manual sync triggers on the UI are rate-limited via a database check.
+   - The `/api/accounts/:id/sync` endpoint verifies:
+     ```sql
+     SELECT last_synced_at FROM social_accounts WHERE id = $1;
+     ```
+     If `last_synced_at` is within the last 5 minutes, the request is rejected immediately with an `HTTP 429` status code and error code `SYNC_COOLDOWN_ACTIVE`.
+3. **Automatic Daily Background Sync**:
+   - Automatic sync runs exactly once every 24 hours per account via the standard queue system.
+   - Workers query TikTok's Video List endpoint:
+     ```http
+     POST https://open.tiktokapis.com/v2/video/list/?fields=cover_image_url,create_time,id,share_count,view_count,like_count,comment_count,title,video_description,duration,embed_html,embed_link
+     ```
+
+### 6.8.3 Handling Rate Limit Errors (HTTP 429)
+
+If a sync operation encounters a rate limit block:
+1. **Error Codes Detection**:
+   - TikTok Display API returns a JSON error body containing code `10007` (rate limit exceeded) or returns `HTTP 429 Too Many Requests`.
+2. **Exponential Backoff & Pause Handler**:
+   - On detecting rate limit errors, the worker immediately aborts the active sync, updates the job ticket status to `failed`, sets the retry count, and increments `retry_count`.
+   - The next execution is scheduled in `job_queue` using an exponential backoff time algorithm:
+     $$\text{Delay} = \min(60\,000 \times 2^{\text{retry\_count}}, 900\,000) \text{ milliseconds}$$
+   - The worker pauses further TikTok ingestion operations for that specific account for **15 minutes** by setting a temporary exclusion lock in memory or the database.
+
 ---
 
 # §7 — AI/LLM ENGINE & STRATEGY GENERATION
@@ -1472,7 +1491,7 @@ Because Meta may retry webhook requests or send duplicate notifications for the 
 │           AI ENGINE BOUNDARY            │
 │                                         │
 │  INPUT                  OUTPUT          │
-│  ├── reel data          ├── scores      │
+│  ├── post/reel data     ├── scores      │
 │  ├── account history    ├── analysis    │
 │  ├── trend context      ├── strategy    │
 │  └── user preferences   └── calendar    │
@@ -1489,65 +1508,70 @@ Because Meta may retry webhook requests or send duplicate notifications for the 
 └─────────────────────────────────────────┘
 ```
 
-## 7.2 Reel Scoring System
+## 7.2 Cross-Platform Post Scoring System
 
 ### Scoring Dimensions (9 axes, 1–10 each)
 
-> **Updated for April 2025 API changes:** Skip Rate is now a first-class scoring dimension powered by Instagram's native `reels_skip_rate` metric. This is a **key competitive moat** — no other analytics platform surfaces skip rate data for content optimization.
+> **Cross-Platform Analytics Optimization:** Hook and retention effectiveness are measured using direct native platform APIs where possible. For Instagram Reels, this utilizes the `reels_skip_rate` metric (scrolled past within 3 seconds). For TikTok Videos, this utilizes the native `tiktok_completion_rate` metric (percentage of users who watched the entire video). This is a **key competitive moat** — providing visual retention metrics directly mapped to structured copywriting improvement actionable blueprints.
 
-| Dimension | Weight | What It Measures | Data Source |
-|---|---|---|---|
-| **Hook Score** | 12% | First 1–3 seconds grab attention | Caption + engagement pattern analysis |
-| **Skip Rate Score** | 13% | **% of viewers who scrolled past within 3 seconds** | `reels_skip_rate` (native IG metric) |
-| **Retention Signal** | 12% | Views-to-engagement ratio (proxy for watch-through) | `views` + total engagement |
-| **CTA Effectiveness** | 10% | Caption drives action (save, share, repost) | `saves` + `shares` + `public_reposts` |
-| **Visual Quality** | 10% | Production value, framing, consistency | AI analysis of caption/context |
-| **Audio Strategy** | 10% | Trending audio, original audio, voice-over quality | Caption + timing context |
-| **Trend Alignment** | 13% | Content matches current platform trends | Engagement vs. account baseline |
-| **Caption Quality** | 8% | Copywriting, hashtags, keyword usage | Caption text analysis |
-| **Timing Score** | 12% | Posted at optimal time for this account's audience | `timestamp` vs. historical peaks |
+| Dimension | Weight | What It Measures | Instagram Data Source | TikTok Data Source |
+|---|---|---|---|---|
+| **Hook Score** | 12% | First 1–3 seconds grab attention | Caption + engagement patterns | Caption + first-second velocity |
+| **Retention Metric** | 13% | **Native scroll-past or view-through velocity** | `reels_skip_rate` (native IG metric) | `tiktok_completion_rate` (Display API) |
+| **Retention Proxy** | 12% | Views-to-engagement ratio (proxy for watch-through) | `views` + total engagement | `views` + total engagement |
+| **CTA Effectiveness** | 10% | Caption drives action (save, share, repost) | `saves` + `shares` + `public_reposts` | `saves` + `shares` |
+| **Visual Quality** | 10% | Production value, framing, consistency | AI analysis of caption/context | AI analysis of caption/context |
+| **Audio Strategy** | 10% | Trending audio, original audio, voice-over quality | Caption + timing context | Caption + timing context |
+| **Trend Alignment** | 13% | Content matches current platform trends | Engagement vs. account baseline | Engagement vs. account baseline |
+| **Caption Quality** | 8% | Copywriting, hashtags, keyword usage | Caption text analysis | Caption text analysis |
+| **Timing Score** | 12% | Posted at optimal time for audience | `timestamp` vs. historical peaks | `timestamp` vs. historical peaks |
 
 ### Scoring Prompt Template
 
 ```typescript
-const REEL_SCORING_PROMPT = `
-You are an expert Instagram Reels analyst. Score this Reel across 9 dimensions.
+const POST_SCORING_PROMPT = `
+You are an expert social media content analyst specializing in high-growth Instagram Reels and TikTok Videos. Score this post for the platform: {platform} (instagram or tiktok) across 9 dimensions.
 
-## Reel Data
+## Post Data
+- Platform: {platform}
 - Caption: {caption}
 - Posted: {timestamp}
-- Views: {views_count}              (replaces deprecated "plays")
-- Total Views: {total_views}         (aggregated across IG + FB crosspost)
-- Skip Rate: {skip_rate}%            (% who scrolled past within 3 seconds)
+- Views: {views_count}
 - Likes: {likes_count}
 - Comments: {comments_count}
 - Shares: {shares_count}
-- Public Reposts: {public_reposts}   (reposts to user profiles)
 - Saves: {saves_count}
-- Reach: {reach}
-- Engagement Rate: {engagement_rate}%
+- Instagram Specific:
+  - Skip Rate: {skip_rate}%            (% who scrolled past within 3 seconds)
+  - Total Views: {total_views}         (aggregated across IG + FB crosspost)
+  - Reach: {reach}
+  - Public Reposts: {public_reposts}   (reposts to user profiles)
+- TikTok Specific:
+  - Completion Rate: {tiktok_completion_rate}% (% who watched the entire video)
 
 ## Account Context
 - Account: @{username}
 - Followers: {followers_count}
 - Average engagement rate: {avg_engagement_rate}%
-- Average skip rate: {avg_skip_rate}%
+- Average skip rate (Instagram): {avg_skip_rate}%
+- Average completion rate (TikTok): {avg_completion_rate}%
 - Top performing content themes: {top_themes}
 - Typical posting time: {typical_posting_time}
 
 ## Scoring Instructions
 Score each dimension from 1-10 with specific reasoning.
 Compare against this account's own historical performance, not global benchmarks.
-The skip_rate metric is CRITICAL — it directly measures hook effectiveness.
-A skip rate of <20% is excellent, 20-40% is good, 40-60% is average, >60% is poor.
+
+For Instagram: The skip_rate metric is CRITICAL — a skip rate of <20% is excellent, 20-40% is good, 40-60% is average, >60% is poor.
+For TikTok: The completion_rate metric is CRITICAL — a completion rate of >40% is excellent, 30-40% is good, 15-30% is average, <15% is poor. (Use a 30% baseline if completion rate is missing or null).
 
 Return ONLY valid JSON matching this exact schema:
 {
   "overall_score": <number 1-100>,
   "dimensions": {
     "hook": { "score": <1-10>, "reasoning": "<string>", "improvement": "<string>" },
-    "skip_rate": { "score": <1-10>, "reasoning": "<string>", "improvement": "<string>" },
-    "retention": { "score": <1-10>, "reasoning": "<string>", "improvement": "<string>" },
+    "retention_metric": { "score": <1-10>, "reasoning": "<string>", "improvement": "<string>" }, // skip_rate for IG, completion_rate for TikTok
+    "retention_proxy": { "score": <1-10>, "reasoning": "<string>", "improvement": "<string>" }, // Views-to-engagement ratio
     "cta": { "score": <1-10>, "reasoning": "<string>", "improvement": "<string>" },
     "visual": { "score": <1-10>, "reasoning": "<string>", "improvement": "<string>" },
     "audio": { "score": <1-10>, "reasoning": "<string>", "improvement": "<string>" },
@@ -1555,10 +1579,10 @@ Return ONLY valid JSON matching this exact schema:
     "caption": { "score": <1-10>, "reasoning": "<string>", "improvement": "<string>" },
     "timing": { "score": <1-10>, "reasoning": "<string>", "improvement": "<string>" }
   },
-  "skip_rate_analysis": {
-    "hook_strength": "excellent|good|average|weak|critical",
+  "platform_retention_analysis": {
+    "strength": "excellent|good|average|weak|critical",
     "estimated_retained_viewers": <number>,
-    "first_3_seconds_verdict": "<string>"
+    "verdict": "<string>"
   },
   "top_strength": "<string>",
   "biggest_opportunity": "<string>",
@@ -1570,12 +1594,18 @@ Return ONLY valid JSON matching this exact schema:
 ### Output Validation Schema
 
 ```typescript
-const ReelScoreSchema = z.object({
+const dimensionSchema = z.object({
+  score: z.number().int().min(1).max(10),
+  reasoning: z.string().min(10).max(300),
+  improvement: z.string().min(10).max(300),
+});
+
+const PostScoreSchema = z.object({
   overall_score: z.number().min(1).max(100),
   dimensions: z.object({
     hook: dimensionSchema,
-    skip_rate: dimensionSchema,    // NEW: powered by reels_skip_rate
-    retention: dimensionSchema,
+    retention_metric: dimensionSchema, // skip_rate for IG, tiktok_completion_rate for TikTok
+    retention_proxy: dimensionSchema,
     cta: dimensionSchema,
     visual: dimensionSchema,
     audio: dimensionSchema,
@@ -1583,24 +1613,18 @@ const ReelScoreSchema = z.object({
     caption: dimensionSchema,
     timing: dimensionSchema,
   }),
-  skip_rate_analysis: z.object({
-    hook_strength: z.enum(["excellent", "good", "average", "weak", "critical"]),
+  platform_retention_analysis: z.object({
+    strength: z.enum(["excellent", "good", "average", "weak", "critical"]),
     estimated_retained_viewers: z.number().int().min(0),
-    first_3_seconds_verdict: z.string().min(10).max(200),
+    verdict: z.string().min(10).max(200),
   }),
   top_strength: z.string().min(10).max(200),
   biggest_opportunity: z.string().min(10).max(200),
   one_line_summary: z.string().min(10).max(150),
 });
-
-const dimensionSchema = z.object({
-  score: z.number().int().min(1).max(10),
-  reasoning: z.string().min(10).max(300),
-  improvement: z.string().min(10).max(300),
-});
 ```
 
-## 7.3 Strategy Generation System
+## 7.3 Cross-Platform Strategy Generation System
 
 ### Strategy Types
 
@@ -1615,16 +1639,19 @@ const dimensionSchema = z.object({
 
 ```typescript
 const STRATEGY_PROMPT = `
-You are a top-tier Instagram growth strategist. Generate a personalized content
-strategy based on this account's real performance data.
+You are a top-tier growth strategist specializing in high-growth {platform} content optimization. Generate a personalized content strategy based on this account's real performance data.
 
 ## Account Performance (Last 30 Days)
-- Total Reels posted: {reels_count}
+- Platform: {platform}
+- Total posts posted: {posts_count}
 - Average engagement rate: {avg_engagement}%
-- Best performing Reel: {best_reel_caption} (ER: {best_er}%)
-- Worst performing Reel: {worst_reel_caption} (ER: {worst_er}%)
-- Average views: {avg_views}               (replaces deprecated "plays")
-- Average skip rate: {avg_skip_rate}%       (% scrolled past in <3s)
+- Best performing post: {best_post_caption} (ER: {best_er}%)
+- Worst performing post: {worst_post_caption} (ER: {worst_er}%)
+- Average views: {avg_views}
+- Instagram Specific:
+  - Average skip rate: {avg_skip_rate}%
+- TikTok Specific:
+  - Average completion rate: {avg_completion_rate}%
 - Follower growth: {follower_delta} ({follower_growth_pct}%)
 
 ## Top 3 Content Themes (by engagement)
@@ -1661,6 +1688,11 @@ Generate a strategy with ONLY valid JSON matching this schema:
       "estimated_engagement": "<low|medium|high>",
       "reasoning": "<why this content at this time>"
     }
+  ]
+}
+`;
+```
+
 ## 7.4 LLM Call Wrapper (Pure Function Boundary)
 
 Every LLM call goes through this pure wrapper. It has **zero database dependencies** and **zero side effects**. It is completely side-effect-free: all user budget checks, token usage tracking, and database commits MUST be performed by the calling service (e.g. `ingestion.service.ts` or custom route handlers) *before* and *after* invoking this wrapper.
@@ -1734,8 +1766,8 @@ interface HeuristicScoreResult {
   overall_score: number;
   dimensions: {
     hook: HeuristicDimension;
-    skip_rate: HeuristicDimension;
-    retention: HeuristicDimension;
+    retention_metric: HeuristicDimension; // skip_rate for IG, completion_rate for TikTok
+    retention_proxy: HeuristicDimension;
     cta: HeuristicDimension;
     visual: HeuristicDimension;
     audio: HeuristicDimension;
@@ -1743,10 +1775,10 @@ interface HeuristicScoreResult {
     caption: HeuristicDimension;
     timing: HeuristicDimension;
   };
-  skip_rate_analysis: {
-    hook_strength: "excellent" | "good" | "average" | "weak" | "critical";
+  platform_retention_analysis: {
+    strength: "excellent" | "good" | "average" | "weak" | "critical";
     estimated_retained_viewers: number;
-    first_3_seconds_verdict: string;
+    verdict: string;
   };
   top_strength: string;
   biggest_opportunity: string;
@@ -1761,60 +1793,104 @@ interface HeuristicDimension {
 }
 
 function calculateHeuristicScore(
-  reelMetrics: {
+  platform: "instagram" | "tiktok",
+  postMetrics: {
     views_count: number;
     likes_count: number;
     comments_count: number;
     shares_count: number;
     saves_count: number;
-    public_reposts: number;
-    skip_rate: number; // 0 to 100
+    public_reposts?: number; // IG specific
+    skip_rate?: number; // IG specific (0 to 100)
+    tiktok_completion_rate?: number; // TikTok specific (0 to 100)
   },
   avgEngagementRate: number
 ): HeuristicScoreResult {
-  const { views_count, likes_count, comments_count, shares_count, saves_count, public_reposts, skip_rate } = reelMetrics;
+  const { 
+    views_count, 
+    likes_count, 
+    comments_count, 
+    shares_count, 
+    saves_count, 
+    public_reposts = 0, 
+    skip_rate, 
+    tiktok_completion_rate 
+  } = postMetrics;
 
   // Enforce defaults if account lacks historical engagement data (e.g. new accounts)
   const safeAvgER = (avgEngagementRate === undefined || avgEngagementRate === null || avgEngagementRate <= 0 || isNaN(avgEngagementRate)) 
     ? 2.0 
     : avgEngagementRate;
 
-  // 1. Safe Hook & Skip Rate Scores
-  const rawSkipRate = (skip_rate === undefined || skip_rate === null || isNaN(skip_rate)) ? 50 : skip_rate; // default to 50% average if missing
-  const hookScore = Math.max(1, Math.min(10, Math.round(10 - (rawSkipRate / 10))));
-  const skipRateScore = hookScore;
+  // 1. Hook & Retention Metric Score
+  let retentionMetricScore = 5;
+  let hookScore = 5;
+  let strength: "excellent" | "good" | "average" | "weak" | "critical" = "average";
+  let verdict = "Hook retention and view-through rates are average.";
+  let displayMetricName = "";
+  let displayMetricValue = 0;
 
-  let hookStrength: "excellent" | "good" | "average" | "weak" | "critical" = "average";
-  let first3sVerdict = "The first 3 seconds are average. Hook retention is moderate.";
-  if (rawSkipRate < 20) {
-    hookStrength = "excellent";
-    first3sVerdict = "Outstanding! The hook successfully grabbed almost all viewers.";
-  } else if (rawSkipRate < 40) {
-    hookStrength = "good";
-    first3sVerdict = "Good hook retention. Most viewers continue watching past 3 seconds.";
-  } else if (rawSkipRate > 60) {
-    hookStrength = "critical";
-    first3sVerdict = "Critical drop-off in the first 3 seconds. The hook needs a complete overhaul.";
-  } else if (rawSkipRate > 50) {
-    hookStrength = "weak";
-    first3sVerdict = "Weak attention grab. Try adding stronger visual text hooks.";
+  if (platform === "instagram") {
+    const rawSkipRate = (skip_rate === undefined || skip_rate === null || isNaN(skip_rate)) ? 50 : skip_rate;
+    displayMetricName = "skip rate";
+    displayMetricValue = rawSkipRate;
+    hookScore = Math.max(1, Math.min(10, Math.round(10 - (rawSkipRate / 10))));
+    retentionMetricScore = hookScore;
+
+    if (rawSkipRate < 20) {
+      strength = "excellent";
+      verdict = "Outstanding! The hook successfully grabbed almost all viewers.";
+    } else if (rawSkipRate < 40) {
+      strength = "good";
+      verdict = "Good hook retention. Most viewers continue watching past 3 seconds.";
+    } else if (rawSkipRate > 60) {
+      strength = "critical";
+      verdict = "Critical drop-off in the first 3 seconds. The hook needs a complete overhaul.";
+    } else if (rawSkipRate > 50) {
+      strength = "weak";
+      verdict = "Weak attention grab. Try adding stronger visual text hooks.";
+    }
+  } else {
+    // TikTok: Completion rate (null defaults to 30.0%)
+    const rawCompletionRate = (tiktok_completion_rate === undefined || tiktok_completion_rate === null || isNaN(tiktok_completion_rate)) 
+      ? 30.0 
+      : tiktok_completion_rate;
+    displayMetricName = "completion rate";
+    displayMetricValue = rawCompletionRate;
+    
+    // Higher completion rate is better
+    retentionMetricScore = Math.max(1, Math.min(10, Math.round(rawCompletionRate / 10)));
+    hookScore = Math.max(1, Math.min(10, Math.round(rawCompletionRate / 8))); // TikTok hook is highly correlated to completion
+
+    if (rawCompletionRate > 40) {
+      strength = "excellent";
+      verdict = "Outstanding completion rate! A large portion of viewers watched to the end.";
+    } else if (rawCompletionRate >= 30) {
+      strength = "good";
+      verdict = "Strong retention. Audience watched key segments of the video.";
+    } else if (rawCompletionRate >= 15) {
+      strength = "average";
+      verdict = "Average completion rate. Consider cutting fluff from the middle.";
+    } else {
+      strength = "critical";
+      verdict = "High drop-off rate. Ensure the content gets straight to the point in under 2 seconds.";
+    }
   }
 
-  // 2. Safe Retention Score (Engagement ratio proxy)
+  // 2. Retention Proxy (Engagement ratio)
   const totalEngagements = likes_count + comments_count + shares_count + saves_count + public_reposts;
   const rawER = views_count > 0 ? (totalEngagements / views_count) * 100 : 0;
   const erRatio = safeAvgER > 0 ? rawER / safeAvgER : 1;
-  const retentionScore = Math.max(1, Math.min(10, Math.round(erRatio * 5)));
+  const retentionProxyScore = Math.max(1, Math.min(10, Math.round(erRatio * 5)));
 
-  // 3. CTA Effectiveness (Shares + Saves + Public Reposts weight)
+  // 3. CTA Effectiveness
   const ctaWeight = (saves_count * 2) + (shares_count * 3) + (public_reposts * 4);
   const ctaFactor = views_count > 0 ? (ctaWeight / views_count) * 1000 : 0;
   const ctaScore = Math.max(1, Math.min(10, Math.round(Math.min(10, ctaFactor))));
 
-  // 4. Default Heuristic Scores for visual/audio/caption/timing
+  // 4. Default Heuristic Scores for visual/audio/caption/timing/trend
   const visualScore = 5;
   const audioScore = 5;
-  const captionLength = 50; // mock length
   const captionScore = likes_count > comments_count ? 6 : 5;
   const timingScore = 6;
   const trendScore = rawER > safeAvgER ? 7 : 5;
@@ -1822,8 +1898,8 @@ function calculateHeuristicScore(
   // 5. Overall Weighted Heuristic Score (1-100)
   const overallScore = Math.round(
     (hookScore * 0.15) +
-    (skipRateScore * 0.15) +
-    (retentionScore * 0.15) +
+    (retentionMetricScore * 0.15) +
+    (retentionProxyScore * 0.15) +
     (ctaScore * 0.15) +
     (visualScore * 0.08) +
     (audioScore * 0.08) +
@@ -1832,50 +1908,55 @@ function calculateHeuristicScore(
     (timingScore * 0.06)
   ) * 10;
 
+  // Estimated retained viewers
+  const estRetained = platform === "instagram"
+    ? Math.round(views_count * (1 - displayMetricValue / 100))
+    : Math.round(views_count * (displayMetricValue / 100));
+
   return {
     overall_score: Math.max(10, Math.min(100, overallScore)),
     dimensions: {
-      hook: { score: hookScore, reasoning: `Calculated from a skip rate of ${rawSkipRate}%.`, improvement: "Use high-contrast text overlay in the first 3 seconds." },
-      skip_rate: { score: skipRateScore, reasoning: `A skip rate of ${rawSkipRate}% was recorded.`, improvement: "Shorten hook duration to 1.5 seconds." },
-      retention: { score: retentionScore, reasoning: `Engagement rate is ${rawER.toFixed(2)}% vs baseline ${avgEngagementRate}%.`, improvement: "Increase video pacing in the middle." },
-      cta: { score: ctaScore, reasoning: `Saves: ${saves_count}, Shares: ${shares_count}, Reposts: ${public_reposts}.`, improvement: "Add an explicit 'Save this for later' call to action." },
-      visual: { score: visualScore, reasoning: "Baseline visual score mapped from performance metrics.", improvement: "Enhance color contrast and lighting quality." },
-      audio: { score: audioScore, reasoning: "Standard audio score placeholder.", improvement: "Experiment with trending audios aligned with hook timing." },
-      trend: { score: trendScore, reasoning: "Engagement ratio suggests average trend alignment.", improvement: "Create content responding to active creator templates." },
-      caption: { score: captionScore, reasoning: "Caption readability and structure score.", improvement: "Break text into paragraphs and include 3-5 keywords." },
-      timing: { score: timingScore, reasoning: "Time-of-day posting optimization index.", improvement: "Shift posting time 1 hour earlier to match audience peaks." }
+      hook: { score: hookScore, reasoning: `Estimated hook effectiveness on ${platform}.`, improvement: "Grab attention in the first 1.5 seconds with on-screen text." },
+      retention_metric: { score: retentionMetricScore, reasoning: `Calculated from a ${displayMetricName} of ${displayMetricValue.toFixed(1)}%.`, improvement: platform === "instagram" ? "Shorten the intro to lower skip rate." : "Trim unnecessary gaps to raise completion rate." },
+      retention_proxy: { score: retentionProxyScore, reasoning: `Engagement rate is ${rawER.toFixed(2)}% vs baseline ${safeAvgER.toFixed(2)}%.`, improvement: "Focus on creating high-retention storytelling hooks." },
+      cta: { score: ctaScore, reasoning: `Saves: ${saves_count}, Shares: ${shares_count}, Reposts: ${public_reposts}.`, improvement: "Place a highly visible call to action in the last 2 seconds." },
+      visual: { score: visualScore, reasoning: "Standard visual quality baseline mapped from performance ratios.", improvement: "Experiment with dynamic text and contrasting colors." },
+      audio: { score: audioScore, reasoning: "Baseline audio strategy index.", improvement: "Incorporate trending high-tempo audios aligned with cuts." },
+      trend: { score: trendScore, reasoning: "Post engagement indicates average trend alignment.", improvement: "Leverage popular audio templates and visual memes." },
+      caption: { score: captionScore, reasoning: "Standard caption copywriting analysis.", improvement: "Write punchy 2-line descriptions with 3 targeted keywords." },
+      timing: { score: timingScore, reasoning: "Time of posting optimization index.", improvement: "Shift posting schedules slightly to test audience peaks." }
     },
-    skip_rate_analysis: {
-      hook_strength: hookStrength,
-      estimated_retained_viewers: Math.round(views_count * (1 - rawSkipRate / 100)),
-      first_3_seconds_verdict: first3sVerdict
+    platform_retention_analysis: {
+      strength,
+      estimated_retained_viewers: estRetained,
+      verdict
     },
-    top_strength: rawSkipRate < 30 ? "Hook Retention & Scroll-Stopping Ability" : "Consistent Engagement Signal",
-    biggest_opportunity: rawSkipRate > 50 ? "Overhauling Hook Timing & Visual Overlay" : "Improving Saves & CTA Effectiveness",
-    one_line_summary: `Heuristic assessment computed from view count of ${views_count} and skip rate of ${rawSkipRate}%.`,
+    top_strength: platform === "instagram" && displayMetricValue < 30 ? "Outstanding hook retention" : "Consistent viewer engagement index",
+    biggest_opportunity: platform === "instagram" && displayMetricValue > 50 ? "Lowering initial scroll-past skip rate" : "Increasing saves and direct shares",
+    one_line_summary: `Heuristic evaluation computed from view count of ${views_count} and ${displayMetricName} of ${displayMetricValue.toFixed(1)}%.`,
     source: "heuristic"
   };
 }
 ```
 
-## 7.6 Stale-While-Revalidate Caching Model for Reels Scoring
+## 7.6 Stale-While-Revalidate Caching Model for Post Scoring
 
-To optimize API usage and provide instantaneous page loads, Reel scoring MUST enforce a **Stale-While-Revalidate (SWR)** caching model:
-1. **Reel Cache Expiry**: Scored Reels are cached in the `reel_scores` table. A cached score remains valid for **24 hours**.
+To optimize API usage and provide instantaneous page loads, Post scoring MUST enforce a **Stale-While-Revalidate (SWR)** caching model:
+1. **Post Cache Expiry**: Scored posts are cached in the `post_scores` table. A cached score remains valid for **24 hours**.
 2. **Read Request (SWR)**:
-   - When a client queries a Reel score, the system checks the `scored_at` column.
+   - When a client queries a post score, the system checks the `scored_at` column.
    - If the score exists and is less than 24 hours old, it is returned **immediately** (instant response).
-   - If the score exists but is older than 24 hours (stale), the system **immediately returns the stale score** to the client, but asynchronously triggers a background queue job (`SCORE_REEL`) to revalidate and update the score in the background.
+   - If the score exists but is older than 24 hours (stale), the system **immediately returns the stale score** to the client, but asynchronously triggers a background queue job (`SCORE_POST`) to revalidate and update the score in the background.
 3. **Explicit Force-Refresh & Cooldown**:
    - Users can trigger an explicit "Force Recalculate" request.
-   - To prevent denial-of-service billing attacks, a strict **1-hour cooldown limit** is enforced per Reel.
+   - To prevent denial-of-service billing attacks, a strict **1-hour cooldown limit** is enforced per Post.
    - If the user requests a force-refresh within the 1-hour cooldown window, the API immediately rejects the request with a `429 Too Many Requests` error and a header specifying `Retry-After`.
 
 ## 7.7 Prompt Consistency & Quality Gate
 All LLM prompts (scoring, strategy, trends) are subject to automated verification checks to prevent regression, drifting, or unexpected formatting errors. The AI engine must ensure that outputs match the defined schemas with extremely low variance. See [§16.2 AI Prompt Evaluation Framework](file:///d:/Desktop/reel-logic-ai/reel-logic-ai-seabs-spec.md#L3461) for the detailed verification test suite implementation in `scripts/test-prompts.ts`.
 
 ## 7.8 Circuit Breaker for External Dependencies
-Every outbound call to a third-party API (Instagram Graph API, OpenAI, Stripe, Resend) MUST be wrapped in a per-dependency circuit breaker to prevent retry storms and cascading failures when an upstream provider degrades.
+Every outbound call to a third-party API (Instagram Graph API, TikTok Display API, OpenAI, Stripe, Resend) MUST be wrapped in a per-dependency circuit breaker to prevent retry storms and cascading failures when an upstream provider degrades.
 
 ### State Machine
 | State | Behavior |
@@ -1889,6 +1970,7 @@ Every outbound call to a third-party API (Instagram Graph API, OpenAI, Stripe, R
 |---|---|---|---|---|
 | OpenAI | 60 s | 5 | 300 s | 30 s |
 | Instagram Graph API | 60 s | 5 | 300 s | 30 s |
+| TikTok Display API | 60 s | 5 | 300 s | 30 s |
 | Stripe | 120 s | 3 | 600 s | 60 s |
 | Resend | 60 s | 5 | 180 s | 30 s |
 
@@ -1933,7 +2015,7 @@ export class CircuitBreaker {
 **Operational requirements:**
 - Breaker trips MUST emit a `circuit.opened` metric with the dependency name and a Sentry alert at `warning` severity.
 - The heuristic fallback engine (§7.5) MUST be invoked when the OpenAI breaker is OPEN — users never see an error page because of a transient OpenAI outage.
-- Jobs that hit an OPEN Instagram breaker MUST `reschedule(now + cooldownMs)` rather than incrementing the retry counter (the failure is not the job's fault).
+- Jobs that hit an OPEN Instagram or TikTok breaker MUST `reschedule(now + cooldownMs)` rather than incrementing the retry counter (the failure is not the job's fault).
 
 ---
 
@@ -2252,8 +2334,8 @@ async function handleManualRetry(req: NextRequest): Promise<NextResponse> {
 │  └──────────────┘    └──────────────┘    └────────┘│
 │                                                     │
 │  Job Types:                                         │
-│  ├── SYNC_ACCOUNT    (Instagram data fetch)         │
-│  ├── SCORE_REEL      (AI scoring)                   │
+│  ├── SYNC_ACCOUNT    (Cross-platform data fetch)    │
+│  ├── SCORE_POST      (AI scoring)                   │
 │  ├── GENERATE_STRATEGY (AI strategy)                │
 │  ├── REFRESH_TOKEN   (Token rotation)               │
 │  ├── SEND_EMAIL      (Transactional email)          │
@@ -2544,7 +2626,7 @@ async function enqueueJob(params: {
 // Idempotency key examples:
 // SYNC_ACCOUNT_SCHEDULED: `sync:scheduled:${accountId}:${dateHour}`
 // SYNC_ACCOUNT_MANUAL:    `sync:manual:${accountId}:${timestamp_ms}` (minimum 5-minute application-level throttle window)
-// SCORE_REEL:             `score:${reelId}:${version}`
+// SCORE_POST:             `score:${postId}:${version}`
 // STRATEGY:               `strategy:${accountId}:${periodKey}`
 //
 // Retry-safety: when a job is retried by the worker, the SAME idempotency key
@@ -3237,28 +3319,30 @@ A migration test (`tests/security-headers.test.ts`) MUST assert every header abo
       },
       "required": ["id", "email", "createdAt"]
     },
-    "instagramAccounts": {
+    "socialAccounts": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
           "id": { "type": "string", "format": "uuid" },
-          "igUserId": { "type": "string" },
+          "platform": { "type": "string", "enum": ["instagram", "tiktok"] },
+          "platformUserId": { "type": "string" },
           "username": { "type": "string" },
           "followersCount": { "type": "integer" },
           "lastSyncedAt": { "type": ["string", "null"], "format": "date-time" },
           "connectedAt": { "type": "string", "format": "date-time" }
         },
-        "required": ["id", "igUserId", "username", "connectedAt"]
+        "required": ["id", "platform", "platformUserId", "username", "connectedAt"]
       }
     },
-    "reels": {
+    "posts": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
           "id": { "type": "string", "format": "uuid" },
-          "igMediaId": { "type": "string" },
+          "platform": { "type": "string", "enum": ["instagram", "tiktok"] },
+          "platformMediaId": { "type": "string" },
           "caption": { "type": ["string", "null"] },
           "permalink": { "type": "string", "format": "uri" },
           "viewsCount": { "type": "integer" },
@@ -3268,11 +3352,12 @@ A migration test (`tests/security-headers.test.ts`) MUST assert every header abo
           "sharesCount": { "type": "integer" },
           "savesCount": { "type": "integer" },
           "publicReposts": { "type": "integer" },
-          "skipRate": { "type": "number" },
+          "skipRate": { "type": ["number", "null"] },
+          "completionRate": { "type": ["number", "null"] },
           "engagementRate": { "type": ["number", "null"] },
           "fetchedAt": { "type": "string", "format": "date-time" }
         },
-        "required": ["id", "igMediaId", "permalink", "displayViews", "fetchedAt"]
+        "required": ["id", "platform", "platformMediaId", "permalink", "displayViews", "fetchedAt"]
       }
     },
     "strategies": {
@@ -3291,7 +3376,7 @@ A migration test (`tests/security-headers.test.ts`) MUST assert every header abo
       }
     }
   },
-  "required": ["user", "instagramAccounts", "reels", "strategies"]
+  "required": ["user", "socialAccounts", "posts", "strategies"]
 }
 ```
 
