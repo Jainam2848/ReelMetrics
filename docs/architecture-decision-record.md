@@ -1,4 +1,4 @@
-# Architecture Decision Record (ADR) — Reel Logic AI
+# Architecture Decision Record (ADR) — Trendoraa
 
 **Document Version:** 1.0.0  
 **Status:** Approved  
@@ -12,7 +12,7 @@ The system is designed around a unified Next.js monorepo architecture leveraging
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        REEL LOGIC AI                            │
+│                        TRENDORAA                            │
 │                                                                 │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
 │  │   Frontend    │  │   Backend    │  │   Worker System      │  │

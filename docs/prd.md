@@ -1,4 +1,4 @@
-# Product Requirements Document (PRD) — Reel Logic AI
+# Product Requirements Document (PRD) — Trendoraa
 
 **Document Version:** 1.0.0  
 **Status:** Validated & Approved  
@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary & Problem Statements
 
-Reel Logic AI is an AI-powered cross-platform strategy platform that automates the analysis of Instagram Reels and TikTok Videos, scores them across key visual and structural dimensions, and outputs personalized content calendars. By shifting the creator workflow from intuition-driven guessing to highly tailored, data-backed execution, the platform establishes a high-margin business model with an exceptionally low operational footprint.
+Trendoraa is an AI-powered cross-platform strategy platform that automates the analysis of Instagram Reels and TikTok Videos, scores them across key visual and structural dimensions, and outputs personalized content calendars. By shifting the creator workflow from intuition-driven guessing to highly tailored, data-backed execution, the platform establishes a high-margin business model with an exceptionally low operational footprint.
 
 This document outlines the canonical product requirements for the initial Instagram rollout, followed by the planned TikTok expansion phase.
 

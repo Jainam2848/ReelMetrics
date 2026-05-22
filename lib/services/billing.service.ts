@@ -21,6 +21,32 @@ export interface DbSubscription {
   updatedAt: Date;
 }
 
+export interface StripeSubscription {
+  id: string;
+  customer: string;
+  status: string;
+  current_period_start: number;
+  current_period_end: number;
+  cancel_at: number | null;
+  metadata: Record<string, string> | null;
+  items: {
+    data: Array<{
+      price: {
+        id: string;
+      };
+    }>;
+  };
+}
+
+export interface StripeInvoice {
+  id: string;
+  customer: string | null;
+  subscription: string | null;
+  amount_due?: number;
+  amount_paid?: number;
+  attempt_count?: number;
+}
+
 /**
  * Service class handling core billing business logic and webhook event synchronization.
  * 
@@ -71,7 +97,7 @@ export class BillingService {
     }
 
     // Server-side validation check: Retrieve fresh subscription directly from Stripe API
-    const stripeSub = (await stripe.subscriptions.retrieve(stripeSubId)) as Stripe.Subscription;
+    const stripeSub = (await stripe.subscriptions.retrieve(stripeSubId)) as unknown as StripeSubscription;
 
     const resolvedUserId = userId || stripeSub.metadata?.userId;
     const resolvedPlanId = planId || (stripeSub.metadata?.planId as PlanId) || "free";
@@ -128,12 +154,13 @@ export class BillingService {
    * Webhook handler: Handles subscription changes (e.g. upgrades, downgrades).
    */
   static async handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
-    const stripeSubId = subscription.id;
-    const stripeCustomerId = subscription.customer as string;
-    const userId = subscription.metadata?.userId;
+    const sub = subscription as unknown as StripeSubscription;
+    const stripeSubId = sub.id;
+    const stripeCustomerId = sub.customer as string;
+    const userId = sub.metadata?.userId;
 
     let planId: PlanId = "free";
-    const priceId = subscription.items.data[0]?.price.id;
+    const priceId = sub.items.data[0]?.price.id;
 
     if (priceId) {
       if (priceId === env.STRIPE_PRICE_CREATOR) planId = "creator";
@@ -141,8 +168,8 @@ export class BillingService {
       else if (priceId === env.STRIPE_PRICE_AGENCY) planId = "agency";
     }
 
-    if (planId === "free" && subscription.metadata?.planId) {
-      planId = subscription.metadata.planId as PlanId;
+    if (planId === "free" && sub.metadata?.planId) {
+      planId = sub.metadata.planId as PlanId;
     }
 
     // Resolve userId mapping by checking DB records first if metadata is missing
@@ -167,10 +194,10 @@ export class BillingService {
         planId,
         stripeSubId,
         stripeCustomerId,
-        status: subscription.status,
-        currentPeriodStart: new Date(subscription.current_period_start * 1000),
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-        cancelAt: subscription.cancel_at ? new Date(subscription.cancel_at * 1000) : null,
+        status: sub.status,
+        currentPeriodStart: new Date(sub.current_period_start * 1000),
+        currentPeriodEnd: new Date(sub.current_period_end * 1000),
+        cancelAt: sub.cancel_at ? new Date(sub.cancel_at * 1000) : null,
         updatedAt: new Date(),
       };
 
@@ -247,8 +274,9 @@ export class BillingService {
    * Webhook handler: Updates status to "past_due" on local subscription and logs the failure to audit_log.
    */
   static async handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
-    const stripeCustomerId = invoice.customer as string;
-    const stripeSubId = invoice.subscription as string | null | undefined;
+    const inv = invoice as unknown as StripeInvoice;
+    const stripeCustomerId = inv.customer as string;
+    const stripeSubId = inv.subscription;
 
     if (!stripeCustomerId) return;
 
@@ -273,11 +301,11 @@ export class BillingService {
       action: "billing.invoice_payment_failed",
       resourceType: "invoice",
       metadata: {
-        invoiceId: invoice.id,
-        amountDue: invoice.amount_due,
+        invoiceId: inv.id,
+        amountDue: inv.amount_due,
         stripeSubId,
         stripeCustomerId,
-        attemptCount: invoice.attempt_count,
+        attemptCount: inv.attempt_count,
       },
     });
   }
@@ -286,8 +314,9 @@ export class BillingService {
    * Webhook handler: Re-asserts subscription status to "active" upon successful payment.
    */
   static async handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
-    const stripeCustomerId = invoice.customer as string;
-    const stripeSubId = invoice.subscription as string | null | undefined;
+    const inv = invoice as unknown as StripeInvoice;
+    const stripeCustomerId = inv.customer as string;
+    const stripeSubId = inv.subscription;
 
     if (!stripeCustomerId) return;
 
@@ -312,8 +341,8 @@ export class BillingService {
       action: "billing.invoice_payment_succeeded",
       resourceType: "invoice",
       metadata: {
-        invoiceId: invoice.id,
-        amountPaid: invoice.amount_paid,
+        invoiceId: inv.id,
+        amountPaid: inv.amount_paid,
         stripeSubId,
         stripeCustomerId,
       },

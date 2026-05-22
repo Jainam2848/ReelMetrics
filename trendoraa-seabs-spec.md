@@ -1,4 +1,4 @@
-# Reel Logic AI — Self-Executing AI Build System (SEABS)
+# Trendoraa — Self-Executing AI Build System (SEABS)
 
 ## Complete Founder Specification v1.0
 
@@ -14,7 +14,7 @@
 
 ## Document Purpose
 
-This document is the **single source of truth** for building Reel Logic AI. It is not a prompt collection. It is not a feature list. It is a **deterministic software construction specification** designed to be consumed by AI agents, human engineers, and investors.
+This document is the **single source of truth** for building Trendoraa. It is not a prompt collection. It is not a feature list. It is a **deterministic software construction specification** designed to be consumed by AI agents, human engineers, and investors.
 
 **What it covers:**
 
@@ -74,7 +74,7 @@ This document is the **single source of truth** for building Reel Logic AI. It i
 
 ## 1.1 One-Line Pitch
 
-> **Reel Logic AI** is an AI-powered cross-platform strategy platform that analyzes your Instagram Reels and TikTok Videos, scores every piece of content, and generates personalized posting strategies — turning guesswork into data-driven growth.
+> **Trendoraa** is an AI-powered cross-platform strategy platform that analyzes your Instagram Reels and TikTok Videos, scores every piece of content, and generates personalized posting strategies — turning guesswork into data-driven growth.
 
 ## 1.2 Problem Statement
 
@@ -86,7 +86,7 @@ Short-form video creators and brands face three critical cross-platform problems
 
 ## 1.3 Solution & Staged Rollout
 
-Reel Logic AI solves this with a staged rollout sequence, building on a unified cross-platform data model from day one. **We complete the Instagram system first**, followed immediately by the **TikTok expansion phase**.
+Trendoraa solves this with a staged rollout sequence, building on a unified cross-platform data model from day one. **We complete the Instagram system first**, followed immediately by the **TikTok expansion phase**.
 
 | Capability | How |
 |---|---|
@@ -113,7 +113,7 @@ The platform targets three high-value customer segments, focusing on users who r
                     High AI Intelligence
                          ▲
                          │
-            Reel Logic AI │  (Target Position - Cross-Platform)
+            Trendoraa │  (Target Position - Cross-Platform)
                      ★    │
                          │
    ┌─────────────────────┼─────────────────────┐
@@ -131,7 +131,7 @@ Low Specialization ──────┼────── High Breadth
                     Low AI Intelligence
 ```
 
-**Key Differentiator:** Deep short-form video AI analysis utilizing **skip rate intelligence** (Instagram) and **completion rate analytics** (TikTok) to optimize the opening hooks and structural flow. Not a generic scheduler; Reel Logic AI is a content performance optimization engine.
+**Key Differentiator:** Deep short-form video AI analysis utilizing **skip rate intelligence** (Instagram) and **completion rate analytics** (TikTok) to optimize the opening hooks and structural flow. Not a generic scheduler; Trendoraa is a content performance optimization engine.
 
 ## 1.6 Business Model (Cost-Optimized & Highly Profitable)
 
@@ -163,7 +163,7 @@ Subscriptions are strictly cost-optimized and cap-monitored to guarantee profit 
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        REEL LOGIC AI                            │
+│                        TRENDORAA                            │
 │                                                                 │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
 │  │   Frontend    │  │   Backend    │  │   Worker System      │  │
@@ -1250,7 +1250,7 @@ function calculateEngagementRate(reel: {
 }
 
 // Weighted engagement (saves + shares + reposts worth more)
-function calculateWeightedEngagement(reel: ReelMetrics): number {
+function calculateWeightedEngagement(reel: Trendoraa): number {
   const weighted =
     reel.likes_count * 1.0 +
     reel.comments_count * 2.0 +
@@ -1263,7 +1263,7 @@ function calculateWeightedEngagement(reel: ReelMetrics): number {
   return (weighted / reel.views_count) * 100;
 }
 
-// Skip rate analysis — UNIQUE to Reel Logic AI
+// Skip rate analysis — UNIQUE to Trendoraa
 // Lower skip rate = stronger hook
 function analyzeSkipRate(reel: {
   skip_rate: number;     // 0-100 (% who scrolled past in <3 seconds)
@@ -1953,7 +1953,7 @@ To optimize API usage and provide instantaneous page loads, Post scoring MUST en
    - If the user requests a force-refresh within the 1-hour cooldown window, the API immediately rejects the request with a `429 Too Many Requests` error and a header specifying `Retry-After`.
 
 ## 7.7 Prompt Consistency & Quality Gate
-All LLM prompts (scoring, strategy, trends) are subject to automated verification checks to prevent regression, drifting, or unexpected formatting errors. The AI engine must ensure that outputs match the defined schemas with extremely low variance. See [§16.2 AI Prompt Evaluation Framework](file:///d:/Desktop/reel-logic-ai/reel-logic-ai-seabs-spec.md#L3461) for the detailed verification test suite implementation in `scripts/test-prompts.ts`.
+All LLM prompts (scoring, strategy, trends) are subject to automated verification checks to prevent regression, drifting, or unexpected formatting errors. The AI engine must ensure that outputs match the defined schemas with extremely low variance. See [§16.2 AI Prompt Evaluation Framework](file:///d:/Desktop/trendoraa/trendoraa-seabs-spec.md#L3461) for the detailed verification test suite implementation in `scripts/test-prompts.ts`.
 
 ## 7.8 Circuit Breaker for External Dependencies
 Every outbound call to a third-party API (Instagram Graph API, TikTok Display API, OpenAI, Stripe, Resend) MUST be wrapped in a per-dependency circuit breaker to prevent retry storms and cascading failures when an upstream provider degrades.
@@ -2936,7 +2936,7 @@ App Shell
 
 ### Speed-Preserving Motion Graphics Guidelines
 
-To ensure the Reel Logic AI frontend platform delivers jaw-dropping micro-interactions and transitions without introducing visual latency or impacting critical Core Web Vitals (LCP, CLS, INP), all motion graphics implementations must adhere strictly to these architectural constraints:
+To ensure the Trendoraa frontend platform delivers jaw-dropping micro-interactions and transitions without introducing visual latency or impacting critical Core Web Vitals (LCP, CLS, INP), all motion graphics implementations must adhere strictly to these architectural constraints:
 
 #### 1. Compositor-Only Rendering (Strict 60/120fps Mandate)
 - **Rule**: Only animate CSS properties processed entirely by the compositor layer: **`transform`** (translate, scale, rotate, skew) and **`opacity`**.
@@ -3306,7 +3306,7 @@ A migration test (`tests/security-headers.test.ts`) MUST assert every header abo
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ReelLogicUserDataExport",
+  "title": "TrendoraaUserDataExport",
   "type": "object",
   "properties": {
     "user": {
@@ -4722,9 +4722,9 @@ interface TrendAnalysis {
 
 ## 21.5 Competitor-Free Differentiation Logic
 
-Unlike generic tools, Reel Logic AI differentiates by:
+Unlike generic tools, Trendoraa differentiates by:
 
-| Feature | Generic Tools | Reel Logic AI |
+| Feature | Generic Tools | Trendoraa |
 |---|---|---|
 | Analysis depth | Surface metrics | **9-dimension AI scoring** per Reel |
 | **Skip rate** | **Not surfaced anywhere** | **Native `reels_skip_rate` — % who scroll past in <3s** |
@@ -4737,14 +4737,14 @@ Unlike generic tools, Reel Logic AI differentiates by:
 | Reposts tracking | Not available | **`public_reposts` — strongest engagement signal** |
 | Cross-platform views | Not available | `total_views` across IG + FB crosspost |
 
-> **🏆 THE MOAT:** Instagram's `reels_skip_rate` is available in the Graph API but **no major competitor (Sprout Social, Hootsuite, Later, Metricool) surfaces this metric** in their analytics dashboards. Reel Logic AI is the first platform to make skip rate a core part of content scoring and strategy generation. This creates a clear value proposition: "See exactly how many people scroll past your Reel in under 3 seconds — and get AI-powered fixes to stop the scroll."
+> **🏆 THE MOAT:** Instagram's `reels_skip_rate` is available in the Graph API but **no major competitor (Sprout Social, Hootsuite, Later, Metricool) surfaces this metric** in their analytics dashboards. Trendoraa is the first platform to make skip rate a core part of content scoring and strategy generation. This creates a clear value proposition: "See exactly how many people scroll past your Reel in under 3 seconds — and get AI-powered fixes to stop the scroll."
 
 ---
 
 # APPENDIX A — DIRECTORY STRUCTURE
 
 ```
-reel-logic-ai/
+trendoraa/
 ├── app/
 │   ├── (auth)/
 │   │   ├── login/page.tsx
@@ -5043,6 +5043,6 @@ This is not a suggestion. This is an execution rule.
 
 ---
 
-*This document is the canonical source of truth for the Reel Logic AI build system. Any conflict between this document and implementation code should be resolved in favor of this document.*
+*This document is the canonical source of truth for the Trendoraa build system. Any conflict between this document and implementation code should be resolved in favor of this document.*
 
 *Version: 1.0 | Classification: Founder-Grade | Status: ACTIVE*

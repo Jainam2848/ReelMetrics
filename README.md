@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌟 Trendoraa — AI-Powered Short-Form Video Strategy Engine
 
-## Getting Started
+Welcome to **Trendoraa**, the state-of-the-art AI-powered short-form video optimization platform. Trendoraa automates short-form video analysis (Instagram Reels & TikTok Videos), scores each post across 9 structural dimensions, and outputs custom posting calendars and weekly strategies.
 
-First, run the development server:
+By shifting workflows from intuitive guessing to highly tailored, data-backed strategy, Trendoraa establishes an elite content performance optimization engine for creators, social media managers, and agencies.
 
+---
+
+## ✨ Features
+
+* **Unified Cross-Platform Ingestion:** Dynamic OAuth2 integrations for Meta Graph API (Instagram Reels) and TikTok Display API (TikTok Videos).
+* **The Hook Moat (Strategic Insight):** Surfacing Instagram `reels_skip_rate` as *Strategic Skip Resistance* and TikTok `completion_rate` as *Strategic Video Completion Retention Index* to mathematically dissect opening hooks.
+* **9-Dimension Scoring Engine:** Fully customized GPT-4o analytics model mapping hooks, visual pacing, structural retention, and captions.
+* **Profitable Strategy Generation:** Beautiful interactive calendars, automated posting schedules, and personalized copy generation.
+* **Cost-Optimized Architecture:** Strict monthly LLM budget caps and mathematical heuristic fallbacks to ensure sustainable **>90% Gross Margins**.
+
+---
+
+## 🛠️ Technology Stack
+
+1. **Frontend:** Next.js 16 (App Router), React 19, Framer Motion, and Tailwind CSS.
+2. **Backend & DB:** Supabase SSR Auth, PostgreSQL with Drizzle ORM, and database-level `SKIP LOCKED` job queue.
+3. **External Integrations:**
+   - Meta Graph API (v22.0+)
+   - TikTok Display API (v2)
+   - OpenAI API (GPT-4o & GPT-4o-mini)
+   - Stripe API (Dynamic checkout & billing portal)
+   - Resend API (Transactional notification mailers)
+
+---
+
+## 🚀 Getting Started
+
+### 1. Configure Environment Variables
+Copy `.env.example` to `.env` and fill in the required keys:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ensure the following variables are configured:
+* `DATABASE_URL` (Supabase Postgres Connection)
+* `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+* `OPENAI_API_KEY` (AI Engine)
+* `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`
+* `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, and `TIKTOK_REDIRECT_URI`
+* `INSTAGRAM_CLIENT_ID`, `INSTAGRAM_CLIENT_SECRET`, and `INSTAGRAM_REDIRECT_URI`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 2. Install Dependencies & Build
+Install workspace dependencies and verify compilation and code quality:
+```bash
+npm install
+npm run typecheck
+npm run lint
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Run Development Server
+Boot up the next.js dashboard:
+```bash
+npm run dev
+```
 
-## Learn More
+Trendoraa is now running on [http://localhost:3000](http://localhost:3000).
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🛡️ Architecture & Boundaries
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Trendoraa is engineered under strict architectural constraints to ensure stability, performance, and security:
+- **No Heavy Message Brokers:** Background processing runs entirely on PostgreSQL `SKIP LOCKED` worker queues to keep infrastructure lightweight and maintainable.
+- **Strict Module Isolation:** The billing system is completely isolated and never imports from the ingestion, queue, or AI engine modules to maintain high security bounds.
+- **Circuit Breakers:** All third-party outbound APIs are shielded by resilient circuit breakers.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+*This repository is engineered in compliance with the Trendoraa canonical specifications and execution playbooks.*

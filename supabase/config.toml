@@ -4,7 +4,7 @@
 # clash with a system Postgres install on 5432.
 #
 # Reference: https://supabase.com/docs/guides/local-development/cli/config
-project_id = "reel-logic-ai"
+project_id = "trendoraa"
 
 [api]
 enabled = true

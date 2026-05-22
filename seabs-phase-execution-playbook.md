@@ -1,10 +1,10 @@
 # SEABS Phase Execution Playbook
 
-## Reel Logic AI — Phase-by-Phase Development with Agent Prompts, Tests & Gates
+## Trendoraa — Phase-by-Phase Development with Agent Prompts, Tests & Gates
 
 > **Purpose:** This is the **execution playbook**. The spec tells you WHAT to build. This document tells you HOW to build it — phase by phase, with exact prompts to feed AI agents, tests to run after each phase, and gate criteria before moving forward.
 >
-> **Companion:** [reel-logic-ai-seabs-spec.md](./reel-logic-ai-seabs-spec.md) (canonical spec)
+> **Companion:** [trendoraa-seabs-spec.md](./trendoraa-seabs-spec.md) (canonical spec)
 >
 > **Rule:** No phase may begin until the previous phase passes ALL gate checks.
 >
@@ -99,7 +99,7 @@ Complete **all** of these before running the agent prompt:
 ## Agent Prompt
 
 ```
-You are a senior DevOps engineer setting up a new Next.js project called "reel-logic-ai".
+You are a senior DevOps engineer setting up a new Next.js project called "trendoraa".
 
 TASK: Initialize the project with this exact stack:
 - Next.js 14+ (App Router) with TypeScript (strict mode)
@@ -280,7 +280,7 @@ Validate the product requirements are locked and create the architecture decisio
 Complete **all** of these before running the agent prompt:
 
 1. **Confirm Phase 0 gate passed** — All Phase 0 gate criteria checkboxes must be checked. Run `npx tsc --noEmit` one more time to confirm zero errors.
-2. **Read the SEABS spec** — Open [reel-logic-ai-seabs-spec.md](./reel-logic-ai-seabs-spec.md) and read sections §1.2 (Problems), §1.4 (Target Users), §1.6 (Pricing Tiers), §2.1 (Architecture), §2.2 (Tech Stack), §6.6 (API Deprecations), §11 (Security), §12.1 (Cost Estimates), §18 (Module Boundaries). These are directly referenced in the agent prompt.
+2. **Read the SEABS spec** — Open [trendoraa-seabs-spec.md](./trendoraa-seabs-spec.md) and read sections §1.2 (Problems), §1.4 (Target Users), §1.6 (Pricing Tiers), §2.1 (Architecture), §2.2 (Tech Stack), §6.6 (API Deprecations), §11 (Security), §12.1 (Cost Estimates), §18 (Module Boundaries). These are directly referenced in the agent prompt.
 3. **Create the `docs/` directory** — Run `mkdir docs` if it doesn't already exist (it should from Phase 0 scaffold).
 4. **Read the skill SKILL.md files** — Open and read the SKILL.md for `ai-product`, `architect-review`, `concise-planning`, `documentation`.
 5. **No code changes expected** — This phase is documentation-only. Confirm you understand that no source code files will be modified.
@@ -288,7 +288,7 @@ Complete **all** of these before running the agent prompt:
 ## Agent Prompt
 
 ```
-You are a senior product manager and architect reviewing the Reel Logic AI spec.
+You are a senior product manager and architect reviewing the Trendoraa spec.
 
 TASK: Create two documents:
 
@@ -392,7 +392,7 @@ Complete **all** of these before running the agent prompt:
 ## Agent Prompt
 
 ```
-You are a senior database engineer building the database layer for Reel Logic AI.
+You are a senior database engineer building the database layer for Trendoraa.
 
 CONTEXT: Read the complete database schema from the SEABS spec §4. You are using:
 - Supabase (PostgreSQL 15+)
@@ -585,7 +585,7 @@ Complete **all** of these before running the agent prompt:
 ## Agent Prompt
 
 ```
-You are a senior backend engineer building the auth and core API layer for Reel Logic AI.
+You are a senior backend engineer building the auth and core API layer for Trendoraa.
 
 CONTEXT:
 - Using Supabase Auth (GoTrue) for authentication
@@ -791,7 +791,7 @@ Complete **all** of these before running the agent prompt:
 ## Agent Prompt
 
 ```
-You are a senior backend engineer building the Stripe billing integration for Reel Logic AI.
+You are a senior backend engineer building the Stripe billing integration for Trendoraa.
 
 CONTEXT:
 - Stripe Subscriptions with Checkout Sessions
@@ -985,7 +985,7 @@ Complete **all** of these before running the agent prompt:
 ## Agent Prompt
 
 ```
-You are a senior backend engineer building the social data ingestion pipeline for Reel Logic AI.
+You are a senior backend engineer building the social data ingestion pipeline for Trendoraa.
 
 CONTEXT:
 - Instagram Graph API v22.0+ & TikTok Display API v2 (spec §6)
@@ -1222,7 +1222,7 @@ Complete **all** of these before running the agent prompt:
 ## Agent Prompt
 
 ```
-You are a senior backend engineer building a PostgreSQL-based job queue for Reel Logic AI.
+You are a senior backend engineer building a PostgreSQL-based job queue for Trendoraa.
 
 CONTEXT:
 - NO Redis, NO Kafka, NO Bull/BullMQ — PostgreSQL only (spec §2.2 HARD CONSTRAINT)
@@ -1464,7 +1464,7 @@ Complete **all** of these before running the agent prompt:
 ## Agent Prompt
 
 ```
-You are a senior AI engineer building the LLM-powered scoring and strategy engine for Reel Logic AI.
+You are a senior AI engineer building the LLM-powered scoring and strategy engine for Trendoraa.
 
 CONTEXT:
 - OpenAI GPT-4o-mini (primary, cost-effective) and GPT-4o (premium tier)
@@ -1700,7 +1700,7 @@ Complete **all** of these before running the agent prompt:
 ## Agent Prompt
 
 ```
-You are a senior frontend engineer building the dashboard UI for Reel Logic AI.
+You are a senior frontend engineer building the dashboard UI for Trendoraa.
 
 CONTEXT:
 - Next.js 14+ App Router with React Server Components where possible
@@ -1942,7 +1942,7 @@ Complete **all** of these before running the agent prompt:
 ## Agent Prompt
 
 ```
-You are a senior DevOps engineer adding observability to Reel Logic AI.
+You are a senior DevOps engineer adding observability to Trendoraa.
 
 CONTEXT: Spec §13 defines the observability requirements.
 
@@ -2102,7 +2102,7 @@ Complete **all** of these before running the agent prompt:
 ## Agent Prompt
 
 ```
-You are a senior DevOps engineer deploying Reel Logic AI to production.
+You are a senior DevOps engineer deploying Trendoraa to production.
 
 CONTEXT: Spec §14 defines the deployment pipeline.
 
@@ -2306,7 +2306,7 @@ Phase 10 (Deploy)      → DEPLOYED ✅
 
 ---
 
-*This playbook is the execution companion to [reel-logic-ai-seabs-spec.md](./reel-logic-ai-seabs-spec.md). Follow it sequentially. No shortcuts.*
+*This playbook is the execution companion to [trendoraa-seabs-spec.md](./trendoraa-seabs-spec.md). Follow it sequentially. No shortcuts.*
 
 ---
 

@@ -19,8 +19,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "reel-logic-ai",
-  description: "AI-powered Instagram Reels analytics & strategy",
+  title: "Trendoraa",
+  description: "AI-powered short-form video strategy & analytics (Instagram & TikTok)",
 };
 
 export default function RootLayout({
