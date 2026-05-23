@@ -86,16 +86,22 @@ Short-form video creators and brands face three critical cross-platform problems
 
 ## 1.3 Solution & Staged Rollout
 
-Trendoraa solves this with a staged rollout sequence, building on a unified cross-platform data model from day one. **We complete the Instagram system first**, followed immediately by the **TikTok expansion phase**.
+Trendoraa solves this with a staged rollout sequence, building on a unified cross-platform database schema from day one. To accelerate product-market fit, **we complete and launch the Instagram MVP first**, and then initiate the **TikTok expansion phase** after acquiring paying users on the MVP.
 
-| Capability | How |
-|---|---|
-| **Cross-Platform Ingestion** | Pulls Instagram Reels via Meta Graph API v22.0+ and TikTok Videos via TikTok Display API v2+ on scheduled background routines. |
-| **9-Dimension AI Scoring** | LLM analyzes each Reel/Video across 9 key dimensions (hook quality, skip rate, CTA, retention, audio, trend, visual flow, caption, and timing). |
-| **Platform-Specific Insights** | Surfaces Instagram's `reels_skip_rate` (hook optimization) and TikTok's `tiktok_completion_rate` (retention optimization) — metrics **no competitor exposes together**. |
-| **Unified Strategy Engine** | Produces weekly/monthly cross-platform calendars with customized timing, formatting, and topic recommendations. |
-| **Trend & Experiment Alerts** | Identifies what is working *for this specific account* vs. generic industry noise. |
-| **Actionable Dashboard** | Dynamic dashboard badged by platform, showing composited quality scores and immediate next-best-actions. |
+### Rollout Stages:
+1. **MVP Launch Stage (Instagram-focused)**: Build and release a fully functional core product supporting Instagram Reels analytics, 9-dimension scoring, billing, and dashboards. Acquire and onboard paying users to validate the business.
+2. **Post-MVP Growth Stage (TikTok Integration)**: Post-launch, integrate the TikTok Display API v2 authorization flows, token lifetime management, sequential polling queues, and TikTok-specific UI metrics.
+
+| Capability | How | Rollout Phase |
+|---|---|---|
+| **Instagram Ingestion** | Pulls Instagram Reels via Meta Graph API v22.0+ on scheduled background routines. | MVP Launch |
+| **9-Dimension AI Scoring** | LLM analyzes each Reel/Video across 9 key dimensions (hook quality, skip rate, CTA, retention, audio, trend, visual flow, caption, and timing). | MVP Launch |
+| **Instagram Analytics Moat** | Surfaces Instagram's `reels_skip_rate` (hook optimization) as a primary hook metric. | MVP Launch |
+| **Unified Strategy Engine** | Produces weekly/monthly calendars with customized timing, formatting, and topic recommendations. | MVP Launch |
+| **Actionable Dashboard** | Dynamic dashboard showing composited quality scores and immediate next-best-actions. | MVP Launch |
+| **TikTok Ingestion & Sync** | Pulls TikTok Videos via TikTok Display API v2+ with daily 24-hr token rotation pipelines. | Post-MVP Expansion |
+| **Cross-Platform Analytics** | Displays TikTok's native `tiktok_completion_rate` alongside Instagram skip rate. | Post-MVP Expansion |
+
 
 ## 1.4 Target User
 
@@ -439,10 +445,10 @@ The system execution checklist contains 11 chronological phases:
 - **Goal**: Configure Stripe customer portal, hook handlers with idempotency key checks, subscription tiers, and circuit breaker.
 - **Success State**: `BILLING_READY`
 
-### Phase 5: Social Ingestion (`PHASE_INGESTION`)
+### Phase 5: Instagram Social Ingestion (`PHASE_INGESTION`)
 - **Order**: 5
 - **Role**: `INGESTION_ENGINEER`
-- **Goal**: Implement Instagram Graph API and TikTok Display API integrations, token refreshes, and manual cooldown-capped sync triggers.
+- **Goal**: Implement Instagram Graph API integrations, token lifecycle management/refreshes, manual sync triggers with 5-minute cooldown, and webhook signature verification. (TikTok Display API is deferred to Post-MVP).
 - **Success State**: `INGESTION_READY`
 
 ### Phase 6: Queue Engine & Workers (`PHASE_QUEUE`)
@@ -454,13 +460,13 @@ The system execution checklist contains 11 chronological phases:
 ### Phase 7: AI Engine (`PHASE_AI`)
 - **Order**: 7
 - **Role**: `AI_ENGINEER`
-- **Goal**: Structure 9-dimension scoring prompt templates, strategy generators, dynamic LLM usage caps, and fallback heuristic engine.
+- **Goal**: Structure 9-dimension scoring prompt templates, strategy generators, dynamic LLM usage caps, and fallback heuristic engine. (Pre-configures TikTok fallback bounds in database logic, leaving pipeline activation for Phase 11).
 - **Success State**: `AI_READY`
 
 ### Phase 8: Frontend (`PHASE_FRONTEND`)
 - **Order**: 8
 - **Role**: `FRONTEND_DESIGNER`
-- **Goal**: Develop high-fidelity cross-platform dashboards, premium badged displays, analytics charts, and Stripe checkouts.
+- **Goal**: Develop high-fidelity dashboards, "Strategic Skip Resistance" IG charts, content strategy calendars, and Stripe checkouts. (TikTok filters and dashboards are deferred).
 - **Success State**: `FRONTEND_READY`
 
 ### Phase 9: Observability (`PHASE_OBSERVABILITY`)
@@ -472,8 +478,15 @@ The system execution checklist contains 11 chronological phases:
 ### Phase 10: Deployment & Launch (`PHASE_DEPLOYMENT`)
 - **Order**: 10
 - **Role**: `DEPLOYMENT_MANAGER`
-- **Goal**: Orchestrate multi-environment pipelines, build bundles, verify environment keys, and execute cold boot health checks.
-- **Success State**: `DEPLOYED`
+- **Goal**: Orchestrate multi-environment pipelines, build production bundles, verify environment keys, and execute cold boot health checks.
+- **Success State**: `DEPLOYED` (Instagram MVP is Live!)
+
+### Phase 11: Post-MVP TikTok Integration (`PHASE_TIKTOK_EXPANSION`)
+- **Order**: 11
+- **Role**: `INGESTION_ENGINEER`
+- **Goal**: Build TikTok Display API v2 OAuth callback routing, daily 24-hr token rotation cron queues, sequential polling to prevent rate-limit blocks, normalize TikTok metrics (`tiktok_completion_rate`), and enable cross-platform dashboard filters.
+- **Success State**: `TIKTOK_INTEGRATED`
+
 
 ---
 

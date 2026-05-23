@@ -936,11 +936,12 @@ curl http://localhost:3000/api/billing/usage          # (with auth)
 
 ---
 
-# PHASE 5 — SOCIAL INGESTION PIPELINE (INSTAGRAM & TIKTOK)
+# PHASE 5 — SOCIAL INGESTION PIPELINE (INSTAGRAM MVP ONLY)
 
 ## Goal
 
-Build the complete cross-platform social data ingestion pipeline: OAuth2 authorization flows for both Instagram and TikTok (Display API v2), token lifecycle management with AES-256-GCM encryption, data sync, rate limit handling, and webhook subscriptions. After this phase, users can connect their Instagram and TikTok accounts, and their short-form video metrics (Instagram Reels and TikTok Videos) are automatically fetched, normalized, and stored.
+Build the Instagram social data ingestion pipeline for the MVP rollout: OAuth2 authorization flows for Instagram, long-lived token lifecycle management with AES-256-GCM encryption, database data sync, rate limit handling, and webhook subscriptions. (All TikTok-specific files, handlers, and endpoints are deferred to the Post-MVP Growth Stage in Phase 11).
+
 
 ## 🔧 Activate Skills
 
@@ -985,20 +986,18 @@ Complete **all** of these before running the agent prompt:
 ## Agent Prompt
 
 ```
-You are a senior backend engineer building the social data ingestion pipeline for Trendoraa.
+You are a senior backend engineer building the social data ingestion pipeline for Trendoraa's Instagram MVP.
 
 CONTEXT:
-- Instagram Graph API v22.0+ & TikTok Display API v2 (spec §6)
-- Unified cross-platform database schema: social_accounts, posts, post_scores (spec §4)
+- Instagram Graph API v22.0+ (spec §6)
+- Unified cross-platform database schema: social_accounts, posts, post_scores (spec §4) (The database schema retains the standardized cross-platform structures so that no migrations are needed later, but only Instagram accounts and posts are ingested in the MVP).
 - CRITICAL (Instagram): plays and impressions are DEPRECATED. Use "views" and "total_views" (spec §6.6)
 - NEW metrics (Instagram): reels_skip_rate, public_reposts (spec §6.6)
-- NEW metrics (TikTok): completion_rate, views, likes, comments, shares, saves
 - OAuth2 with access token encryption (AES-256-GCM) at rest
 - Instagram long-lived tokens (60 days) with token refresh at day 53.
-- TikTok access tokens (24 hours expiry) with daily refresh exchange using refresh_token.
-- TikTok strict rate limit handling: 10 calls per minute per user limit, utilizing sequential background queue workers.
 - 5-minute manual sync cooldown lock stored on social_accounts.last_synced_at to prevent rapid API requests.
 - Rate limits: check headers, implement exponential backoff on HTTP 429.
+- Note: TikTok Display API v2 integrations, 24-hr token rotation pipelines, sequential ingestion queue routines, and TikTok metrics are explicitly DEFERRED to the Post-MVP phase (Phase 11).
 
 PREREQUISITE: Phases 0-3 complete (project, database, auth).
 
@@ -1013,29 +1012,25 @@ TASK: Create these files:
    - NEVER log decrypted tokens
 
 2. FILE: lib/services/token-manager.ts
-   Token lifecycle management from spec §6.2 & §6.8.1:
+   Token lifecycle management from spec §6.2:
    - shouldRefresh(account: SocialAccount): boolean:
      - For Instagram: true if token expires within 7 days.
-     - For TikTok: true if token expires within 2 hours or is checked on daily cron.
-   - refreshToken(account: SocialAccount): Promise<string> — exchanges for a new token (Meta API or TikTok POST /oauth/token/ endpoint). Must use pessimistic transaction-level database locking (pg_try_advisory_xact_lock or row locking) on the token record during refresh to prevent concurrent workers from initiating redundant token invalidations.
+   - refreshToken(account: SocialAccount): Promise<string> — exchanges for a new token (Meta API). Must use pessimistic transaction-level database locking (pg_try_advisory_xact_lock or row locking) on the token record during refresh to prevent concurrent workers from initiating redundant token invalidations.
    - Enforce Optimistic Concurrency Control (OCC) during token updates using `token_version` column to prevent overlapping cron and manual updates.
    - handleInvalidToken(account: SocialAccount): Promise<void> — mark account as disconnected, notify user
-   - Refresh constraint: token must be >=24 hours old (Instagram) or expiring (TikTok) to refresh.
+   - Refresh constraint: token must be >=24 hours old (Instagram) to refresh.
 
 3. FILE: lib/ingestion/post-fetcher.ts
-   Unified API data fetcher from spec §6.3 & §6.8.2:
+   Instagram API data fetcher from spec §6.3:
    - fetchInstagramPosts(accessToken, platformUserId, limit?): Promise<RawInstagramPost[]>
-   - fetchTikTokVideos(accessToken, platformUserId, limit?): Promise<RawTikTokVideo[]>
-   - Sequential Polling: TikTok video list fetching is queued and processed sequentially to adhere to the strict 10 calls/minute/user TikTok limit.
    - Rate limit handling: check headers, exponential backoff on HTTP 429 (1min -> 2min -> 4min -> 8min -> 15min max).
 
 4. FILE: lib/ingestion/data-normalizer.ts
-   Transform raw social API data to the normalized `posts` database structure:
+   Transform raw Instagram API data to the normalized `posts` database structure:
    - normalizeInstagramPost(rawPost, rawInsights): Partial<Post>
-   - normalizeTikTokVideo(rawVideo): Partial<Post>
    - calculateEngagementRate from spec §6.5 (using views_count, NOT plays_count). Handles display_views = 0 case by returning NULL.
-   - calculateWeightedEngagement (includes public_reposts or TikTok shares/saves weights)
-   - Handle Nullable metrics: explicitly map missing or undefined skip_rate (Instagram) or completion_rate (TikTok) to null to prevent database schema errors, allowing fallback default mapping during scoring.
+   - calculateWeightedEngagement (includes public_reposts)
+   - Handle Nullable metrics: explicitly map missing or undefined skip_rate (Instagram) to null to prevent database schema errors, allowing fallback default mapping during scoring.
 
 5. FILE: lib/services/ingestion.service.ts
    Main ingestion orchestrator:
@@ -1047,16 +1042,13 @@ TASK: Create these files:
    - Track API calls in usage_tracking
 
 6. FILE: app/api/auth/social/[platform]/route.ts
-   - POST: Generate OAuth URL and redirect for platform ("instagram" or "tiktok").
+   - POST: Generate OAuth URL and redirect for platform ("instagram"). (TikTok redirects return PLATFORM_NOT_SUPPORTED).
    - Instagram Scopes: instagram_business_basic, instagram_manage_insights, pages_show_list, pages_read_engagement
-   - TikTok Scopes: video.list, user.info.basic, user.info.stats
 
 7. FILE: app/api/auth/social/[platform]/callback/route.ts
-   - GET: Handle OAuth callback for platform ("instagram" or "tiktok").
-   - Exchange code for tokens (Meta OAuth exchange or TikTok POST /oauth/token/ flow).
-   - Validate Account Type:
-     - For Instagram: Call Graph API `/me/accounts?fields=instagram_business_account,name`. If missing, abort registration and return `INSTAGRAM_NOT_BUSINESS_ACCOUNT`.
-     - For TikTok: Call `/user/info/` to verify profile.
+   - GET: Handle OAuth callback for platform ("instagram").
+   - Exchange code for tokens (Meta OAuth exchange).
+   - Validate Account Type: Call Graph API `/me/accounts?fields=instagram_business_account,name`. If missing, abort registration and return `INSTAGRAM_NOT_BUSINESS_ACCOUNT`.
    - Encrypt token with AES-256-GCM before storage.
    - Create or update social_accounts record using OCC.
    - Queue initial sync job.
@@ -1065,12 +1057,9 @@ TASK: Create these files:
    - GET: Hub verification (hub.mode, hub.verify_token, hub.challenge) using the `INSTAGRAM_VERIFY_TOKEN` env var.
    - POST: Webhook event handling with signature verification (HMAC-SHA256 using App Secret). Executes batch-splitting on the Meta webhook payload, immediately enqueuing individual `PROCESS_WEBHOOK` jobs to the queue, returning HTTP 200 OK within 3 seconds. For each job, derive a deterministic idempotency key to prevent duplicate processing via `ON CONFLICT (idempotency_key) DO NOTHING`.
 
-8a. FILE: app/api/webhooks/tiktok/route.ts
-    - POST: TikTok Webhook handler. Verifies webhook signatures using TikTok verification signatures (HMAC-SHA256). Immediately enqueues payload changes, returning HTTP 200 OK.
-
 9. FILE: app/api/accounts/route.ts
-   - GET: List user's connected social accounts (both Instagram and TikTok)
-   - POST: Connect new account (redirects to OAuth)
+   - GET: List user's connected social accounts
+   - POST: Connect new account (redirects to Instagram OAuth)
 
 10. FILE: app/api/accounts/[id]/route.ts
     - GET: Single social account details
@@ -1084,8 +1073,6 @@ TASK: Create these files:
 
 RATE LIMITING:
 - Instagram: 200 calls per hour per user.
-- TikTok: 10 calls per minute per user.
-- Sequential polling queue workers for all active TikTok updates.
 - Exponential backoff on HTTP 429: 1min → 2min → 4min → 8min → 15min (max).
 
 SECURITY:
@@ -1093,6 +1080,7 @@ SECURITY:
 - Webhook verification: HMAC-SHA256, constant-time comparison (crypto.timingSafeEqual).
 - Never log access tokens (encrypted or decrypted) or expose tokens in API responses.
 ```
+
 
 ## Output Artifacts
 
@@ -2284,25 +2272,101 @@ After all 11 phases pass, verify the complete system:
 - [ ] Database connection pool sized mathematically to prevent pool starvation under max serverless concurrency
 ```
 
+# PHASE 11 — TIKTOK POST-MVP EXPANSION
+
+## Goal
+
+Extend the Instagram MVP to support full cross-platform operations by integrating the **TikTok Display API v2**. Enable TikTok Creator and Business account authentication, secure daily access token rotation pipelines, sequential ingestion queue routines to prevent rate-limit blocks, normalize TikTok metrics (`tiktok_completion_rate`), and enable cross-platform dashboard filters.
+
+## 🚦 Steps Before Execution
+
+1. **Verify Instagram MVP Launch**: Ensure the Instagram-only product is launched, active, and has acquired paying subscribers.
+2. **TikTok Developer Portal Application**: 
+   - Go to [developers.tiktok.com](https://developers.tiktok.com) → My Apps → Create App.
+   - Add the **TikTok Display API** product to your application.
+   - Configure Redirect URIs in your TikTok App dashboard under **Display API**:
+     - Local: `http://localhost:3000/api/auth/social/tiktok/callback`
+     - Production: `https://yourdomain.com/api/auth/social/tiktok/callback`
+   - Register sandbox test accounts for ingestion testing.
+3. **Configure Environment Keys**:
+   - `TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET`
+   - `TIKTOK_REDIRECT_URI`
+
+## Agent Prompt
+
+```
+You are a senior backend engineer implementing the TikTok Post-MVP Expansion for Trendoraa.
+
+CONTEXT:
+- TikTok Display API v2 Integration (spec §6.8)
+- Unified cross-platform database schema (already configured in Phase 2)
+- TikTok access tokens (24-hour expiry) with daily refresh using refresh_token.
+- TikTok strict rate limit handling: 10 calls per minute per user limit, utilizing sequential background queue workers to prevent rate-limit blocks.
+- TikTok-specific metrics: completion_rate, views, likes, comments, shares, saves.
+
+TASK: Modify and create the following files to enable TikTok:
+
+1. MODIFY: lib/services/token-manager.ts
+   - Extend shouldRefresh() and refreshToken() to support TikTok accounts using TIKTOK_CLIENT_KEY and TIKTOK_CLIENT_SECRET to execute daily POST exchanges.
+
+2. MODIFY: lib/ingestion/post-fetcher.ts
+   - Implement fetchTikTokVideos(accessToken, platformUserId, limit?): Promise<RawTikTokVideo[]>
+   - Enforce sequential polling: Queue TikTok video list fetching sequentially to adhere to the strict 10 calls/minute/user limit.
+
+3. MODIFY: lib/ingestion/data-normalizer.ts
+   - Implement normalizeTikTokVideo(rawVideo): Partial<Post>
+   - Map tiktok_completion_rate and saves_count cleanly.
+
+4. MODIFY: app/api/auth/social/[platform]/route.ts
+   - Enable the "tiktok" OAuth redirect path.
+   - TikTok Scopes: video.list, user.info.basic, user.info.stats
+
+5. MODIFY: app/api/auth/social/[platform]/callback/route.ts
+   - Enable the "tiktok" callback handler.
+   - Exchange code for tokens (TikTok POST /oauth/token/ flow).
+   - Call /user/info/ to verify profile.
+
+6. NEW: app/api/webhooks/tiktok/route.ts
+   - Implement the TikTok webhook receiver with HMAC-SHA256 signature verification.
+
+7. MODIFY: app/api/accounts/route.ts
+   - Ensure connected TikTok accounts are included in list responses.
+
+8. MODIFY: app/components/dashboard/post-card.tsx & dashboard/overview.tsx
+   - Add TikTok platform badges and metrics display ("Strategic Video Completion Retention Index").
+   - Implement frontend filter controls to toggle between Instagram, TikTok, and unified views.
+```
+
+## Gate Criteria
+
+- [ ] TikTok OAuth flow completes successfully in sandbox/test mode
+- [ ] TikTok Video list ingestion fetches and normalizes views, completion rate, likes, comments, shares, and saves
+- [ ] Daily token manager refresh cron successfully executes dynamic access token exchanges sequentially
+- [ ] Rate-limit fallback triggers gracefully (HTTP 429 / Code 10007) and schedules exponential backoff locks
+- [ ] Dashboards show TikTok and Instagram posts side-by-side with appropriate platform indicators
+- [ ] Codebase compiles cleanly (`npm run typecheck`) and passes all linter checks (`npm run lint`) with 0 errors
+
 ---
 
 # SYSTEM STATE TRANSITION SUMMARY
 
 ```
-Phase 0 (Scaffold)     → INIT
-Phase 1 (PRD/Arch)     → ARCH_LOCKED
-Phase 2 (Database)     → DATABASE_READY
-Phase 3 (Auth/Backend) → BACKEND_READY
-Phase 4 (Billing)      → BILLING_READY
-Phase 5 (Instagram)    → INGESTION_READY
-Phase 6 (Queue)        → QUEUE_READY
-Phase 7 (AI Engine)    → AI_READY
-Phase 8 (Frontend)     → FRONTEND_READY
-Phase 9 (Observability)→ OBSERVABILITY_READY
-Phase 10 (Deploy)      → DEPLOYED ✅
+Phase 0 (Scaffold)      → INIT
+Phase 1 (PRD/Arch)      → ARCH_LOCKED
+Phase 2 (Database)      → DATABASE_READY
+Phase 3 (Auth/Backend)  → BACKEND_READY
+Phase 4 (Billing)       → BILLING_READY
+Phase 5 (Instagram MVP) → INGESTION_READY
+Phase 6 (Queue)         → QUEUE_READY
+Phase 7 (AI Engine)     → AI_READY
+Phase 8 (Frontend)      → FRONTEND_READY
+Phase 9 (Observability) → OBSERVABILITY_READY
+Phase 10 (Deploy)       → DEPLOYED ✅ (Instagram MVP Live!)
+Phase 11 (TikTok Post)  → TIKTOK_INTEGRATED 🚀
 ```
 
 > **Rule:** If any phase fails gate criteria after 3 repair attempts → STOP → troubleshoot manually → DO NOT skip to next phase.
+
 
 ---
 

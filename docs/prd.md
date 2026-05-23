@@ -10,7 +10,11 @@
 
 Trendoraa is an AI-powered cross-platform strategy platform that automates the analysis of Instagram Reels and TikTok Videos, scores them across key visual and structural dimensions, and outputs personalized content calendars. By shifting the creator workflow from intuition-driven guessing to highly tailored, data-backed execution, the platform establishes a high-margin business model with an exceptionally low operational footprint.
 
-This document outlines the canonical product requirements for the initial Instagram rollout, followed by the planned TikTok expansion phase.
+### 📅 Staged Rollout Timeline
+To optimize development velocity and establish immediate product-market validation, Trendoraa follows a strict two-stage launch strategy:
+1. **Phase 1: Instagram MVP Launch (Initial Rollout)**: Launch exclusively with Instagram Professional account connection, Reel ingestion, 9-dimension hook scoring, AI strategies, and Stripe billing. The goal is to rapidly deploy a high-value core product, validate unit economics, and acquire the first paying subscribers.
+2. **Phase 2: TikTok Post-MVP Expansion**: Once the Instagram MVP is launched and has acquired active paying users, the platform will implement the TikTok Display API integration, including 24-hour token rotation pipelines, sequential ingestion queue routines, TikTok-specific metrics, and cross-platform dashboard filters.
+
 
 ### 1.1 Core Problem Statements (Spec §1.2)
 
