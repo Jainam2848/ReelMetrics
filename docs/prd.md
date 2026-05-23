@@ -28,9 +28,9 @@ The platform targets three high-value customer segments, focusing on users who r
 
 | Segment | Description | Target Willingness to Pay |
 |:---|:---|:---|
-| **Primary** | **Creators & Influencers:** Independent creators (10K–500K followers) actively posting Reels and TikToks who need fast, data-backed cross-platform advice to sustain organic traffic. | $39.00 – $99.00 / month |
-| **Secondary** | **Social Media Managers (SMMs):** Professionals handling 3 to 10 distinct client brand accounts across multiple platforms who need automated, white-label PDF reporting and multi-account strategy dashboards. | $99.00 – $299.00 / month |
-| **Tertiary** | **Direct-to-Consumer (D2C) Brands:** Growing e-commerce brands utilizing Reels and TikToks as core acquisition channels to scale conversion rates, direct traffic, and product sales. | $149.00 – $499.00 / month |
+| **Primary** | **Creators & Influencers:** Independent creators (10K–500K followers) actively posting Reels and TikToks who need fast, data-backed cross-platform advice to sustain organic traffic. | $39.00 – $89.00 / month |
+| **Secondary** | **Social Media Managers (SMMs):** Professionals handling 3 to 10 distinct client brand accounts across multiple platforms who need automated, white-label PDF reporting and multi-account strategy dashboards. | $89.00 – $249.00 / month |
+| **Tertiary** | **Direct-to-Consumer (D2C) Brands:** Growing e-commerce brands utilizing Reels and TikToks as core acquisition channels to scale conversion rates, direct traffic, and product sales. | $249.00 – $499.00 / month |
 
 ---
 
@@ -40,11 +40,11 @@ The platform operates on a tiered monthly subscription model structured around d
 
 | Feature Area | Free ($0/mo) | Creator ($39/mo) | Pro ($89/mo) | Agency ($249/mo) |
 |:---|:---|:---|:---|:---|
-| **Connected Accounts** | Max 1 (IG or TikTok) | Max 2 (e.g. 1 IG + 1 TikTok) | Max 6 (e.g. 3 IG + 3 TikTok) | Max 20 (up to 10 clients) |
+| **Connected Accounts** | Max 1 (IG or TikTok) | Max 2 (e.g. 1 IG + 1 TikTok) | Max 5 (e.g. 3 IG + 2 TikTok) | Max 20 (up to 10 clients) |
 | **Ingested History** | Last 10 posts | Unlimited history | Unlimited history | Unlimited history |
 | **Data Sync Frequency** | Manual trigger | Hourly background sync | Hourly background sync | Priority background sync |
-| **Monthly AI Analysis Limit** | 0 posts | **50 posts / month** | **200 posts / month** | **800 posts / month** |
-| **Monthly LLM Budget Cap** | $0.00 | **$8.00** | **$25.00** | **$75.00** |
+| **Monthly AI Analysis Limit** | 10 posts | **50 posts / month** | **200 posts / month** | **1000 posts / month** |
+| **Monthly LLM Budget Cap** | $0.50 | **$8.00** | **$25.00** | **$75.00** |
 | **AI Scoring Engine** | None | 9-Dimension AI (GPT-4o-mini) | 9-Dimension AI (GPT-4o-mini) | Priority 9-Dimension AI (GPT-4o) |
 | **Content Strategy** | Basic metrics | Weekly strategy generation | Advanced strategy + calendar | Custom white-label strategy briefs |
 | **Trend Detection** | None | None | 3-Account competitive trends | 10-Account cross-brand trends |

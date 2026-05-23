@@ -24,43 +24,43 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     ]
   },
   creator: {
-    maxAccounts: 1,
-    maxReelsAnalyzed: 100,
+    maxAccounts: 2,
+    maxReelsAnalyzed: 50,
     maxStrategies: 4,
     maxAiCalls: 150,
     aiModel: "gpt-4o-mini",
     features: [
       "Creator Tier Analytics",
-      "1 Instagram Account Connected",
-      "Up to 100 Reels Scored per billing cycle",
+      "Up to 1 Instagram Accounts Connected",
+      "Up to 50 Reels Scored per billing cycle",
       "4 Weekly Strategies Generated",
       "150 AI calls monthly limit"
     ]
   },
   pro: {
-    maxAccounts: 3,
-    maxReelsAnalyzed: 500,
+    maxAccounts: 5,
+    maxReelsAnalyzed: 200,
     maxStrategies: 12,
     maxAiCalls: 600,
     aiModel: "gpt-4o",
     features: [
       "Professional Tier Analytics",
-      "Up to 3 Instagram Accounts Connected",
-      "Up to 500 Reels Scored per billing cycle",
+      "Up to 5 Instagram Accounts Connected",
+      "Up to 200 Reels Scored per billing cycle",
       "12 Custom Strategies Generated",
       "600 AI calls monthly limit (Advanced Models)"
     ]
   },
   agency: {
-    maxAccounts: 10,
-    maxReelsAnalyzed: 2000,
+    maxAccounts: 20,
+    maxReelsAnalyzed: 1000,
     maxStrategies: 40,
     maxAiCalls: 2500,
     aiModel: "gpt-4o",
     features: [
       "Enterprise Tier Analytics",
-      "Up to 10 Instagram Accounts Connected",
-      "Up to 2000 Reels Scored per billing cycle",
+      "Up to 20 Instagram Accounts Connected",
+      "Up to 1000 Reels Scored per billing cycle",
       "40 Client Strategies Generated",
       "2500 AI calls monthly limit (Premium Priority)"
     ]

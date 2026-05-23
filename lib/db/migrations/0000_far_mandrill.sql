@@ -367,7 +367,7 @@ CREATE POLICY "Allow users to view own audit logs" ON "audit_log" FOR SELECT USI
 INSERT INTO "plans" ("id", "name", "price_monthly", "max_accounts", "max_reels", "ai_tier", "features")
 VALUES
   ('free', 'Free', 0, 1, 10, 'basic', '{"reels_skip_rate": false, "competitor_analysis": false, "weekly_strategies": false}'::jsonb),
-  ('creator', 'Creator', 2900, 2, 50, 'standard', '{"reels_skip_rate": true, "competitor_analysis": false, "weekly_strategies": true}'::jsonb),
-  ('pro', 'Pro', 7900, 5, 200, 'advanced', '{"reels_skip_rate": true, "competitor_analysis": true, "weekly_strategies": true}'::jsonb),
-  ('agency', 'Agency', 19900, 20, 1000, 'custom', '{"reels_skip_rate": true, "competitor_analysis": true, "weekly_strategies": true}'::jsonb)
+  ('creator', 'Creator', 3900, 2, 50, 'standard', '{"reels_skip_rate": true, "competitor_analysis": false, "weekly_strategies": true}'::jsonb),
+  ('pro', 'Pro', 8900, 5, 200, 'advanced', '{"reels_skip_rate": true, "competitor_analysis": true, "weekly_strategies": true}'::jsonb),
+  ('agency', 'Agency', 24900, 20, 1000, 'custom', '{"reels_skip_rate": true, "competitor_analysis": true, "weekly_strategies": true}'::jsonb)
 ON CONFLICT ("id") DO NOTHING;

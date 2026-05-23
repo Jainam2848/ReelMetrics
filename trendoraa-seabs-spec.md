@@ -3425,9 +3425,9 @@ A migration test (`tests/security-headers.test.ts`) MUST assert every header abo
 │  └── Agency:  $40.00/user/mo (2500 AI calls + GPT-4o)   │
 │                                                         │
 │  Gross Margin Targets:                                   │
-│  ├── Creator ($29):  92% margin  ✅                      │
-│  ├── Pro ($79):      85% margin  ✅                      │
-│  └── Agency ($199):  80% margin  ✅                      │
+│  ├── Creator ($39):  94% margin  ✅                      │
+│  ├── Pro ($89):      86% margin  ✅                      │
+│  └── Agency ($249):  84% margin  ✅                      │
 │                                                         │
 └─────────────────────────────────────────────────────────┘
 ```

@@ -443,10 +443,10 @@ MIGRATION WORKFLOW:
    - RLS policies using auth.uid() for user-facing tables
    - Seed data for the plans table (profitable cross-platform tiers):
      INSERT INTO plans VALUES
-     ('free', 'Free', 0, 1, 0, 'gpt-4o-mini', '{"trendDetection":false,"contentCalendar":false}'),
+     ('free', 'Free', 0, 1, 10, 'gpt-4o-mini', '{"trendDetection":false,"contentCalendar":false}'),
      ('creator', 'Creator', 39, 2, 50, 'gpt-4o-mini', '{"trendDetection":false,"contentCalendar":true}'),
-     ('pro', 'Pro', 89, 6, 200, 'gpt-4o', '{"trendDetection":true,"contentCalendar":true}'),
-     ('agency', 'Agency', 249, 20, 800, 'gpt-4o', '{"trendDetection":true,"contentCalendar":true,"teamAccess":true,"whiteLabel":true,"priorityAi":true}');
+     ('pro', 'Pro', 89, 5, 200, 'gpt-4o', '{"trendDetection":true,"contentCalendar":true}'),
+     ('agency', 'Agency', 249, 20, 1000, 'gpt-4o', '{"trendDetection":true,"contentCalendar":true,"teamAccess":true,"whiteLabel":true,"priorityAi":true}');
 
 3. FILE: lib/db/seed.ts
    A TypeScript seed script that inserts test data:
