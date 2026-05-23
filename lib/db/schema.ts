@@ -170,7 +170,7 @@ export const jobQueue = pgTable('job_queue', {
   failedAt: timestamp('failed_at', { withTimezone: true }),
   errorMessage: text('error_message'),
   deadLetter: boolean('dead_letter').notNull().default(false),
-  idempotencyKey: text('idempotency_key'),
+  idempotencyKey: text('idempotency_key').unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

@@ -6,7 +6,11 @@ import { eq } from "drizzle-orm";
 import { PlanId } from "./plans";
 
 // Production Sentinel Check (§5.5 & §8.5): Enforce live key prefix validation in production.
-if (env.NODE_ENV === "production" && !env.STRIPE_SECRET_KEY.startsWith("sk_live_")) {
+if (
+  env.NODE_ENV === "production" &&
+  !env.STRIPE_SECRET_KEY.startsWith("sk_live_") &&
+  process.env.NEXT_PHASE !== "phase-production-build"
+) {
   throw new Error("[stripe] Boot Blocked: STRIPE_SECRET_KEY must be a live key (sk_live_...) in production environment.");
 }
 

@@ -33,6 +33,14 @@ export const ERROR_CODES = {
   // Abuse Safeguards (§12.4)
   ACCOUNT_ALREADY_LINKED: { status: 409, message: "This Instagram Business Account is already linked to another user profile" },
 
+  // Sync
+  SYNC_COOLDOWN_ACTIVE: { status: 429, message: "Sync cooldown active — please wait 5 minutes between syncs" },
+  STALE_TOKEN_VERSION: { status: 409, message: "Token was updated by another process — please retry" },
+
+  // Platform
+  PLATFORM_NOT_SUPPORTED: { status: 400, message: "Platform not supported in this version" },
+  INSTAGRAM_NOT_BUSINESS_ACCOUNT: { status: 400, message: "Only Instagram Business or Creator accounts are supported" },
+
   // System
   INTERNAL_ERROR: { status: 500, message: "Internal server error" },
   SERVICE_UNAVAILABLE: { status: 503, message: "Service temporarily unavailable" },
