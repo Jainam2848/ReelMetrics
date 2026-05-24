@@ -1,6 +1,6 @@
 # Stripe Billing & Webhooks Integration Guide
 
-This guide provides instructions for configuring, developing, testing, and deploying the Stripe billing integration for **ReelMetrics (Reel Logic AI)**. It covers everything from local environment setup to production transitioning and webhook architecture.
+This guide provides instructions for configuring, developing, testing, and deploying the Stripe billing integration for **Trendoraa**. It covers everything from local environment setup to production transitioning and webhook architecture.
 
 ---
 
@@ -80,7 +80,7 @@ To receive webhooks on your local computer, you need the Stripe CLI.
 
 ## 3. Webhook Architecture & Processing Details
 
-ReelMetrics has a resilient webhook processing pipeline under [app/api/webhooks/stripe/route.ts](file:///d:/Desktop/reel-logic-ai/app/api/webhooks/stripe/route.ts).
+Trendoraa has a resilient webhook processing pipeline under [app/api/webhooks/stripe/route.ts](file:///d:/Desktop/reel-logic-ai/app/api/webhooks/stripe/route.ts).
 
 ### Size Limits & Verification
 * **Payload Bound Protection**: The webhook limits requests to **1 MiB** max size to prevent memory attacks.
@@ -128,7 +128,7 @@ If a webhook fails during execution due to transient network issues or database 
 
 ## 5. Transitioning to Live Mode (Production)
 
-Follow these steps when ready to deploy ReelMetrics to production.
+Follow these steps when ready to deploy Trendoraa to production.
 
 ### Step A: Production Sentinel Check
 The codebase includes a security sentinel check in [stripe-helpers.ts](file:///d:/Desktop/reel-logic-ai/lib/billing/stripe-helpers.ts):

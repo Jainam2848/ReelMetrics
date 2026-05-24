@@ -167,40 +167,37 @@ Subscriptions are strictly cost-optimized and cap-monitored to guarantee profit 
 
 ## 2.1 High-Level Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        TRENDORAA                            │
-│                                                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
-│  │   Frontend    │  │   Backend    │  │   Worker System      │  │
-│  │   (Next.js)   │  │   (Next.js   │  │   (Queue Workers)    │  │
-│  │              │  │    API Routes)│  │                      │  │
-│  │  • Dashboard  │  │  • REST API  │  │  • Ingestion Worker  │  │
-│  │  • Strategy   │  │  • Webhooks  │  │  • AI Scoring Worker │  │
-│  │  • Settings   │  │  • Auth      │  │  • Strategy Worker   │  │
-│  │  • Billing    │  │  • RBAC      │  │  • Billing Worker    │  │
-│  └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘  │
-│         │                 │                      │              │
-│         ▼                 ▼                      ▼              │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                    SUPABASE LAYER                        │   │
-│  │                                                         │   │
-│  │  ┌─────────────┐  ┌────────────┐  ┌─────────────────┐  │   │
-│  │  │ PostgreSQL  │  │   Auth     │  │   Storage       │  │   │
-│  │  │ + RLS       │  │   (GoTrue) │  │   (S3-compat)   │  │   │
-│  │  │ + pgcrypto  │  │            │  │                 │  │   │
-│  │  └─────────────┘  └────────────┘  └─────────────────┘  │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                  EXTERNAL SERVICES                       │   │
-│  │                                                         │   │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐ │   │
-│  │  │Instagram │  │  OpenAI  │  │  Stripe  │  │Resend  │ │   │
-│  │  │Graph API │  │  GPT-4o  │  │  Billing │  │ Email  │ │   │
-│  │  └──────────┘  └──────────┘  └──────────┘  └────────┘ │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+C4Container
+    title Container Diagram for Trendoraa
+
+    Person(creator, "Content Creator", "Uploads short-form videos and monitors strategy")
+    
+    System_Boundary(trendoraa, "Trendoraa System") {
+        Container(frontend, "Frontend SPA", "React / Next.js / Tailwind CSS", "Provides user dashboard, strategy view, calendar, and billing portal")
+        Container(api, "Serverless API Gateways", "Next.js API Routes", "Handles OAuth flow, webhooks, manual sync, and triggers background jobs")
+        Container(queueWorkers, "Background Worker Cluster", "Next.js Serverless + PG Queue", "Executes data ingestion, AI video scoring, and content calendar strategies asynchronously")
+        ContainerDb(database, "Data Warehouse Layer", "Supabase / PostgreSQL 15+", "Stores unified posts, encrypted social accounts, metrics history, strategy logs, and billing metadata")
+    }
+
+    System_Ext(metaGraph, "Meta Graph API (Instagram)", "Provides Reels insights, reels_skip_rate, and Grid reposts")
+    System_Ext(tiktokApi, "TikTok Display API", "Provides video metrics, tiktok_completion_rate, and saves")
+    System_Ext(aiProviders, "LLM Routing Engine", "OpenAI / Gemini Flash / DeepSeek-V3", "Analyzes scripts, generates 9-dimension content scores, and compiles strategies")
+    System_Ext(stripe, "Stripe Checkout & Billing", "Handles credit card processing, subscription webhooks, and customer portals")
+    System_Ext(resend, "Resend Email Gateway", "Sends transactional sign-up verification, invoice alerts, and limit warnings")
+
+    Rel(creator, frontend, "Interacts with", "HTTPS")
+    Rel(frontend, api, "Makes Server Action & REST calls to", "JSON/HTTPS")
+    Rel(api, database, "Reads from and writes to", "SQL / Drizzle")
+    Rel(queueWorkers, database, "Pulls pending jobs (SKIP LOCKED) and saves output", "SQL / Drizzle")
+    
+    Rel(api, stripe, "Redirects for upgrades", "HTTPS / OAuth2")
+    Rel(stripe, api, "Dispatches payment status", "Webhooks / HTTPS")
+
+    Rel(queueWorkers, metaGraph, "Ingests Reels metrics", "REST / JSON")
+    Rel(queueWorkers, tiktokApi, "Ingests TikTok metrics", "REST / JSON")
+    Rel(queueWorkers, aiProviders, "Submits post scripts & context for strategy", "REST / JSON")
+    Rel(queueWorkers, resend, "Enqueues outbound transactional mails", "REST / JSON")
 ```
 
 ## 2.2 Technology Stack (Locked — No Substitutions)
@@ -317,55 +314,21 @@ Where:
 
 ## 3.1 System State Machine
 
-```
-                    ┌─────────────────┐
-                    │      INIT       │
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │  PRD_VALIDATED   │ ← Product requirements locked
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │ ARCH_LOCKED     │ ← Architecture decisions frozen
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │ DATABASE_READY  │ ← Schema migrated, RLS active
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │ BACKEND_READY   │ ← APIs operational, auth working
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │ BILLING_READY   │ ← Stripe integrated, plans active
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │ INGESTION_READY │ ← Instagram data pipeline working
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │  QUEUE_READY    │ ← Workers running, DLQ active
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │   AI_READY      │ ← LLM scoring + strategy working
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │ FRONTEND_READY  │ ← UI complete, UX validated
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │ OBSERVABILITY   │ ← Logging, alerting, health checks
-                    │    _READY       │
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │   DEPLOYED      │ ← Production live
-                    └─────────────────┘
+```mermaid
+stateDiagram-v2
+    [*] --> INIT : Start Project
+    INIT --> PRD_VALIDATED : Product requirements locked
+    PRD_VALIDATED --> ARCH_LOCKED : Architecture decisions frozen
+    ARCH_LOCKED --> DATABASE_READY : Schema migrated, RLS active
+    DATABASE_READY --> BACKEND_READY : APIs operational, auth working
+    BACKEND_READY --> BILLING_READY : Stripe integrated, plans active
+    BILLING_READY --> INGESTION_READY : Instagram data pipeline working
+    INGESTION_READY --> QUEUE_READY : Workers running, DLQ active
+    QUEUE_READY --> AI_READY : LLM scoring + strategy working
+    AI_READY --> FRONTEND_READY : UI complete, UX validated
+    FRONTEND_READY --> OBSERVABILITY_READY : Logging, alerting, health checks
+    OBSERVABILITY_READY --> DEPLOYED : Production live
+    DEPLOYED --> [*]
 ```
 
 ## 3.2 Phase Schema Definition
@@ -1028,54 +991,32 @@ Any import of `lib/env.ts` will automatically trigger schema validation. The app
 
 ## 6.1 OAuth2 Flow
 
-```
-User clicks "Connect Instagram"
-        │
-        ▼
-┌─────────────────────────────┐
-│ 1. Redirect to Instagram    │
-│    OAuth authorization URL  │
-│    with scopes:             │
-│    - instagram_business_basic│     ← replaces instagram_basic
-│    - instagram_manage_insights│
-│    - pages_show_list        │
-│    - pages_read_engagement  │
-└────────────┬────────────────┘
-             │
-        User authorizes
-             │
-             ▼
-┌─────────────────────────────┐
-│ 2. Callback receives code   │
-│    Exchange for short-lived  │
-│    token (1 hour)           │
-└────────────┬────────────────┘
-             │
-             ▼
-┌─────────────────────────────┐
-│ 3. Exchange for long-lived   │
-│    token (60 days)          │
-└────────────┬────────────────┘
-             │
-             ▼
-┌─────────────────────────────┐
-│ 3.5. Verify Business/Creator │
-│      Call /me/accounts      │
-│      Check instagram_business│
-│      Abort & revoke if personal│
-└────────────┬────────────────┘
-             │
-             ▼
-┌─────────────────────────────┐
-│ 3.8. Encrypt with AES-256-GCM│
-│      Store in DB            │
-└────────────┬────────────────┘
-             │
-             ▼
-┌─────────────────────────────┐
-│ 4. Queue initial data sync   │
-│    Fetch all Reels + metrics │
-└─────────────────────────────┘
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Creator
+    participant FE as Frontend Dashboard
+    participant BE as Next.js API Callback
+    participant FB as Facebook Graph API
+    participant DB as Supabase DB
+
+    User->>FE: Clicks "Connect Instagram"
+    FE->>User: Redirects to Instagram OAuth Authorization URL
+    User->>FB: Authorizes Scopes (instagram_business_basic, pages_show_list, etc.)
+    FB->>BE: Redirects to callback with auth code
+    BE->>FB: Exchange code for short-lived token (1 hour)
+    FB->>BE: Returns short-lived token
+    BE->>FB: Exchange short-lived token for long-lived token (60 days)
+    FB->>BE: Returns long-lived token
+    BE->>FB: Query Business Accounts (/me/accounts)
+    alt instagram_business_account is missing (Personal profile)
+        BE->>User: Redirects with error: INSTAGRAM_NOT_BUSINESS_ACCOUNT (Revokes token)
+    else Account is valid Business/Creator
+        BE->>BE: Encrypt long-lived token with AES-256-GCM
+        BE->>DB: Stores connection in social_accounts table
+        BE->>DB: Queue initial scheduled data sync (SCORE_POST job)
+        FE->>User: Redirects with connection success banner
+    end
 ```
 
 ### 6.1.1 Instagram Business/Creator Account Validation
@@ -1140,68 +1081,20 @@ The token refresh cron job runs daily via a secure, time-bounded serverless endp
 
 ## 6.3 Data Sync Pipeline
 
-```
-                    ┌──────────────┐
-                    │ Sync Trigger  │
-                    │              │
-                    │ • Scheduled  │ ← Every 6 hours
-                    │ • Manual     │ ← User clicks "Sync"
-                    │ • Webhook    │ ← Instagram push event
-                    └──────┬───────┘
-                           │
-                    ┌──────▼───────┐
-                    │ Rate Limit   │
-                    │ Check        │
-                    │              │
-                    │ 200 calls/hr │
-                    │ per user     │
-                    └──────┬───────┘
-                           │
-                    ┌──────▼───────────────┐
-                    │ Fetch Reels           │
-                    │                       │
-                    │ GET /{user-id}/media   │
-                    │ ?fields=id,caption,    │
-                    │  media_type,timestamp, │
-                    │  permalink,media_url,  │
-                    │  like_count,           │
-                    │  comments_count        │
-                    │                       │
-                    │ Filter: media_type     │
-                    │         = VIDEO        │
-                    └──────┬───────────────┘
-                           │
-                    ┌──────▼───────────────┐
-                    │ Fetch Insights        │
-                    │ (per Reel)            │
-                    │                       │
-                    │ GET /{media-id}/       │
-                    │  insights?metric=      │
-                    │  views,reach,          │  ← views replaces plays (deprecated Apr 2025)
-                    │  total_views,          │  ← aggregated IG + FB crosspost views
-                    │  saved,shares,         │
-                    │  total_interactions,   │
-                    │  reels_skip_rate       │  ← NEW: % viewers who scrolled past in <3s
-                    └──────┬───────────────┘
-                           │
-                    ┌──────▼───────────────┐
-                    │ Normalize & Upsert    │
-                    │                       │
-                    │ • Deduplicate by      │
-                    │   ig_media_id         │
-                    │ • Calculate           │
-                    │   engagement_rate     │
-                    │ • Update if exists    │
-                    │ • Insert if new       │
-                    └──────┬───────────────┘
-                           │
-                    ┌──────▼───────────────┐
-                    │ Queue Scoring Jobs    │
-                    │                       │
-                    │ For each new/updated  │
-                    │ Reel → enqueue        │
-                    │ AI_SCORE job          │
-                    └──────────────────────┘
+```mermaid
+graph TD
+    Trigger([Sync Trigger]) -->|Scheduled / Manual / Webhook| LimitCheck[Rate Limit Check: 200 calls/hr]
+    LimitCheck -->|Under limit| FetchReels[Fetch Reels: GET /{user-id}/media]
+    FetchReels -->|Filter: VIDEO| IngestInsights[Fetch Insights per Reel: GET /{media-id}/insights]
+    IngestInsights -->|reels_skip_rate, reach, shares, saves| Normalize[Normalize & Upsert into posts table]
+    Normalize -->|Deduplicate by ig_media_id| QueueScoring[Queue Scoring Jobs in PG Queue]
+    QueueScoring -->|AI_SCORE task enqueued| End([End Pipeline])
+
+    classDef default fill:#1E1E2E,stroke:#89B4FA,stroke-width:1.5px,color:#CDD6F4;
+    classDef trigger fill:#A6E3A1,stroke:#A6E3A1,stroke-width:2px,color:#11111B;
+    classDef endNode fill:#F38BA8,stroke:#F38BA8,stroke-width:2px,color:#11111B;
+    class Trigger trigger;
+    class End endNode;
 ```
 
 ### Scheduled Ingestion Cron Endpoint (`POST /api/cron/ingest`)

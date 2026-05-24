@@ -10,40 +10,37 @@
 
 The system is designed around a unified Next.js monorepo architecture leveraging Supabase for serverless infrastructure services, combining database, authentication, and file storage into a single operational tier. The application decouples operational boundaries at the service layer, keeping execution units isolated and clean.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        TRENDORAA                            │
-│                                                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
-│  │   Frontend    │  │   Backend    │  │   Worker System      │  │
-│  │   (Next.js)   │  │   (Next.js   │  │   (Queue Workers)    │  │
-│  │              │  │    API Routes)│  │                      │  │
-│  │  • Dashboard  │  │  • REST API  │  │  • Ingestion Worker  │  │
-│  │  • Strategy   │  │  • Webhooks  │  │  • AI Scoring Worker │  │
-│  │  • Settings   │  │  • Auth      │  │  • Strategy Worker   │  │
-│  │  • Billing    │  │  • RBAC      │  │  • Billing Worker    │  │
-│  └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘  │
-│         │                 │                      │              │
-│         ▼                 ▼                      ▼              │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                    SUPABASE LAYER                        │   │
-│  │                                                         │   │
-│  │  ┌─────────────┐  ┌────────────┐  ┌─────────────────┐  │   │
-│  │  │ PostgreSQL  │  │   Auth     │  │   Storage       │  │   │
-│  │  │ + RLS       │  │   (GoTrue) │  │   (S3-compat)   │  │   │
-│  │  │ + pgcrypto  │  │            │  │                 │  │   │
-│  │  └─────────────┘  └────────────┘  └─────────────────┘  │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                  EXTERNAL SERVICES                       │   │
-│  │                                                         │   │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐ │   │
-│  │  │Instagram │  │  TikTok  │  │  OpenAI  │  │  Stripe  │ │   │
-│  │  │Graph API │  │DisplayAPI│  │  GPT-4o  │  │  Billing │ │   │
-│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘ │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+C4Container
+    title Container Diagram for Trendoraa
+
+    Person(creator, "Content Creator", "Uploads short-form videos and monitors strategy")
+    
+    System_Boundary(trendoraa, "Trendoraa System") {
+        Container(frontend, "Frontend SPA", "React / Next.js / Tailwind CSS", "Provides user dashboard, strategy view, calendar, and billing portal")
+        Container(api, "Serverless API Gateways", "Next.js API Routes", "Handles OAuth flow, webhooks, manual sync, and triggers background jobs")
+        Container(queueWorkers, "Background Worker Cluster", "Next.js Serverless + PG Queue", "Executes data ingestion, AI video scoring, and content calendar strategies asynchronously")
+        ContainerDb(database, "Data Warehouse Layer", "Supabase / PostgreSQL 15+", "Stores unified posts, encrypted social accounts, metrics history, strategy logs, and billing metadata")
+    }
+
+    System_Ext(metaGraph, "Meta Graph API (Instagram)", "Provides Reels insights, reels_skip_rate, and Grid reposts")
+    System_Ext(tiktokApi, "TikTok Display API", "Provides video metrics, tiktok_completion_rate, and saves")
+    System_Ext(aiProviders, "LLM Routing Engine", "OpenAI / Gemini Flash / DeepSeek-V3", "Analyzes scripts, generates 9-dimension content scores, and compiles strategies")
+    System_Ext(stripe, "Stripe Checkout & Billing", "Handles credit card processing, subscription webhooks, and customer portals")
+    System_Ext(resend, "Resend Email Gateway", "Sends transactional sign-up verification, invoice alerts, and limit warnings")
+
+    Rel(creator, frontend, "Interacts with", "HTTPS")
+    Rel(frontend, api, "Makes Server Action & REST calls to", "JSON/HTTPS")
+    Rel(api, database, "Reads from and writes to", "SQL / Drizzle")
+    Rel(queueWorkers, database, "Pulls pending jobs (SKIP LOCKED) and saves output", "SQL / Drizzle")
+    
+    Rel(api, stripe, "Redirects for upgrades", "HTTPS / OAuth2")
+    Rel(stripe, api, "Dispatches payment status", "Webhooks / HTTPS")
+
+    Rel(queueWorkers, metaGraph, "Ingests Reels metrics", "REST / JSON")
+    Rel(queueWorkers, tiktokApi, "Ingests TikTok metrics", "REST / JSON")
+    Rel(queueWorkers, aiProviders, "Submits post scripts & context for strategy", "REST / JSON")
+    Rel(queueWorkers, resend, "Enqueues outbound transactional mails", "REST / JSON")
 ```
 
 ---
@@ -61,7 +58,7 @@ The core technology stack is strictly locked. No substitutions or additions are 
 | **ORM Layer** | Drizzle ORM | Provides an SQL-first, lightweight, compile-time type-safe mapper. Eliminates ORM runtime overhead and maps complex database queries natively. |
 | **Authentication** | Supabase Auth (GoTrue) | Manages authentication flows natively, supporting secure OAuth2 handshakes for Instagram and TikTok logins and session tokens. |
 | **Background Queue** | Custom PG SKIP LOCKED Queue | Eliminates the cost and operational footprint of Redis or Kafka. Provides database-native ACID-compliant job processing. |
-| **AI/LLM Engines** | OpenAI GPT-4o-mini & GPT-4o | Delivers optimal token pricing, low API latency, and highly structured, parser-friendly JSON returns. |
+| **AI/LLM Engines** | OpenAI GPT-4o/mini, Gemini 2.0 Flash, DeepSeek-V3 | Multi-model routing tier ensures >98% cost savings on batch analyses while retaining GPT-4o for high-value strategies. |
 | **Payment Gateway** | Stripe Subscriptions + Checkout | Standardizes subscription logic and billing portal generation, utilizing secure webhook signatures. |
 | **Email Gateway** | Resend | transactional email delivery service with simple REST APIs, tailored for serverless execution runtimes. |
 | **Deployment Platform**| Vercel (Frontend) + Supabase (DB) | Minimizes deployment surface by automating serverless function distribution, SSL management, and database replication. |
@@ -89,23 +86,25 @@ The platform operates under a strict **Zero-Extra-Infrastructure** constraint to
 
 The architecture establishes rigid structural walls around core logical modules. Cross-module imports are blocked at compile-time to maintain absolute service separation.
 
-```
-┌──────────────────────────────────────────────────────────┐
-│                  MODULE BOUNDARY MAP                      │
-│                                                          │
-│  ┌──────────┐   NEVER   ┌──────────┐   NEVER   ┌──────┐│
-│  │ Billing  │◄────────X──│    AI    │────────X──►│Queue ││
-│  │          │    touches  │          │  writes    │      ││
-│  └──────────┘            └──────────┘  to DB     └──────┘│
-│       │                       │                      │    │
-│       │                       │                      │    │
-│       ▼                       ▼                      ▼    │
-│  ┌──────────────────────────────────────────────────────┐│
-│  │              SERVICE LAYER (mediator)                 ││
-│  │  • Orchestrates cross-module operations               ││
-│  │  • Enforces boundaries                                ││
-│  │  • Handles transactions                               ││
-│  └──────────────────────────────────────────────────────┘│
+```mermaid
+C4Component
+    title Component Diagram for Trendoraa Boundaries & Isolation
+
+    Container_Boundary(service_layer, "Next.js Core Service Layer") {
+        Component(service_mediator, "Service Mediator", "TypeScript Service", "Coordinates transactions, acts as the secure wall between AI and Billing")
+        Component(billing_module, "Billing Module", "Stripe Webhooks & Schema", "Processes invoice logs, local plan settings. Isolated from direct AI imports.")
+        Component(ai_engine, "AI Scoring & Strategy Engine", "Multi-Model Router", "Pure utility context pipeline. Never writes to DB or triggers queue jobs.")
+        ComponentDb(job_queue, "PG Skip Locked Queue", "Database Table", "Handles async tasks, prevents race conditions")
+    }
+
+    Container_Ext(stripe_ext, "Stripe API", "Handles transactions")
+    Container_Ext(llm_ext, "LLM Providers", "Executes analytics prompts")
+
+    Rel(billing_module, service_mediator, "Queries subscription states")
+    Rel(service_mediator, job_queue, "Enqueues ingestion / scoring / strategy tasks")
+    Rel(service_mediator, ai_engine, "Requests scores & strategies")
+    Rel(ai_engine, llm_ext, "Analyzes content", "REST")
+    Rel(billing_module, stripe_ext, "Synchronizes billing webhooks", "HTTPS")
 ```
 
 ### 4.1 Boundary Rules & Import Guard Policies
@@ -129,8 +128,9 @@ To ensure high profitability from Day 1, the platform operates on highly optimiz
 * **Total Base Fixed Cost:** **$91.00 / month**
 
 ### 5.2 Variable Cost Targets (Per-User API Costs)
-* **GPT-4o-mini (Scoring):** ~$0.015 / Reel or Video analyzed (avg. 150 input, 800 output tokens)
-* **GPT-4o (Strategy & Priority):** ~$0.08 / Strategy run (avg. 2,000 input, 2,000 output tokens)
+* **Gemini 2.0 Flash / DeepSeek-V3 (Batch/Budget Scoring):** ~$0.0003 / post analyzed (98%+ cost savings)
+* **GPT-4o-mini (Real-time Standard Scoring):** ~$0.0006 / post analyzed
+* **GPT-4o (Premium Strategy & Analysis):** ~$0.08 / Strategy run (avg. 2,000 input, 2,000 output tokens)
 * **Stripe Fees:** 2.9% + $0.30 per customer transaction
 * **Instagram & TikTok API Queries:** $0.00 (Free)
 
@@ -179,12 +179,14 @@ The application adopts a defensive engineering mindset, treating all external in
   * **Sequential Queue Workers:** Ingestion requests are processed sequentially (FOR UPDATE SKIP LOCKED) to preserve API limits (10,000 calls/day per client key).
   * **Scoring Heuristics Default:** If `saves_count` or `completion_rate` are returned null, the fallback algorithm uses baseline engagement calculations (`30.0%` for completion rate) without halting dashboard visualization.
 
-### 6.3 AI Engine API (OpenAI GPT-4o / GPT-4o-mini)
+### 6.3 AI Engine API (Multi-Model Routing & Fallbacks)
 * **Dependencies:** Deep video scoring, hook quality analysis, strategy generation.
-* **Failure Vectors:** OpenAI API server outages, connection timeouts, monthly user LLM budget or count overruns.
+* **Failure Vectors:** LLM API server outages, connection timeouts, monthly user LLM budget or count overruns, Gemini free-tier rate limits (15 RPM).
 * **Fallback Strategy:**
-  * **Monthly LLM Budget & Analysis Caps:** Before invoking the AI model, the system validates that the user is under their monthly count (50 for Creator, 200 for Pro, 800 for Agency) and budget caps ($8.00, $25.00, $75.00). If exceeded, operations route to fallback heuristics.
-  * **Heuristic Fallback Engine:** If an AI request fails or caps trip, the Heuristic Fallback Engine generates mathematical scoring based on historical engagement ratios and skip/retention parameters, writing `source: "heuristic"` to the database.
+  * **Intelligent Routing Layer:** Routes real-time standard tier analyses to GPT-4o-mini, high-value strategy generation to GPT-4o, and background batch processing of older posts (>48 hours) to Gemini 2.0 Flash or DeepSeek-V3.
+  * **Rate-Limit & Circuit Breakers:** Monitors Gemini's 15 RPM free tier; automatically bypasses to next-cheapest provider (DeepSeek-V3/GPT-4o-mini) on quota exhaustion.
+  * **Monthly LLM Budget & Analysis Caps:** Before invoking any LLM, the system validates that the user is under their monthly count and budget caps. If exceeded, operations fall back to heuristics.
+  * **Heuristic Fallback Engine:** If all configured API candidates fail or trip circuit breakers, the Heuristic Fallback Engine calculates exact mathematical scoring using native metrics (skip rate, completion rate, engagement velocity) to preserve dashboard rendering under `source: "heuristic"`. The upgraded heuristic includes follower tier skip-rate threshold scaling, video duration retention modifiers, log10 CTA magnitude scaling, views momentum classifications, peak active hour timing score calculations, and stretch normalization to map raw scores into a true 1-100 range.
   * **NaN Prevention Default:** If a new account lacks historical posts to calculate baseline averages, engagement defaults to `2.0%`, skip rate to `50.0%`, and completion rate to `30.0%` within calculations.
 
 ### 6.4 Stripe API
@@ -242,14 +244,37 @@ To prevent code duplication, logical drift, and database index clutter, we made 
 Instead of creating platform-specific tables (`instagram_accounts`, `tiktok_accounts`, `reels`, `tiktok_videos`), the system maps all connections to unified entities:
 
 ```
-┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
-│ social_accounts │ ─────►│      posts      │ ─────►│   post_scores   │
-├─────────────────┤       ├─────────────────┤       ├─────────────────┤
-│ • platform      │       │ • platform      │       │ • metric_scores │
-│ • access_token  │       │ • platform_id   │       │ • source        │
-│ • refresh_token │       │ • skip_rate     │       │   (ai/heuristic)│
-│ • sync_status   │       │ • retention_rate│       │                 │
-└─────────────────┘       └─────────────────┘       └─────────────────┘
+```mermaid
+erDiagram
+    SOCIAL_ACCOUNTS {
+        uuid id PK
+        uuid user_id FK
+        string platform "instagram | tiktok"
+        text encrypted_access_token
+        text encrypted_refresh_token
+        string sync_status
+    }
+    POSTS {
+        uuid id PK
+        uuid social_account_id FK
+        string platform "instagram | tiktok"
+        string platform_media_id
+        integer views_count
+        float skip_rate
+        float completion_rate
+        timestamp posted_at
+    }
+    POST_SCORES {
+        uuid id PK
+        uuid post_id FK
+        integer overall_score
+        jsonb dimension_scores
+        string source "ai | heuristic"
+    }
+
+    SOCIAL_ACCOUNTS ||--o{ POSTS : "owns"
+    POSTS ||--o| POST_SCORES : "has_score"
+```
 ```
 
 * **`social_accounts`:** Stores connected social entities, tracking `platform` (`instagram` | `tiktok`) and utilizing AES-256-GCM encryption on token structures.

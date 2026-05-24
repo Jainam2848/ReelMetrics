@@ -72,6 +72,12 @@ const envSchema = z.object({
   // ─── OpenAI ────────────────────────────────────────────────────────────
   OPENAI_API_KEY: z.string().min(1),
 
+  // ─── Gemini (Google AI Studio) ─────────────────────────────────────────
+  GEMINI_API_KEY: z.string().min(1).optional(),
+
+  // ─── DeepSeek ──────────────────────────────────────────────────────────
+  DEEPSEEK_API_KEY: z.string().min(1).optional(),
+
   // ─── Stripe ────────────────────────────────────────────────────────────
   STRIPE_SECRET_KEY: z.string().min(1),
   STRIPE_WEBHOOK_SECRET: z.string().min(1),

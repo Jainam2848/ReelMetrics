@@ -45,12 +45,52 @@ The platform operates on a tiered monthly subscription model structured around d
 | **Data Sync Frequency** | Manual trigger | Hourly background sync | Hourly background sync | Priority background sync |
 | **Monthly AI Analysis Limit** | 10 posts | **50 posts / month** | **200 posts / month** | **1000 posts / month** |
 | **Monthly LLM Budget Cap** | $0.50 | **$8.00** | **$25.00** | **$75.00** |
-| **AI Scoring Engine** | None | 9-Dimension AI (GPT-4o-mini) | 9-Dimension AI (GPT-4o-mini) | Priority 9-Dimension AI (GPT-4o) |
+| **AI Scoring Engine** | None | 9-Dimension AI (Standard Routing) | 9-Dimension AI (Standard Routing) | Priority 9-Dimension AI (Premium Routing) |
 | **Content Strategy** | Basic metrics | Weekly strategy generation | Advanced strategy + calendar | Custom white-label strategy briefs |
 | **Trend Detection** | None | None | 3-Account competitive trends | 10-Account cross-brand trends |
 | **Collaborative Seats** | 1 Admin seat | 1 Creator seat | 2 Team seats | 5 Agency team seats |
 
 ---
+
+## 3.5 System Architecture Overview
+
+To support cross-platform ingestion, AI scoring, and background strategy compile jobs, the system maps logical responsibilities to four main container units:
+
+```mermaid
+C4Container
+    title Container Diagram for Trendoraa
+
+    Person(creator, "Content Creator", "Uploads short-form videos and monitors strategy")
+    
+    System_Boundary(trendoraa, "Trendoraa System") {
+        Container(frontend, "Frontend SPA", "React / Next.js / Tailwind CSS", "Provides user dashboard, strategy view, calendar, and billing portal")
+        Container(api, "Serverless API Gateways", "Next.js API Routes", "Handles OAuth flow, webhooks, manual sync, and triggers background jobs")
+        Container(queueWorkers, "Background Worker Cluster", "Next.js Serverless + PG Queue", "Executes data ingestion, AI video scoring, and content calendar strategies asynchronously")
+        ContainerDb(database, "Data Warehouse Layer", "Supabase / PostgreSQL 15+", "Stores unified posts, encrypted social accounts, metrics history, strategy logs, and billing metadata")
+    }
+
+    System_Ext(metaGraph, "Meta Graph API (Instagram)", "Provides Reels insights, reels_skip_rate, and Grid reposts")
+    System_Ext(tiktokApi, "TikTok Display API", "Provides video metrics, tiktok_completion_rate, and saves")
+    System_Ext(aiProviders, "LLM Routing Engine", "OpenAI / Gemini Flash / DeepSeek-V3", "Analyzes scripts, generates 9-dimension content scores, and compiles strategies")
+    System_Ext(stripe, "Stripe Checkout & Billing", "Handles credit card processing, subscription webhooks, and customer portals")
+    System_Ext(resend, "Resend Email Gateway", "Sends transactional sign-up verification, invoice alerts, and limit warnings")
+
+    Rel(creator, frontend, "Interacts with", "HTTPS")
+    Rel(frontend, api, "Makes Server Action & REST calls to", "JSON/HTTPS")
+    Rel(api, database, "Reads from and writes to", "SQL / Drizzle")
+    Rel(queueWorkers, database, "Pulls pending jobs (SKIP LOCKED) and saves output", "SQL / Drizzle")
+    
+    Rel(api, stripe, "Redirects for upgrades", "HTTPS / OAuth2")
+    Rel(stripe, api, "Dispatches payment status", "Webhooks / HTTPS")
+
+    Rel(queueWorkers, metaGraph, "Ingests Reels metrics", "REST / JSON")
+    Rel(queueWorkers, tiktokApi, "Ingests TikTok metrics", "REST / JSON")
+    Rel(queueWorkers, aiProviders, "Submits post scripts & context for strategy", "REST / JSON")
+    Rel(queueWorkers, resend, "Enqueues outbound transactional mails", "REST / JSON")
+```
+
+---
+
 
 ## 4. API Integration Constraints & Rate Limits
 
@@ -75,7 +115,7 @@ Integration with external social platforms is subject to structural limits. All 
 The platform isolates platform-specific API differences at the ingestion level while storing metrics in a normalized schema.
 
 ### 5.1 Instagram-Specific Metrics
-* **`ig_skip_rate` (Unique hook metric):** The percentage of viewers who scroll past the Reel within the first 3 seconds. Nullable if under 5 views. Fallback scoring baseline: `50.0%` for missing entries.
+* **`ig_skip_rate` (Unique hook metric):** The percentage of viewers who scroll past the Reel within the first 3 seconds. Nullable if under 5 views. Fallback scoring baseline: `50.0%` for missing entries. The heuristic engine dynamically scales the skip-rate thresholds by follower tier (<10K, 10K-100K, 100K-500K, >500K) to keep evaluations fair for larger accounts.
 * **`ig_public_reposts`:** The count of public grid reposts (excluding direct messages and private story shares).
 * **Deprecated Metrics:** `plays`, `impressions`, `ig_reels_aggregated_all_plays_count`, and `clips_replays_count` are fully deprecated or removed. The system maps all older media to `views`.
 

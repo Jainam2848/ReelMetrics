@@ -6,6 +6,7 @@ export interface PlanLimits {
   maxStrategies: number;
   maxAiCalls: number;
   aiModel: string;
+  modelTier: "standard" | "premium";
   features: string[];
 }
 
@@ -15,7 +16,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     maxReelsAnalyzed: 10,
     maxStrategies: 0,
     maxAiCalls: 10,
-    aiModel: "gpt-4o-mini",
+    aiModel: "Standard Routing Tier",
+    modelTier: "standard",
     features: [
       "Core Analytics",
       "1 Instagram Account Connected",
@@ -28,7 +30,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     maxReelsAnalyzed: 50,
     maxStrategies: 4,
     maxAiCalls: 150,
-    aiModel: "gpt-4o-mini",
+    aiModel: "Standard Routing Tier",
+    modelTier: "standard",
     features: [
       "Creator Tier Analytics",
       "Up to 1 Instagram Accounts Connected",
@@ -42,7 +45,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     maxReelsAnalyzed: 200,
     maxStrategies: 12,
     maxAiCalls: 600,
-    aiModel: "gpt-4o",
+    aiModel: "Premium Routing Tier",
+    modelTier: "premium",
     features: [
       "Professional Tier Analytics",
       "Up to 5 Instagram Accounts Connected",
@@ -56,7 +60,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     maxReelsAnalyzed: 1000,
     maxStrategies: 40,
     maxAiCalls: 2500,
-    aiModel: "gpt-4o",
+    aiModel: "Premium Routing Tier",
+    modelTier: "premium",
     features: [
       "Enterprise Tier Analytics",
       "Up to 20 Instagram Accounts Connected",
