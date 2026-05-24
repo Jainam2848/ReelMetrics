@@ -6,6 +6,8 @@
 >
 > **Companion:** [trendoraa-seabs-spec.md](./trendoraa-seabs-spec.md) (canonical spec)
 >
+> **Instagram MVP (implemented):** Production code uses `instagram_accounts` / `reels` / `reel_scores` and API routes `/api/accounts/:id/reels`, `/api/reels/:id/score`. Agent prompts below still reference the cross-platform target names where noted — map via `docs/prd.md` when verifying gates.
+>
 > **Rule:** No phase may begin until the previous phase passes ALL gate checks.
 >
 > **Skills:** This playbook references **installed agent skills** from your Customizations. Activate them before running each phase prompt.
@@ -150,12 +152,13 @@ app/
 │   └── settings/
 ├── api/auth/social/[platform]/callback/
 ├── api/auth/me/
-├── api/accounts/[id]/posts/
+├── api/accounts/[id]/reels/
 ├── api/accounts/[id]/sync/
 ├── api/accounts/[id]/strategy/
 ├── api/accounts/[id]/analytics/
 ├── api/accounts/[id]/trends/
-├── api/posts/[id]/score/
+├── api/reels/[id]/score/
+├── api/accounts/demo/
 ├── api/strategies/[id]/
 ├── api/billing/subscription/
 ├── api/billing/checkout/
@@ -358,6 +361,8 @@ Do NOT write any code. These are documentation files only.
 
 # PHASE 2 — DATABASE & SCHEMA
 
+> **Instagram MVP (implemented):** `lib/db/schema.ts` ships **`instagram_accounts`**, **`reels`**, **`reel_scores`** (not unified `social_accounts` / `posts` / `post_scores`). Unique dedupe is `reels.ig_media_id`. Verify gates against the MVP schema unless migrating to the cross-platform target in Phase 11.
+
 ## Goal
 
 Create the complete Drizzle ORM schema, SQL migrations generated via drizzle-kit (preventing database-schema divergence), RLS policies, RLS integration test script, indexes, triggers, and seed data. After this phase, the database is fully operational with all tables, security policies, and test data.
@@ -374,7 +379,7 @@ Create the complete Drizzle ORM schema, SQL migrations generated via drizzle-kit
 > **Key `database-design` checks to apply:**
 > - Every FK has an index
 > - Partial indexes on `job_queue(status, scheduled_at) WHERE status = 'pending'`
-> - UNIQUE constraint on `posts(platform, platform_media_id)` for upsert deduplication
+> - UNIQUE constraint on `reels(ig_media_id)` for Instagram MVP upsert deduplication (target: `posts(platform, platform_media_id)`)
 > - `updated_at` trigger on every table — not optional
 
 ## 🚦 Steps Before Execution
@@ -408,11 +413,14 @@ MIGRATION WORKFLOW:
 - DO NOT write custom SQL migrations from scratch for tables; let Drizzle Kit generate them to prevent database-schema divergence.
 
 1. FILE: lib/db/schema.ts
-   The complete Drizzle schema with ALL tables from spec §4.1:
+   The complete Drizzle schema with ALL tables from spec §4.1.
+
+   **Instagram MVP (implemented):** Use platform-specific tables below. Cross-platform target names are shown in parentheses for Phase 11 migration planning.
+
    - users (id, email, full_name, avatar_url, created_at, updated_at)
-   - social_accounts (id, user_id FK, platform TEXT [enum: 'instagram' | 'tiktok'], platform_user_id TEXT, username TEXT, access_token_enc BYTEA, refresh_token_enc BYTEA, token_expires_at TIMESTAMPTZ, token_version INT [default 1, for OCC], followers_count INT, last_synced_at TIMESTAMPTZ, sync_status TEXT, created_at, updated_at)
-   - posts (id, account_id FK, platform TEXT, platform_media_id TEXT, caption TEXT, media_url TEXT, permalink TEXT, timestamp TIMESTAMPTZ, views_count INT, total_views INT, display_views INT, metric_source TEXT [enum: 'legacy_plays' | 'unified_views'], likes_count INT, comments_count INT, shares_count INT, saves_count INT, public_reposts INT, skip_rate NUMERIC, completion_rate NUMERIC, reach INT, engagement_rate NUMERIC, fetched_at TIMESTAMPTZ, created_at, updated_at)
-   - post_scores (id, post_id FK, overall_score NUMERIC, hook_score NUMERIC, skip_rate_score NUMERIC, completion_rate_score NUMERIC, retention_score NUMERIC, cta_score NUMERIC, visual_score NUMERIC, audio_score NUMERIC, trend_score NUMERIC, caption_score NUMERIC, timing_score NUMERIC, ai_analysis JSONB, model_version TEXT, tokens_used INT, cost_usd NUMERIC, scored_at TIMESTAMPTZ, created_at, updated_at)
+   - instagram_accounts (MVP) / social_accounts (target): id, user_id FK, ig_user_id UNIQUE (MVP) or platform + platform_user_id (target), username, access_token_enc BYTEA, token_expires_at, token_version, followers_count, last_synced_at, sync_status, created_at, updated_at
+   - reels (MVP) / posts (target): id, account_id FK, ig_media_id UNIQUE (MVP), caption, media_url, permalink, timestamp, views_count, total_views, display_views, metric_source, likes_count, comments_count, shares_count, saves_count, public_reposts, skip_rate, reach, engagement_rate, fetched_at, created_at, updated_at
+   - reel_scores (MVP) / post_scores (target): id, reel_id/post_id FK, overall_score, hook_score, skip_rate_score, retention_score, cta_score, visual_score, audio_score, trend_score, caption_score, timing_score, ai_analysis JSONB, model_version, tokens_used, cost_usd, scored_at, created_at, updated_at
    - strategies (id, user_id FK, account_id FK, strategy_type TEXT, content JSONB, period_start, period_end, model_version, tokens_used, cost_usd, generated_at, created_at, updated_at)
    - subscriptions (id, user_id FK, plan_id, stripe_sub_id, stripe_customer_id, status, current_period_start, current_period_end, cancel_at, created_at, updated_at)
    - plans (id TEXT PK, name, price_monthly, max_accounts, monthly_ai_limit, ai_tier, features JSONB)
@@ -423,7 +431,7 @@ MIGRATION WORKFLOW:
 
    RULES:
    - Every table: id UUID DEFAULT gen_random_uuid(), created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-   - Every FK referencing `users(id)` MUST use `ON DELETE CASCADE` (for subscriptions, social_accounts, strategies, usage_tracking) to prevent GDPR orphaned data, except `audit_log.user_id` which must use `ON DELETE SET NULL` to retain immutable compliance audit trails anonymously.
+   - Every FK referencing `users(id)` MUST use `ON DELETE CASCADE` (for subscriptions, instagram_accounts/social_accounts, strategies, usage_tracking) to prevent GDPR orphaned data, except `audit_log.user_id` which must use `ON DELETE SET NULL` to retain immutable compliance audit trails anonymously.
    - Use pgTable from drizzle-orm/pg-core
    - Export all tables and types
    - Add Drizzle relations (one-to-many, many-to-one)
@@ -437,8 +445,8 @@ MIGRATION WORKFLOW:
    - ALL indexes from spec §4.2 (FK indexes, query pattern indexes, unique indexes)
      - Must include index on `job_queue(last_heartbeat_at) WHERE status = 'processing'` (`idx_job_queue_heartbeat`)
      - Must include index on `audit_log(created_at)` (`idx_audit_log_created_at`)
-     - Must include unique index on `posts(platform, platform_media_id)` (`idx_posts_platform_media`)
-     - Must include unique index on `social_accounts(platform, platform_user_id)` (`idx_social_accounts_platform_user`)
+     - Must include unique index on `reels(ig_media_id)` (MVP) or `posts(platform, platform_media_id)` (target)
+     - Must include unique index on `instagram_accounts(ig_user_id)` (MVP) or `social_accounts(platform, platform_user_id)` (target)
    - RLS enabled on EVERY table (from spec §4.2, including processed_events)
    - RLS policies using auth.uid() for user-facing tables
    - Seed data for the plans table (profitable cross-platform tiers):
@@ -450,9 +458,9 @@ MIGRATION WORKFLOW:
 
 3. FILE: lib/db/seed.ts
    A TypeScript seed script that inserts test data:
-   - 2 test users
-   - 1 social account per user (e.g. 1 Instagram Business, 1 TikTok Creator)
-   - 5 posts per account with realistic metrics (views, skip_rate / completion_rate, engagement)
+   - 2 test users (userA@example.com, userB@example.com)
+   - 1 instagram_accounts row per user (MVP: include `alice_reels` demo account)
+   - Reels with realistic metrics (views, skip_rate, engagement)
    - 1 subscription per user (one free, one creator)
    - Usage tracking records
 
@@ -540,7 +548,7 @@ npx tsx scripts/test-rls.ts
 - [ ] Plans table seeded with 4 tiers
 - [ ] Seed script runs without errors
 - [ ] No deprecated column names (no `plays_count` or `impressions` without normalization)
-- [ ] `token_version` column exists on `social_accounts` for OCC
+- [ ] `token_version` column exists on `instagram_accounts` (MVP) / `social_accounts` (target) for OCC
 - [ ] `display_views` and `metric_source` columns exist on `posts` with conditional safe engagement rate calculation
 - [ ] `last_heartbeat_at` exists on `job_queue` for liveness detection
 - [ ] `skip_rate`, `completion_rate`, and `public_reposts` columns exist on posts table
@@ -990,12 +998,12 @@ You are a senior backend engineer building the social data ingestion pipeline fo
 
 CONTEXT:
 - Instagram Graph API v22.0+ (spec §6)
-- Unified cross-platform database schema: social_accounts, posts, post_scores (spec §4) (The database schema retains the standardized cross-platform structures so that no migrations are needed later, but only Instagram accounts and posts are ingested in the MVP).
+- **Instagram MVP schema (implemented):** `instagram_accounts`, `reels`, `reel_scores` in `lib/db/schema.ts` (cross-platform target: `social_accounts`, `posts`, `post_scores` — Phase 11)
 - CRITICAL (Instagram): plays and impressions are DEPRECATED. Use "views" and "total_views" (spec §6.6)
-- NEW metrics (Instagram): reels_skip_rate, public_reposts (spec §6.6)
-- OAuth2 with access token encryption (AES-256-GCM) at rest
+- NEW metrics (Instagram): Graph API `reels_skip_rate` → DB `reels.skip_rate`; `public_reposts` on `reels` (spec §6.6). **MVP gap:** `REEL_INSIGHT_METRICS` in `post-fetcher.ts` does not yet request skip_rate/public_reposts — columns and parsers exist.
+- OAuth2: `POST /api/auth/social/instagram` returns `{ authUrl }` + CSRF cookie; callback upserts `instagram_accounts`
 - Instagram long-lived tokens (60 days) with token refresh at day 53.
-- 5-minute manual sync cooldown lock stored on social_accounts.last_synced_at to prevent rapid API requests.
+- 5-minute manual sync cooldown on `instagram_accounts.last_synced_at` (`SYNC_COOLDOWN_ACTIVE`).
 - Rate limits: check headers, implement exponential backoff on HTTP 429.
 - Note: TikTok Display API v2 integrations, 24-hr token rotation pipelines, sequential ingestion queue routines, and TikTok metrics are explicitly DEFERRED to the Post-MVP phase (Phase 11).
 
@@ -1026,8 +1034,8 @@ TASK: Create these files:
    - Rate limit handling: check headers, exponential backoff on HTTP 429 (1min -> 2min -> 4min -> 8min -> 15min max).
 
 4. FILE: lib/ingestion/data-normalizer.ts
-   Transform raw Instagram API data to the normalized `posts` database structure:
-   - normalizeInstagramPost(rawPost, rawInsights): Partial<Post>
+   Transform raw Instagram API data to the normalized **`reels`** database structure (MVP; target: `posts`):
+   - normalizeInstagramPost(rawPost, rawInsights): Partial<Reel>
    - calculateEngagementRate from spec §6.5 (using views_count, NOT plays_count). Handles display_views = 0 case by returning NULL.
    - calculateWeightedEngagement (includes public_reposts)
    - Handle Nullable metrics: explicitly map missing or undefined skip_rate (Instagram) to null to prevent database schema errors, allowing fallback default mapping during scoring.
@@ -1035,9 +1043,9 @@ TASK: Create these files:
 5. FILE: lib/services/ingestion.service.ts
    Main ingestion orchestrator:
    - syncAccount(userId, accountId): Promise<SyncResult> — full sync flow
-   - Enforce 5-minute manual sync cooldown by checking `social_accounts.last_synced_at` and throwing `SYNC_COOLDOWN_ACTIVE` if called within 5 minutes.
-   - Deduplicate by unique constraint `(platform, platform_media_id)` (upsert)
-   - Queue AI scoring jobs for new/updated posts
+   - Enforce 5-minute manual sync cooldown by checking `instagram_accounts.last_synced_at` and throwing `SYNC_COOLDOWN_ACTIVE` if called within 5 minutes.
+   - Deduplicate by unique constraint `reels(ig_media_id)` (MVP upsert; target: `posts(platform, platform_media_id)`)
+   - Queue `SCORE_REEL` jobs for new/updated reels
    - Update last_synced_at on account
    - Track API calls in usage_tracking
 
@@ -1050,8 +1058,8 @@ TASK: Create these files:
    - Exchange code for tokens (Meta OAuth exchange).
    - Validate Account Type: Call Graph API `/me/accounts?fields=instagram_business_account,name`. If missing, abort registration and return `INSTAGRAM_NOT_BUSINESS_ACCOUNT`.
    - Encrypt token with AES-256-GCM before storage.
-   - Create or update social_accounts record using OCC.
-   - Queue initial sync job.
+   - Create or update `instagram_accounts` record using OCC.
+   - Queue initial `SYNC_ACCOUNT` job.
 
 8. FILE: app/api/webhooks/instagram/route.ts
    - GET: Hub verification (hub.mode, hub.verify_token, hub.challenge) using the `INSTAGRAM_VERIFY_TOKEN` env var.
@@ -1071,9 +1079,14 @@ TASK: Create these files:
 12. FILE: lib/validators/account.schema.ts
     Zod schemas for social account management.
 
-RATE LIMITING:
-- Instagram: 200 calls per hour per user.
-- Exponential backoff on HTTP 429: 1min → 2min → 4min → 8min → 15min (max).
+RATE LIMITING (implemented — see `lib/ingestion/rate-limit-policy.ts`):
+- Instagram: 200 Graph API calls per hour per connected account (`instagram_api_hourly`).
+- Pre-flight: abort sync if `current + estimated > 190` (`IG_QUOTA_EXHAUSTED`).
+- Fetch-layer 429 backoff: 1min → 15min (`post-fetcher.ts`).
+- Queue retry on IG rate limit: minute-scale backoff (`processor.ts`), not 2^n seconds.
+- Sync mutex: one `syncing` lock per account; `SYNC_IN_PROGRESS` if contended.
+- Webhook: debounced `SYNC_ACCOUNT` enqueue (10 min window); no inline Graph in webhook thread.
+- Cron: enqueue-only + 30s stagger; skip `rate_limited` / active `syncing`.
 
 SECURITY:
 - Token encryption: AES-256-GCM, unique IV per operation.
@@ -1160,13 +1173,15 @@ grep -r "PROCESS_WEBHOOK" app/api/webhooks/
 - [ ] `npx tsc --noEmit` → 0 errors
 - [ ] Encryption round-trip works with key-version prefix (`keyVersion:iv:authTag:ciphertext`) and supports multi-key rotation
 - [ ] No deprecated metrics in API calls (`plays`, `impressions`)
-- [ ] New metrics present (`views`, `skip_rate`, `completion_rate`, `public_reposts`, `total_views`)
-- [ ] Webhook uses constant-time comparison for signatures on both Instagram and TikTok webhooks
+- [ ] New metrics: `views`, `reels_skip_rate` → `skip_rate`, `public_reposts`, `total_views` in `REEL_INSIGHT_METRICS`
+- [ ] Hourly quota pre-flight + `instagram_api_hourly` migration applied
+- [ ] Webhook coalescing → debounced `SYNC_ACCOUNT`; cron enqueue-only
+- [ ] Webhook uses constant-time comparison for Instagram signatures (TikTok webhook deferred to Phase 11)
 - [ ] Tokens never logged
 - [ ] Engagement rate uses `views_count` not `plays_count`
-- [ ] OAuth scopes use `instagram_business_basic` for Instagram and `video.list` / `user.info.basic` / `user.info.stats` for TikTok
-- [ ] Rate limit handling with exponential backoff implemented on both platforms
-- [ ] TikTok 10 calls/minute sequential queue polling worker implemented
+- [ ] OAuth scopes use `instagram_business_basic` for Instagram (TikTok scopes deferred to Phase 11)
+- [ ] Rate limit exponential backoff implemented for Instagram Graph API
+- [ ] TikTok 10 calls/minute sequential queue polling worker — **deferred to Phase 11**
 - [ ] 5-minute manual sync cooldown lock enforced on sync routes
 - [ ] Optimistic Concurrency Control (`token_version`) and pessimistic locking (`pg_try_advisory_xact_lock` or row locking) verified for token refreshes
 - [ ] Webhooks immediately split batches and enqueue individual jobs, returning HTTP 200 OK under 3 seconds
@@ -1176,6 +1191,8 @@ grep -r "PROCESS_WEBHOOK" app/api/webhooks/
 ---
 
 # PHASE 6 — QUEUE ENGINE & WORKERS
+
+> **Instagram MVP:** `lib/queue/processor.ts` + `lib/queue/worker.ts` handle `SYNC_ACCOUNT`, `SCORE_REEL`, `GENERATE_STRATEGY`, and `PROCESS_WEBHOOK` (webhook → debounced `SYNC_ACCOUNT` enqueue). **`POST /api/cron/ingest`** (enqueue-only, staggered) and **`POST /api/queue/process`** are implemented. Rate limits: `lib/ingestion/rate-limit-policy.ts`, `instagram-quota.ts`, sync mutex, pre-flight quota. **`POST /api/cron/token-refresh`**, `IQueueEngine`, and `handlers.ts` remain deferred. Run worker locally: `npx tsx lib/queue/worker.ts`. Migration: `0001_instagram_api_hourly.sql`.
 
 ## Goal
 
@@ -1215,7 +1232,7 @@ You are a senior backend engineer building a PostgreSQL-based job queue for Tren
 CONTEXT:
 - NO Redis, NO Kafka, NO Bull/BullMQ — PostgreSQL only (spec §2.2 HARD CONSTRAINT)
 - Uses SELECT ... FOR UPDATE SKIP LOCKED for concurrent-safe job claiming (spec §9.2)
-- Job types: SYNC_ACCOUNT, SCORE_POST, GENERATE_STRATEGY, REFRESH_TOKEN, SEND_EMAIL, PROCESS_WEBHOOK
+- Job types: SYNC_ACCOUNT, SCORE_REEL (MVP; spec target: SCORE_POST), GENERATE_STRATEGY, REFRESH_TOKEN, SEND_EMAIL, PROCESS_WEBHOOK
 - Idempotency keys prevent duplicate processing (spec §9.4)
 - Dead letter queue for jobs that exceed max retries (spec §9.3)
 - Exponential backoff on retries: 1s, 2s, 4s... max 5 minutes
@@ -1226,7 +1243,7 @@ TASK: Create these files:
 
 1. FILE: lib/queue/types.ts
    Type definitions & Migration Seam:
-   - JobType enum: SYNC_ACCOUNT, SCORE_POST, GENERATE_STRATEGY, REFRESH_TOKEN, SEND_EMAIL, PROCESS_WEBHOOK
+   - JobType enum: SYNC_ACCOUNT, SCORE_REEL, GENERATE_STRATEGY, REFRESH_TOKEN, SEND_EMAIL, PROCESS_WEBHOOK
    - JobStatus: "pending" | "processing" | "completed" | "failed" | "dead_letter"
    - Job interface matching job_queue table schema
    - JobHandler type: (payload: Record<string, unknown>) => Promise<void>
@@ -1282,15 +1299,16 @@ TASK: Create these files:
    - Verifies `Authorization: Bearer CRON_SECRET` request headers.
    - Triggers `processQueueBatch(15000)` (up to 15 seconds runtime limit) and returns execution summary.
 
-5. FILE: app/api/cron/token-refresh/route.ts
+5. FILE: app/api/cron/token-refresh/route.ts — **Target (not in Instagram MVP)**
    A secure GET route running daily to enqueue token refreshes:
    - Verifies `Authorization: Bearer CRON_SECRET` headers.
-   - Queries `social_accounts` for records expiring within 7 days, and enqueues `REFRESH_TOKEN` jobs.
+   - Queries `instagram_accounts` (MVP) / `social_accounts` (target) for records expiring within 7 days, and enqueues `REFRESH_TOKEN` jobs.
 
-6. FILE: app/api/cron/ingest/route.ts
+6. FILE: app/api/cron/ingest/route.ts — **Implemented (enqueue-only; no inline Graph calls)**
    A secure GET route running hourly to enqueue data ingestion:
    - Verifies `Authorization: Bearer CRON_SECRET` headers.
-   - Enqueues `SYNC_ACCOUNT` jobs for all active connected social accounts (both Instagram and TikTok).
+   - Enqueues `SYNC_ACCOUNT` jobs for active Instagram accounts (TikTok deferred to Phase 11).
+   - **MVP alternative:** `POST /api/accounts/:id/sync` + `npx tsx lib/queue/worker.ts`
 
 7. FILE: lib/queue/dead-letter.ts
    Dead letter queue management:
@@ -1331,7 +1349,7 @@ RETURNING job_queue.*;
 IDEMPOTENCY KEYS (from spec §9.4):
 - SYNC_ACCOUNT_SCHEDULED: sync:scheduled:{accountId}:{dateHour}
 - SYNC_ACCOUNT_MANUAL: sync:manual:{accountId}:{timestamp_ms} (minimum 5-minute application-level throttle window)
-- SCORE_POST: score:{postId}:{version}
+- SCORE_REEL: score:{reelId}:{version} (MVP; target: SCORE_POST / score:{postId})
 - GENERATE_STRATEGY: strategy:{accountId}:{periodKey}
 ```
 
@@ -1342,9 +1360,12 @@ IDEMPOTENCY KEYS (from spec §9.4):
 | `lib/queue/types.ts` | Queue type definitions |
 | `lib/queue/job-orchestrator.ts` | Job producer + idempotency |
 | `lib/queue/worker.ts` | Serverless-bounded SKIP LOCKED worker |
-| `app/api/queue/process/route.ts` | Secure queue execution API |
-| `app/api/cron/token-refresh/route.ts` | Secure daily token refresh trigger |
-| `app/api/cron/ingest/route.ts` | Secure hourly sync scheduler |
+| `app/api/queue/process/route.ts` | Secure queue execution API (**target — not in Instagram MVP**) |
+| `app/api/cron/token-refresh/route.ts` | Secure daily token refresh trigger (**target — not in Instagram MVP**) |
+| `app/api/cron/ingest/route.ts` | Hourly stale-account sync enqueue (Bearer `CRON_SECRET`) |
+| `app/api/queue/process/route.ts` | Queue batch processor (Vercel cron */5) |
+| `lib/ingestion/rate-limit-policy.ts` | Shared IG rate-limit constants and backoff |
+| `lib/ingestion/instagram-quota.ts` | Per-account hourly Graph API quota tracking |
 | `lib/queue/dead-letter.ts` | DLQ management |
 | `lib/queue/handlers.ts` | Handler registry |
 
@@ -1643,8 +1664,8 @@ Build the complete dashboard UI: layout, all pages, components, charts, animatio
 These principles are non-negotiable for every page, hook, and shared component built in this phase. Treat them as gate criteria — a beautiful UI that lies about backend state is a regression, not a feature.
 
 - **Distinguish "no data" from "API failed."** Never render the onboarding wizard (or any other "happy-empty" success state) when `GET /api/accounts` — or any list endpoint — returns a network error or a non-2xx status. Show a retryable error banner instead. The onboarding wizard is reserved for the legitimate "200 OK with zero accounts" response.
-- **Surface OAuth callback errors on the dashboard.** Read the OAuth callback `?error=` query parameter and render a dismissible banner with human-readable copy for every documented code (`oauth_denied`, `not_business_account`, `token_exchange_failed`, `pages_api_failed`, `account_already_linked`, `invalid_state`, `missing_oauth_params`, `connection_failed`, `platform_not_supported`). Pair the banner with a sandbox-demo fallback CTA so the user is never stranded.
-- **Never show success toasts for actions that didn't happen.** If a backend endpoint is not wired yet, label the affected UI **Coming Soon** rather than firing a fake "Saved!" toast. This applies to the Settings (profile save, GDPR export, account deletion) and Billing (Stripe Checkout upgrade) surfaces during the MVP.
+- **Surface OAuth callback errors on the home dashboard.** `OAuthErrorBanner` on `app/(dashboard)/page.tsx` reads `?error=` and renders human-readable copy. Sandbox demo **button** is on the onboarding wizard and `/accounts` empty state (`POST /api/accounts/demo`) — not on the OAuth banner.
+- **Never show success toasts for actions that didn't happen.** Settings (profile PATCH, GDPR export, account DELETE) and Billing (Stripe checkout/portal) are **wired** in the Instagram MVP. Label any remaining unwired actions **Coming Soon**.
 - **Show account `syncStatus` in the UI.** Each account row on `/accounts` must render a `syncStatus` chip for `disconnected`, `error`, and `rate_limited` with appropriate copy and a `Re-connect` or `Sync` action where applicable. Do not hide token expiry, OAuth revocation, or rate-limit problems behind a generic "Never synced" placeholder.
 
 ## 🔧 Activate Skills
@@ -1792,7 +1813,7 @@ PAGES:
     - Delete account button with confirmation modal
 
 HOOKS:
-21. hooks/use-posts.ts — SWR/fetch hook for posts data (supporting both Instagram and TikTok posts). Returns display_views and metric_source.
+21. hooks/use-posts.ts — SWR/fetch hook for Reels data from `GET /api/accounts/:id/reels`. Returns `display_views` and `metric_source`. UI routes under `/posts`.
 22. hooks/use-strategy.ts — Hook for strategy data
 23. hooks/use-analytics.ts — Hook for analytics data
 24. hooks/use-subscription.ts — Hook for subscription + usage
@@ -2124,10 +2145,10 @@ TASK:
    - Framework: Next.js
    - Build command: next build
    - Region: closest to target users
-   - Crons array configuration:
-     - `/api/queue/process` runs every minute (`* * * * *`)
-     - `/api/cron/token-refresh` runs daily (`0 0 * * *`)
-     - `/api/cron/ingest` runs hourly (`0 * * * *`)
+   - Crons array configuration (target — **not all routes exist in Instagram MVP**):
+     - `/api/cron/ingest` runs hourly (`0 * * * *`) — enqueue stale `SYNC_ACCOUNT` jobs
+     - `/api/queue/process` runs every 5 minutes (`*/5 * * * *`) — `processQueueBatch`
+     - `/api/cron/token-refresh` runs daily (`0 0 * * *`) — **not implemented**
      - `/api/health` runs every 5 minutes (`*/5 * * * *`) to keep serverless functions warm (cold-start mitigation)
 
 4. FILE: .eslintrc.json

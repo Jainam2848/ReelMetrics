@@ -42,6 +42,8 @@ export const JOB_TYPES = {
   PROCESS_WEBHOOK: "PROCESS_WEBHOOK",
   /** Refresh an expiring OAuth token. */
   REFRESH_TOKEN: "REFRESH_TOKEN",
+  /** Generate a weekly content strategy for an account. */
+  GENERATE_STRATEGY: "GENERATE_STRATEGY",
 } as const;
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];

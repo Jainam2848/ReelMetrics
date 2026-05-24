@@ -1,8 +1,22 @@
 # Product Requirements Document (PRD) — Trendoraa
 
-**Document Version:** 1.0.0  
-**Status:** Validated & Approved  
+**Document Version:** 1.2.0  
+**Status:** Validated & Approved (Instagram MVP annotations)  
 **Author:** Senior Product Manager  
+
+> **Instagram MVP implementation map** — verify acceptance criteria against `lib/db/schema.ts` and `app/api/**`:
+>
+> | Spec / PRD (cross-platform target) | Implemented (Instagram MVP) |
+> |---|---|
+> | `social_accounts` | `instagram_accounts` |
+> | `posts` | `reels` |
+> | `post_scores` | `reel_scores` |
+> | `GET /api/accounts/:id/posts` | `GET /api/accounts/:id/reels` |
+> | `GET\|POST /api/posts/:id/score` | `GET\|POST /api/reels/:id/score` |
+> | OAuth initiation | `POST /api/auth/social/instagram` → `{ authUrl }` + CSRF cookie |
+> | Graph API `reels_skip_rate` | stored as `reels.skip_rate` |
+>
+> TikTok tables, routes, and cron ingestion are Post-MVP unless a story explicitly marks **Status: Implemented**.
 
 ---
 
@@ -40,15 +54,18 @@ The platform operates on a tiered monthly subscription model structured around d
 
 | Feature Area | Free ($0/mo) | Creator ($39/mo) | Pro ($89/mo) | Agency ($249/mo) |
 |:---|:---|:---|:---|:---|
-| **Connected Accounts** | Max 1 (IG or TikTok) | Max 2 (e.g. 1 IG + 1 TikTok) | Max 5 (e.g. 3 IG + 2 TikTok) | Max 20 (up to 10 clients) |
-| **Ingested History** | Last 10 posts | Unlimited history | Unlimited history | Unlimited history |
-| **Data Sync Frequency** | Manual trigger | Hourly background sync | Hourly background sync | Priority background sync |
-| **Monthly AI Analysis Limit** | 10 posts | **50 posts / month** | **200 posts / month** | **1000 posts / month** |
-| **Monthly LLM Budget Cap** | $0.50 | **$8.00** | **$25.00** | **$75.00** |
-| **AI Scoring Engine** | None | 9-Dimension AI (Standard Routing) | 9-Dimension AI (Standard Routing) | Priority 9-Dimension AI (Premium Routing) |
+| **Connected Instagram Accounts** | Max 1 | Max 2 | Max 5 | Max 20 |
+| **Reels scored per billing cycle** | 10 | **50** | **200** | **1000** |
+| **Monthly AI call cap** | 10 | **150** | **600** | **2500** |
+| **Strategies per billing cycle** | 0 | 4 | 12 | 40 |
+| **Data sync (Instagram MVP)** | Manual trigger only | Manual trigger only | Manual trigger only | Manual trigger only |
+| **Scheduled background sync** | Planned (cron) | Planned (cron) | Planned (cron) | Planned (cron) |
+| **Monthly LLM budget cap (design target)** | $0.50 | **$8.00** | **$25.00** | **$75.00** |
+| **AI Scoring Engine** | Heuristic + capped AI | 9-Dimension (Standard Routing) | 9-Dimension (Standard Routing) | 9-Dimension (Premium Routing) |
 | **Content Strategy** | Basic metrics | Weekly strategy generation | Advanced strategy + calendar | Custom white-label strategy briefs |
 | **Trend Detection** | None | None | 3-Account competitive trends | 10-Account cross-brand trends |
-| **Collaborative Seats** | 1 Admin seat | 1 Creator seat | 2 Team seats | 5 Agency team seats |
+
+> **Enforced limits:** `lib/billing/plans.ts` → `PLAN_LIMITS`. TikTok account seats and cross-platform filters are Post-MVP (Phase 11).
 
 ---
 
@@ -66,7 +83,7 @@ C4Container
         Container(frontend, "Frontend SPA", "React / Next.js / Tailwind CSS", "Provides user dashboard, strategy view, calendar, and billing portal")
         Container(api, "Serverless API Gateways", "Next.js API Routes", "Handles OAuth flow, webhooks, manual sync, and triggers background jobs")
         Container(queueWorkers, "Background Worker Cluster", "Next.js Serverless + PG Queue", "Executes data ingestion, AI video scoring, and content calendar strategies asynchronously")
-        ContainerDb(database, "Data Warehouse Layer", "Supabase / PostgreSQL 15+", "Stores unified posts, encrypted social accounts, metrics history, strategy logs, and billing metadata")
+        ContainerDb(database, "Data Warehouse Layer", "Supabase / PostgreSQL 15+", "Stores instagram_accounts, reels, reel_scores, metrics history, strategy logs, and billing metadata (Instagram MVP; unified social_accounts/posts target is Post-MVP)")
     }
 
     System_Ext(metaGraph, "Meta Graph API (Instagram)", "Provides Reels insights, reels_skip_rate, and Grid reposts")
@@ -97,10 +114,14 @@ C4Container
 Integration with external social platforms is subject to structural limits. All database designs and worker schedules conform to these constraints:
 
 ### 4.1 Meta Graph API v22.0+ (Instagram Reels)
-* **Quota Allocation:** 200 API calls per hour per authorized user account.
-* **Pre-Flight Guard:** Before initiating an API fetch request, the background worker checks the remaining hourly quota. The worker aborts the operation if the remaining quota falls below 10 calls, preserving a core buffer for administrative actions.
-* **Backoff Strategy:** Rate-limiting triggers an automatic exponential backoff. The system waits 1 minute for the first retry, increments the delay dynamically to a maximum of 15 minutes, and terminates the task after 5 failed retries.
-* **Webhook Deduplication:** Instagram webhooks occasionally push duplicate events due to network retries. The system computes a unique queue key using the format: `webhook:${mediaId}:${changeField}:${hashOrTimestamp}`. The backend runs an `INSERT INTO job_queue ON CONFLICT DO NOTHING` statement, rejecting identical events before executing a sync task.
+* **Quota Allocation:** 200 API calls per hour per connected Instagram account (Graph API user context).
+* **Pre-Flight Guard (implemented):** `syncAccount()` calls `checkInstagramQuotaForSync()` (`lib/ingestion/instagram-quota.ts`) before any Graph API fetch. Hourly usage is tracked per account in `instagram_api_hourly`. Sync aborts with `IG_QUOTA_EXHAUSTED` when `current + estimated_calls > 200 - 10` (10-call reserve).
+* **Fetch-Layer Backoff (implemented):** `lib/ingestion/post-fetcher.ts` retries HTTP 429 with 1m → 15m backoff inside a single sync.
+* **Queue Backoff (implemented):** Failed jobs that hit Instagram rate limits use minute-scale retries (`lib/ingestion/rate-limit-policy.ts` → `lib/queue/processor.ts`), not sub-second exponential retry.
+* **Sync Mutex (implemented):** Only one active `syncing` lock per `instagram_accounts` row; stale locks reclaim after 10 minutes (`SYNC_IN_PROGRESS` if another sync holds the lock).
+* **Webhook Coalescing (implemented):** Webhook HTTP handler enqueues `PROCESS_WEBHOOK` with per-event idempotency. The worker **does not** call Graph inline — it enqueues a debounced `SYNC_ACCOUNT` job (`sync:webhook:{accountId}:{debounce_bucket}`, 10-minute window). Accounts in `rate_limited` skip webhook enqueue.
+* **Cron Scheduling (implemented):** `POST /api/cron/ingest` enqueues stale accounts (>6h, not `disconnected` / `rate_limited` / active `syncing`) with 30s stagger; **does not** process inline. `POST /api/queue/process` (Vercel cron every 5m) runs `processQueueBatch`.
+* **Manual Cooldown:** User-initiated `POST /api/accounts/:id/sync` keeps the 5-minute cooldown; cron/webhook jobs pass `skipCooldown: true`.
 
 ### 4.2 TikTok Display API v2+
 * **Quota & Rate Limits:** 10,000 requests per day per client key.
@@ -115,9 +136,10 @@ Integration with external social platforms is subject to structural limits. All 
 The platform isolates platform-specific API differences at the ingestion level while storing metrics in a normalized schema.
 
 ### 5.1 Instagram-Specific Metrics
-* **`ig_skip_rate` (Unique hook metric):** The percentage of viewers who scroll past the Reel within the first 3 seconds. Nullable if under 5 views. Fallback scoring baseline: `50.0%` for missing entries. The heuristic engine dynamically scales the skip-rate thresholds by follower tier (<10K, 10K-100K, 100K-500K, >500K) to keep evaluations fair for larger accounts.
-* **`ig_public_reposts`:** The count of public grid reposts (excluding direct messages and private story shares).
-* **Deprecated Metrics:** `plays`, `impressions`, `ig_reels_aggregated_all_plays_count`, and `clips_replays_count` are fully deprecated or removed. The system maps all older media to `views`.
+* **`reels_skip_rate` (Graph API) → `skip_rate` (database):** The percentage of viewers who scroll past the Reel within the first 3 seconds. Nullable if under 5 views. Fallback scoring baseline: `50.0%` for missing entries. The heuristic engine dynamically scales the skip-rate thresholds by follower tier (<10K, 10K-100K, 100K-500K, >500K) to keep evaluations fair for larger accounts. Dashboard copy reframes this as *Strategic Skip Resistance* / *Hook Retention Moat*.
+* **`public_reposts` (Graph API):** The count of public grid reposts (excluding direct messages and private story shares). Stored on `reels.public_reposts`.
+* **Deprecated Metrics:** `plays`, `impressions`, `ig_reels_aggregated_all_plays_count`, and `clips_replays_count` are fully deprecated or removed. The system maps all older media to `views` and tracks normalization via `display_views` + `metric_source`.
+* **Fetch status (MVP):** `REEL_INSIGHT_METRICS` in `lib/ingestion/post-fetcher.ts` requests `reels_skip_rate`, `total_views`, `public_reposts`, plus engagement and Reel watch-time fields. Values map to `reels.skip_rate`, `reels.total_views`, and `reels.public_reposts`.
 
 ### 5.2 TikTok-Specific Metrics
 * **`tiktok_completion_rate` (Unique retention metric):** The percentage of viewers who watch the video from start to finish. Nullable. Fallback scoring baseline: `30.0%` for missing entries.
@@ -133,8 +155,8 @@ All user stories are structured, testable, and completely free of ambiguous term
 
 #### Story 1: Multi-Platform Social Account Connection
 As a Creator, I want to authenticate via Supabase Auth and link either my Instagram Professional account or my TikTok Creator/Business profile so that the system is authorized to ingest my content data.
-* **Acceptance Criterion 1:** Clicking the "Connect Instagram" button `POST`s to `/api/auth/social/instagram`, which returns a Meta Facebook Login authorization URL; the browser then redirects there, returns a valid, long-lived access token, validates that the account type is Professional (rejecting personal profiles with `INSTAGRAM_NOT_BUSINESS_ACCOUNT`), and writes it to `social_accounts` with platform `"instagram"`.
-* **Acceptance Criterion 2:** Clicking the TikTok OAuth button launches the TikTok permission window, returns a short-lived `access_token` and a long-lived `refresh_token`, and writes both to `social_accounts` with platform `"tiktok"` and encrypted tokens using AES-256-GCM.
+* **Acceptance Criterion 1 (Instagram — implemented):** Clicking the "Connect Instagram" button `POST`s to `/api/auth/social/instagram`, which returns a Meta Facebook Login authorization URL; the browser then redirects there, returns a valid, long-lived access token, validates that the account type is Professional (rejecting personal profiles — OAuth redirect uses `?error=not_business_account`; API layer may return `INSTAGRAM_NOT_BUSINESS_ACCOUNT`), and writes it to **`instagram_accounts`** (MVP table; spec target: `social_accounts` with platform `"instagram"`).
+* **Acceptance Criterion 2 (TikTok — Post-MVP):** Clicking the TikTok OAuth button launches the TikTok permission window, returns a short-lived `access_token` and a long-lived `refresh_token`, and writes both to `social_accounts` with platform `"tiktok"` and encrypted tokens using AES-256-GCM. **Status:** Not implemented; `POST /api/auth/social/tiktok` returns `PLATFORM_NOT_SUPPORTED`.
 
 #### Story 2: User Sign-Up Verification
 As a Creator, I want to receive a transaction verification email upon signing up so that I can securely activate my account and prevent bot registration.
@@ -143,10 +165,10 @@ As a Creator, I want to receive a transaction verification email upon signing up
 
 #### Story 2b: Resilient OAuth & Onboarding UX
 As a Creator, I want the dashboard to communicate exactly what happened during the Instagram OAuth flow and to give me a productive path forward when something fails so that I am never stranded on a blank or misleading screen.
-* **Acceptance Criterion 1:** The dashboard reads the OAuth callback `?error=` query parameter and renders a dismissible, human-readable banner for each of the documented failure codes: `oauth_denied`, `not_business_account`, `token_exchange_failed`, `pages_api_failed`, `account_already_linked`, `invalid_state`, `missing_oauth_params`, `connection_failed`, and `platform_not_supported`. The banner exposes a sandbox-demo fallback CTA that posts to `/api/accounts/demo`.
+* **Acceptance Criterion 1:** The home dashboard reads the OAuth callback `?error=` query parameter and renders a dismissible, human-readable banner (`OAuthErrorBanner`) for each documented failure code: `oauth_denied`, `not_business_account`, `token_exchange_failed`, `pages_api_failed`, `account_already_linked`, `invalid_state`, `missing_oauth_params`, `connection_failed`, and `platform_not_supported`. Copy may reference the sandbox demo; the **actionable** sandbox CTA (`POST /api/accounts/demo`) lives on the home onboarding wizard and `/accounts` empty state — not as a button on the OAuth banner itself.
 * **Acceptance Criterion 2:** The "Connect Instagram" action from the UI issues a `POST` to `/api/auth/social/instagram` and redirects the browser to the `authUrl` returned in the response payload. It does not render a plain `<a href>` GET link that would bypass the authenticated state-handshake.
 * **Acceptance Criterion 3:** When `GET /api/accounts` fails (network error, 5xx, or any non-2xx response), the dashboard renders a retryable error banner. It does **not** render the onboarding wizard — the onboarding wizard is reserved strictly for the legitimate zero-accounts success response.
-* **Acceptance Criterion 4:** Each row on `/accounts` renders a `syncStatus` chip for the `disconnected`, `error`, and `rate_limited` states with appropriate copy and a `Re-connect` or `Sync` action where applicable. `pending` and `completed` states use neutral / positive copy and do not advertise stale or broken accounts as healthy.
+* **Acceptance Criterion 4:** Each row on `/accounts` renders a `syncStatus` chip (`SyncStatusChip`) for `disconnected`, `error`, `rate_limited`, `syncing`, `pending_sync`, `active`, and `completed` with appropriate copy. Problem states (`disconnected`, `error`, `rate_limited`) must not be hidden behind generic “Never synced” placeholders. Re-connect is available via `InstagramConnectButton`; manual sync via `POST /api/accounts/:id/sync`.
 
 ---
 
@@ -154,12 +176,12 @@ As a Creator, I want the dashboard to communicate exactly what happened during t
 
 #### Story 3: Staged Social Ingestion Pipelines
 As a Creator, I want the system to automatically sync my connected account posts every 6 hours so that my dashboard analytics remain up to date.
-* **Acceptance Criterion 1:** For Instagram, the background worker fetches `GET /me/media` every 6 hours, upserting Reels data into the `posts` table (mapping platform as `"instagram"`).
-* **Acceptance Criterion 2:** For TikTok, the background worker pulls from `/v2/video/list/` using the active access token, performing database upserts on `platform_media_id` matching platform `"tiktok"`, avoiding any record duplication.
+* **Acceptance Criterion 1 (Instagram — implemented):** Scheduled ingestion via `POST /api/cron/ingest` (hourly, `CRON_SECRET`) enqueues `SYNC_ACCOUNT` for accounts stale >6h. Execution via `POST /api/queue/process` or `npx tsx lib/queue/worker.ts`. Manual sync and OAuth initial sync remain available. Webhooks fast-ack and enqueue `PROCESS_WEBHOOK`, which coalesces into debounced `SYNC_ACCOUNT` jobs (no inline Graph calls in the webhook thread).
+* **Acceptance Criterion 2 (TikTok — Post-MVP):** For TikTok, the background worker pulls from `/v2/video/list/` using the active access token, performing database upserts on `platform_media_id` matching platform `"tiktok"`, avoiding any record duplication. **Status:** Not implemented.
 
 #### Story 4: Deep Insights Harvesting
 As a Creator, I want the system to harvest deep insights specific to each platform so that I can understand metric-level performance.
-* **Acceptance Criterion 1:** The Instagram pipeline queries `insights`, mapping `views`, `total_views`, `ig_skip_rate`, and `ig_public_reposts` to the `posts` table.
+* **Acceptance Criterion 1 (Instagram — implemented):** The Instagram pipeline queries `/{media-id}/insights`, mapping `views`, `total_views`, `reels_skip_rate` (stored as `skip_rate`), and `public_reposts` to the **`reels`** table via `REEL_INSIGHT_METRICS`.
 * **Acceptance Criterion 2:** The TikTok pipeline queries `/v2/video/list/` fields, mapping views, likes, shares, comments, `tiktok_completion_rate`, and `tiktok_saves_count`. Null values write literal `null` without crashing the ingestion process.
 
 #### Story 5: Manual Sync with Cross-Platform Cooldown
@@ -174,7 +196,7 @@ As a Creator, I want to trigger a manual sync of my social data with a 5-minute 
 #### Story 6: Cross-Platform Multi-Dimension AI Post Analysis
 As a Creator, I want the AI engine to analyze my Instagram Reels or TikTok Videos across 9 dimensions so that I know why they performed well or poorly.
 * **Acceptance Criterion 1:** The system invokes the LLM API passing the post's platform indicator, title, script/description, and metrics, receiving a JSON payload containing exact integer scores from 1 to 10 for hook, retention, cta, visual, audio, trend, caption, and timing.
-* **Acceptance Criterion 2:** The backend validates the JSON response using a Zod schema and writes the validated record to `post_scores` linked to `posts` table.
+* **Acceptance Criterion 2:** The backend validates the JSON response using a Zod schema and writes the validated record to **`reel_scores`** linked to the **`reels`** table (MVP; spec target: `post_scores` / `posts`). API: `GET` + `POST /api/reels/:id/score`.
 
 #### Story 7: Heuristic Fallback Scoring
 As a Creator, I want the system to fall back to a data-driven heuristic score if the AI service is unavailable so that my dashboard never breaks.
@@ -203,7 +225,7 @@ As a Pro User, I want to access a monthly trend detection report so that I can a
 As a Creator, I want to subscribe to a paid tier via Stripe Checkout so that I can unlock unlimited history and AI analysis features.
 * **Acceptance Criterion 1:** Clicking "Upgrade" redirects the user's browser session to a Stripe Checkout URL pre-populated with their unique customer metadata and correct subscription pricing ID.
 * **Acceptance Criterion 2:** Following payment confirmation, the system redirects the user back to the application dashboard and displays a payment success banner.
-* **Status (MVP):** Frontend stub — backend wiring deferred. The Billing page renders plan cards and an "Upgrade" CTA marked as **Coming Soon** instead of redirecting to a live Stripe Checkout session.
+* **Status (Instagram MVP):** **Implemented.** `/billing` calls `POST /api/billing/checkout` and `POST /api/billing/portal`. Requires valid Stripe price IDs in environment (`STRIPE_PRICE_*`). Checkout failures surface as toast errors — not fake success states.
 
 #### Story 11: Stripe Webhook Synchronization
 As a System, I want to process Stripe payment webhooks asynchronously so that the database subscription records match Stripe's status immediately.
@@ -217,16 +239,16 @@ As a System, I want to process Stripe payment webhooks asynchronously so that th
 #### Story 12: GDPR Data Export Portability
 As a Creator, I want to export all my personal data and cross-platform social metrics in a structured JSON file so that I can control my data portability.
 * **Acceptance Criterion 1:** Sending a GET request to `/api/auth/me/data-export` returns a `200 OK` status and triggers the download of a structured JSON file containing all user data, connected accounts, and ingested metric logs.
-* **Acceptance Criterion 2:** The export process retrieves and compiles data from `users`, `subscriptions`, `social_accounts`, `posts`, `post_scores`, and `strategies` tables within 5 seconds of the initial request.
-* **Status (MVP):** Frontend stub — backend wiring deferred. The Settings page surfaces "Export my data" as **Coming Soon**; the underlying endpoint is not yet wired into the UI.
+* **Acceptance Criterion 2:** The export process retrieves and compiles data from `users`, `subscriptions`, **`instagram_accounts`**, **`reels`**, **`reel_scores`**, and `strategies` within 5 seconds of the initial request (MVP table names; spec target uses `social_accounts` / `posts` / `post_scores`).
+* **Status (Instagram MVP):** **Implemented.** Settings → "Export Data" calls `GET /api/auth/me/data-export` and downloads JSON. Tokens and credentials are omitted from the export payload.
 
 #### Story 13: Cascade Account Purge
 As a Creator, I want to delete my account and purge all my personal and social data from the system so that my privacy is respected.
-* **Acceptance Criterion 1:** Triggering account deletion executes a cascading database delete that permanently deletes the user's records from `social_accounts`, `posts`, `post_scores`, `strategies`, and `usage_tracking` tables.
+* **Acceptance Criterion 1:** Triggering account deletion executes a cascading database delete that permanently deletes the user's records from **`instagram_accounts`**, **`reels`**, **`reel_scores`**, `strategies`, and `usage_tracking` (MVP table names; spec target: `social_accounts`, `posts`, `post_scores`). Cascade is enforced via FK `ON DELETE CASCADE` on `instagram_accounts`.
 * **Acceptance Criterion 2:** The deletion process updates all matching `user_id` values inside the security `audit_log` table to `NULL`, retaining anonymous historical action lines for compliance.
-* **Status (MVP):** Frontend stub — backend wiring deferred. The Settings page surfaces "Delete my account" as **Coming Soon** with no destructive action wired up.
+* **Status (Instagram MVP):** **Implemented.** Settings → "Delete account" calls `DELETE /api/auth/me` and signs the user out on success.
 
-> **MVP Settings & Profile Coverage:** Profile editing (name, avatar) on `/settings` is also a frontend stub for the MVP. Each unfinished settings action is labeled **Coming Soon** in the UI rather than firing a fake success toast — see §6.5 (Story 10), Story 12, and Story 13 for the deferred surfaces.
+> **MVP Settings & Profile Coverage:** Profile editing (`PATCH /api/auth/me`), GDPR export (`GET /api/auth/me/data-export`), and account deletion (`DELETE /api/auth/me`) are **implemented** on `/settings`. Billing checkout and portal are **implemented** on `/billing` (Stories 10–12). Stripe and Supabase env vars must be configured for live payment flows.
 
 ---
 
@@ -239,7 +261,7 @@ As a System, I want to track background worker heartbeats so that hung tasks are
 
 #### Story 15: Budget-Based & Cap AI Circuit Breaker
 As a System, I want to enforce monthly budget caps and monthly AI post analysis caps per user so that we prevent malicious usage and run-away cloud costs.
-* **Acceptance Criterion 1:** Before executing any LLM API call for scoring, the backend queries the user's active billing period and checks if their monthly AI analysis count exceeds their plan limit (50 for Creator, 200 for Pro, 800 for Agency) OR if their cost exceeds the budget cap ($8.00 for Creator, $25.00 for Pro, $75.00 for Agency).
+* **Acceptance Criterion 1:** Before executing any LLM API call for scoring, the backend queries the user's active billing period and checks usage against `lib/billing/plans.ts` → `PLAN_LIMITS`: **`maxReelsAnalyzed`** (10 / 50 / 200 / 1000) and **`maxAiCalls`** (10 / 150 / 600 / 2500) per tier. Design-target LLM budget caps remain $0.50 / $8.00 / $25.00 / $75.00 per month (enforcement wiring is partial — heuristic fallback is the primary guard today).
 * **Acceptance Criterion 2:** When either the post count limit or cost budget cap is hit, the system automatically redirects the user's requests to the heuristic fallback engine and inserts a cost warning in their notifications feed.
 
 ---

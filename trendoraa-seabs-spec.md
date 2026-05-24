@@ -393,7 +393,7 @@ The system execution checklist contains 11 chronological phases:
 ### Phase 2: Database & Schema (`PHASE_DATABASE`)
 - **Order**: 2
 - **Role**: `DATABASE_ARCHITECT`
-- **Goal**: Generate normalized database tables, indexes, RLS policies, optimistic concurrency triggers, and seed datasets.
+- **Goal**: Generate normalized database tables, indexes, RLS policies, optimistic concurrency triggers, and seed datasets. **Instagram MVP ships:** `instagram_accounts`, `reels`, `reel_scores`.
 - **Success State**: `DATABASE_READY`
 
 ### Phase 3: Auth & Core Backend (`PHASE_AUTH_BACKEND`)
@@ -455,7 +455,9 @@ The system execution checklist contains 11 chronological phases:
 
 # §4 — DATABASE SCHEMA & DATA MODEL
 
-## 4.1 Entity Relationship Diagram
+> **Instagram MVP (implemented):** Production schema in `lib/db/schema.ts` uses **`instagram_accounts`** → **`reels`** → **`reel_scores`**. The ASCII ERD and SQL examples below describe the **cross-platform target** (`social_accounts`, `posts`, `post_scores`) for Phase 11 TikTok expansion. When verifying the Instagram MVP codebase, use the MVP table names in the mapping table in `docs/prd.md`.
+
+## 4.1 Entity Relationship Diagram (Cross-Platform Target)
 
 ```
 +-----------------+       +------------------+       +-----------------+
@@ -557,6 +559,18 @@ The system execution checklist contains 11 chronological phases:
                            +------------------+
 ```
 
+**Instagram MVP parallel (implemented in `lib/db/schema.ts`):**
+
+```
+instagram_accounts (ig_user_id UNIQUE, access_token_enc, token_version, sync_status, last_synced_at)
+        │
+        └── reels (ig_media_id UNIQUE, skip_rate, public_reposts, display_views, metric_source, …)
+                 │
+                 └── reel_scores (reel_id FK, hook_score, skip_rate_score, …)
+```
+
+> Target column `ig_skip_rate` on `posts` maps to Graph API `reels_skip_rate` stored as **`reels.skip_rate`** in the MVP.
+
 ## 4.2 Critical Schema Rules
 
 ### Every table MUST have:
@@ -588,8 +602,10 @@ CREATE TRIGGER set_updated_at
 
 ### Row Level Security (RLS) — MANDATORY on every table:
 
+> **Instagram MVP:** RLS policies in `lib/db/migrations/` target `reels`, `instagram_accounts`, and `reel_scores`. The example below uses target table names (`posts`, `social_accounts`).
+
 ```sql
--- Example: users can only see their own data
+-- Example (target schema): users can only see their own data
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own posts"
@@ -615,13 +631,16 @@ CREATE POLICY "Users can insert own posts"
 
 ### GDPR Deletion & Cascade Rules:
 To ensure perfect GDPR compliance and prevent orphan database rows, foreign keys MUST adhere to strict deletion rules:
+
+> **Instagram MVP (implemented):** `instagram_accounts.user_id` → CASCADE; `reels.account_id` → CASCADE; `reel_scores.reel_id` → CASCADE.
+
 - **`ON DELETE CASCADE`**: Applied to all direct user data tables linked to a user account.
   - `subscriptions.user_id` REFERENCES `users(id) ON DELETE CASCADE`
-  - `social_accounts.user_id` REFERENCES `users(id) ON DELETE CASCADE`
+  - `social_accounts.user_id` REFERENCES `users(id) ON DELETE CASCADE` *(MVP: `instagram_accounts.user_id`)*
   - `strategies.user_id` REFERENCES `users(id) ON DELETE CASCADE`
   - `usage_tracking.user_id` REFERENCES `users(id) ON DELETE CASCADE`
-  - `posts.account_id` REFERENCES `social_accounts(id) ON DELETE CASCADE`
-  - `post_scores.post_id` REFERENCES `posts(id) ON DELETE CASCADE`
+  - `posts.account_id` REFERENCES `social_accounts(id) ON DELETE CASCADE` *(MVP: `reels.account_id` → `instagram_accounts.id`)*
+  - `post_scores.post_id` REFERENCES `posts(id) ON DELETE CASCADE` *(MVP: `reel_scores.reel_id` → `reels.id`)*
 - **`ON DELETE SET NULL`**: Applied to historical immutable audit logs to protect user identity while preserving audit trails for compliance.
   - `audit_log.user_id` REFERENCES `users(id) ON DELETE SET NULL`
 
@@ -758,25 +777,28 @@ type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 ## 5.2 API Route Map
 
+> **Instagram MVP (implemented):** Reels use `/api/accounts/:id/reels` and `/api/reels/:id/score`. UI routes live under `/posts` (list + detail pages). TikTok webhook route is deferred. See mapping table in `docs/prd.md`.
+
 ```
 Authentication & User:
-  POST   /api/auth/social/:platform    → Initiate dynamic platform OAuth (instagram or tiktok)
+  POST   /api/auth/social/:platform    → Initiate OAuth (MVP: instagram only; returns { authUrl })
   GET    /api/auth/social/:platform/callback → OAuth callback handler
   GET    /api/auth/me                  → Current user profile
   PATCH  /api/auth/me                  → Update profile
   DELETE /api/auth/me                  → Delete account (GDPR)
+  GET    /api/auth/me/data-export      → GDPR JSON export
 
 Social Accounts:
-  GET    /api/accounts                 → List connected accounts (social_accounts)
-  POST   /api/accounts                 → Connect new account
+  GET    /api/accounts                 → List connected accounts (MVP: instagram_accounts)
+  POST   /api/accounts                 → Connect new account (delegates to OAuth)
+  POST   /api/accounts/demo            → Sandbox demo (alice_reels seed)
   DELETE /api/accounts/:id             → Disconnect account
   POST   /api/accounts/:id/sync       → Trigger manual sync (5-min cooldown)
 
-Posts (Reels & TikTok Videos):
-  GET    /api/accounts/:id/posts       → List platform posts (paginated)
-  GET    /api/posts/:id                → Single post with scores (post_scores)
-  POST   /api/posts/:id/score         → Trigger AI scoring (checks LLM caps)
-  GET    /api/posts/:id/score         → Get scoring result
+Reels (Instagram MVP — spec target: unified Posts):
+  GET    /api/accounts/:id/reels       → List Reels for account (paginated)
+  GET    /api/reels/:id/score          → Get scoring result
+  POST   /api/reels/:id/score         → Trigger AI/heuristic scoring (checks usage caps)
 
 Strategy:
   GET    /api/accounts/:id/strategy    → Get current strategy
@@ -796,11 +818,13 @@ Billing:
 Webhooks (no auth — signature verified):
   POST   /api/webhooks/stripe          → Stripe events
   POST   /api/webhooks/instagram       → Instagram webhook events
-  POST   /api/webhooks/tiktok          → TikTok webhook events
+  POST   /api/webhooks/tiktok          → TikTok webhook events (Post-MVP — not implemented)
 
 System:
   GET    /api/health                   → Health check (public)
-  GET    /api/health/deep              → Deep health check (internal)
+  GET    /api/health/deep              → Deep health check (not implemented)
+  POST   /api/cron/ingest              → Enqueue stale-account SYNC_ACCOUNT jobs (Bearer CRON_SECRET; enqueue-only)
+  POST   /api/queue/process            → Process job_queue batch (Bearer CRON_SECRET; Vercel cron */5)
 ```
 
 ## 5.3 Service Layer Architecture
@@ -989,6 +1013,8 @@ Any import of `lib/env.ts` will automatically trigger schema validation. The app
 
 # §6 — INSTAGRAM DATA INGESTION PIPELINE
 
+> **Instagram MVP status:** OAuth, manual sync, scheduled cron enqueue, webhook coalescing, hourly quota pre-flight (`instagram_api_hourly`), sync mutex, and upsert into **`reels`** are implemented. `REEL_INSIGHT_METRICS` includes `reels_skip_rate`, `total_views`, `public_reposts`. Worker: **`PROCESS_WEBHOOK`** enqueues debounced **`SYNC_ACCOUNT`**; **`SCORE_REEL`** for new reels only.
+
 ## 6.1 OAuth2 Flow
 
 ```mermaid
@@ -1001,7 +1027,8 @@ sequenceDiagram
     participant DB as Supabase DB
 
     User->>FE: Clicks "Connect Instagram"
-    FE->>User: Redirects to Instagram OAuth Authorization URL
+    FE->>BE: POST /api/auth/social/instagram → { authUrl }
+    FE->>User: Redirects to Meta OAuth Authorization URL
     User->>FB: Authorizes Scopes (instagram_business_basic, pages_show_list, etc.)
     FB->>BE: Redirects to callback with auth code
     BE->>FB: Exchange code for short-lived token (1 hour)
@@ -1013,8 +1040,8 @@ sequenceDiagram
         BE->>User: Redirects with error: INSTAGRAM_NOT_BUSINESS_ACCOUNT (Revokes token)
     else Account is valid Business/Creator
         BE->>BE: Encrypt long-lived token with AES-256-GCM
-        BE->>DB: Stores connection in social_accounts table
-        BE->>DB: Queue initial scheduled data sync (SCORE_POST job)
+        BE->>DB: Stores connection in instagram_accounts table (MVP)
+        BE->>DB: Enqueue initial SYNC_ACCOUNT job (MVP: SCORE_REEL after sync)
         FE->>User: Redirects with connection success banner
     end
 ```
@@ -1034,8 +1061,8 @@ Immediately after exchanging the short-lived token for the long-lived page token
    - If `instagram_business_account` is **missing**, or if it represents a personal profile that has not been converted to a Creator or Business profile, the system **MUST abort the login flow**.
 3. **Aborting and Cleanup:**
    - Revoke the authorized token immediately to maintain cleanliness.
-   - Do NOT create a record in `social_accounts`.
-   - Return a clear, user-friendly error code: `INSTAGRAM_NOT_BUSINESS_ACCOUNT`.
+   - Do NOT create a record in `instagram_accounts` (MVP) / `social_accounts` (target).
+   - OAuth redirect uses `?error=not_business_account` (MVP). API error code `INSTAGRAM_NOT_BUSINESS_ACCOUNT` may also be returned on non-OAuth paths.
 
 ## 6.2 Token Lifecycle Management
 
@@ -1086,7 +1113,7 @@ graph TD
     Trigger([Sync Trigger]) -->|Scheduled / Manual / Webhook| LimitCheck[Rate Limit Check: 200 calls/hr]
     LimitCheck -->|Under limit| FetchReels[Fetch Reels: GET /{user-id}/media]
     FetchReels -->|Filter: VIDEO| IngestInsights[Fetch Insights per Reel: GET /{media-id}/insights]
-    IngestInsights -->|reels_skip_rate, reach, shares, saves| Normalize[Normalize & Upsert into posts table]
+    IngestInsights -->|reels_skip_rate, reach, shares, saves| Normalize[Normalize & Upsert into reels table (MVP)]
     Normalize -->|Deduplicate by ig_media_id| QueueScoring[Queue Scoring Jobs in PG Queue]
     QueueScoring -->|AI_SCORE task enqueued| End([End Pipeline])
 
@@ -1097,11 +1124,14 @@ graph TD
     class End endNode;
 ```
 
-### Scheduled Ingestion Cron Endpoint (`POST /api/cron/ingest`)
-The scheduled data sync is managed via a secure, time-bounded hourly serverless cron endpoint.
-- **Trigger:** Scheduled via Vercel Cron in `vercel.json` (triggering hourly).
-- **Security:** Requires an `Authorization: Bearer CRON_SECRET` header check to prevent unauthorized execution.
-- **Action:** Instead of running the full sync in-request (which risks Vercel execution timeouts), this endpoint queries all connected accounts, checks their last sync timestamp, and enqueues a `SYNC_ACCOUNT` job for each account into the Skip Locked queue engine. The queue worker then processes each sync asynchronously.
+### Scheduled Ingestion Cron Endpoint (`POST /api/cron/ingest` + `POST /api/queue/process`)
+
+**Split responsibility (MVP):** `/api/cron/ingest` only enqueues `SYNC_ACCOUNT` with staggered `scheduled_at`. `/api/queue/process` (or the CLI worker) executes jobs. This avoids Vercel timeout bursts against the Graph API.
+
+The scheduled data sync uses two secure cron endpoints (see `vercel.json`):
+- **Trigger:** `/api/cron/ingest` hourly; `/api/queue/process` every 5 minutes.
+- **Security:** Both require `Authorization: Bearer CRON_SECRET`.
+- **Action:** Ingest enqueues `SYNC_ACCOUNT` for accounts stale >6h (skips `disconnected`, `rate_limited`, active `syncing`), with 30s stagger. Queue process runs `processQueueBatch` — Graph API calls happen only inside `syncAccount()`, not in the cron HTTP handler.
 - **Local Simulation:**
   ```bash
   curl -X POST http://localhost:3000/api/cron/ingest -H "Authorization: Bearer CRON_SECRET_LOCAL"
@@ -1109,24 +1139,35 @@ The scheduled data sync is managed via a secure, time-bounded hourly serverless 
 
 ## 6.4 Instagram API Rate Limit Handling
 
+**Implementation:** `lib/ingestion/rate-limit-policy.ts`, `lib/ingestion/instagram-quota.ts`, `lib/ingestion/post-fetcher.ts`, `lib/services/ingestion.service.ts`, `lib/queue/processor.ts`.
+
 ```typescript
 interface RateLimitStrategy {
-  // Per-app limits
-  appLimit: 200;         // calls per hour per user
-  windowMs: 3_600_000;   // 1 hour
+  appLimit: 200;              // Graph API calls per hour per IG account
+  quotaReserve: 10;           // abort sync if remaining < reserve
+  syncLockStaleMs: 600_000;   // reclaim stale "syncing" after 10 min
+  webhookDebounceMs: 600_000; // one debounced SYNC_ACCOUNT per 10 min
+  rateLimitCooldownMs: 900_000; // skip sync while account is rate_limited
 
-  // Handling strategy
-  onRateLimit: {
-    action: "exponential_backoff";
-    initialDelay: 60_000;   // 1 minute
-    maxDelay: 900_000;      // 15 minutes
-    maxRetries: 5;
+  beforeSync: {
+    checkHourlyQuota: true;   // instagram_api_hourly table
+    acquireSyncLock: true;    // SYNC_IN_PROGRESS if held
+    skipIfRateLimited: true;
   };
 
-  // Pre-flight check
-  beforeCall: {
-    checkRemainingQuota: true;
-    abortIfUnder: 10;       // Reserve 10 calls for critical ops
+  onHttp429InFetcher: {
+    backoffMs: [60_000, 120_000, 240_000, 480_000, 900_000];
+  };
+
+  onQueueJobFailure: {
+    igRateLimitBackoffMs: [60_000, 120_000, 240_000, 480_000, 900_000];
+    defaultBackoffSec: "2^retryCount";
+  };
+
+  cron: {
+    enqueueOnly: true;        // /api/cron/ingest does not call Graph
+    staggerMs: 30_000;        // per account
+    skipStatuses: ["disconnected", "rate_limited"];
   };
 }
 ```
@@ -1848,11 +1889,11 @@ function calculateHeuristicScore(
 ## 7.6 Stale-While-Revalidate Caching Model for Post Scoring
 
 To optimize API usage and provide instantaneous page loads, Post scoring MUST enforce a **Stale-While-Revalidate (SWR)** caching model:
-1. **Post Cache Expiry**: Scored posts are cached in the `post_scores` table. A cached score remains valid for **24 hours**.
+1. **Post Cache Expiry**: Scored Reels are cached in the **`reel_scores`** table (MVP; target: `post_scores`). A cached score remains valid for **24 hours**.
 2. **Read Request (SWR)**:
-   - When a client queries a post score, the system checks the `scored_at` column.
+   - When a client queries a Reel score via `GET /api/reels/:id/score`, the system checks the `scored_at` column.
    - If the score exists and is less than 24 hours old, it is returned **immediately** (instant response).
-   - If the score exists but is older than 24 hours (stale), the system **immediately returns the stale score** to the client, but asynchronously triggers a background queue job (`SCORE_POST`) to revalidate and update the score in the background.
+   - If the score exists but is older than 24 hours (stale), the system **immediately returns the stale score** to the client, but asynchronously triggers a background queue job (`SCORE_REEL`) to revalidate and update the score in the background.
 3. **Explicit Force-Refresh & Cooldown**:
    - Users can trigger an explicit "Force Recalculate" request.
    - To prevent denial-of-service billing attacks, a strict **1-hour cooldown limit** is enforced per Post.
@@ -2677,11 +2718,13 @@ All worker job handlers and webhook side-effect paths MUST wrap their transactio
 
 ## 10.2 Page Architecture
 
+> **Instagram MVP (implemented):** Sidebar label is **My Posts** at route **`/posts`** (not `/reels`). Post detail is **`/posts/[id]`**. Data loads from **`GET /api/accounts/:id/reels`** and scores from **`GET|POST /api/reels/:id/score`**.
+
 ```
 App Shell
 ├── Sidebar Navigation (collapsible)
 │   ├── Dashboard (/)
-│   ├── My Reels (/reels)
+│   ├── My Posts (/posts)          ← MVP implemented route
 │   ├── Strategy (/strategy)
 │   ├── Analytics (/analytics)
 │   ├── Accounts (/accounts)
@@ -2738,7 +2781,9 @@ App Shell
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Reel Detail (`/reels/:id`)
+### Post Detail (`/posts/[id]`) — MVP implemented route
+
+> Data: `GET /api/accounts/:id/reels` + `GET|POST /api/reels/:id/score`. UI shows 9 dimension bars from `reel_scores`.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -3137,6 +3182,8 @@ All user-facing tables MUST have Row-Level Security (RLS) enabled. To ensure RLS
 ## 11.7 GDPR Data Export Schema
 
 To satisfy GDPR Article 20 (Right to Data Portability), the platform MUST expose an authenticated endpoint (`GET /api/auth/me/data-export`) that compiles all historical user activity and metrics into a machine-readable JSON structure.
+
+> **Instagram MVP (implemented):** Export payload uses top-level keys **`instagramAccounts`** and **`reels`** (tokens omitted). JSON schema below uses target names `socialAccounts` / `posts` for cross-platform portability planning.
 
 ## 11.8 Log Sanitization (Mandatory Secret Redaction)
 

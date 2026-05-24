@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { usageTracking, subscriptions } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getPlanLimits, PlanId } from "./plans";
+import type { ModelTier } from "@/lib/ai/model-router";
 
 export type UsageField =
   | "aiCallsCount"
@@ -10,6 +11,23 @@ export type UsageField =
   | "reelsAnalyzed"
   | "strategiesGen"
   | "apiCallsCount";
+
+export interface UserPlanContext {
+  planId: PlanId;
+  modelTier: ModelTier;
+}
+
+/**
+ * Resolves the user's active plan and model routing tier for AI calls.
+ */
+export async function getUserPlanContext(userId: string): Promise<UserPlanContext> {
+  const sub = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.userId, userId),
+  });
+  const planId = (sub?.planId || "free") as PlanId;
+  const limits = getPlanLimits(planId);
+  return { planId, modelTier: limits.modelTier };
+}
 
 export interface UsageRecord {
   id: string;

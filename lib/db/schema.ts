@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, integer, boolean, decimal, customType, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, integer, boolean, decimal, customType, jsonb, primaryKey } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // ─── Custom Column Types ───────────────────────────────────────────────────
@@ -206,7 +206,23 @@ export const auditLog = pgTable('audit_log', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-// 11. processed_events
+// 11. instagram_api_hourly — per-account Graph API call counter (rolling UTC hour)
+export const instagramApiHourly = pgTable(
+  'instagram_api_hourly',
+  {
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => instagramAccounts.id, { onDelete: 'cascade' }),
+    hourBucket: text('hour_bucket').notNull(),
+    callCount: integer('call_count').notNull().default(0),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.accountId, table.hourBucket] }),
+  ]
+);
+
+// 12. processed_events
 export const processedEvents = pgTable('processed_events', {
   id: uuid('id').primaryKey().defaultRandom(),
   eventId: text('event_id').notNull().unique(), // Stripe event ID / hash
@@ -254,6 +270,14 @@ export const instagramAccountsRelations = relations(instagramAccounts, ({ one, m
   }),
   reels: many(reels),
   strategies: many(strategies),
+  apiHourlyUsage: many(instagramApiHourly),
+}));
+
+export const instagramApiHourlyRelations = relations(instagramApiHourly, ({ one }) => ({
+  account: one(instagramAccounts, {
+    fields: [instagramApiHourly.accountId],
+    references: [instagramAccounts.id],
+  }),
 }));
 
 // reels relations

@@ -24,11 +24,15 @@ export const ERROR_CODES = {
   // Instagram
   IG_API_ERROR: { status: 502, message: "Instagram API error" },
   IG_RATE_LIMITED: { status: 429, message: "Instagram rate limit hit, retry later" },
+  IG_QUOTA_EXHAUSTED: { status: 429, message: "Instagram hourly API quota exhausted — sync deferred" },
+  SYNC_IN_PROGRESS: { status: 409, message: "A sync is already running for this account" },
   IG_TOKEN_INVALID: { status: 401, message: "Instagram connection lost" },
 
   // AI
   AI_BUDGET_EXCEEDED: { status: 403, message: "AI analysis budget exceeded for this period" },
   AI_SERVICE_UNAVAILABLE: { status: 503, message: "AI service temporarily unavailable" },
+  USAGE_LIMIT_EXCEEDED: { status: 429, message: "Monthly usage limit reached for this feature" },
+  SCORE_REFRESH_COOLDOWN: { status: 429, message: "Score was refreshed recently — try again in one hour" },
 
   // Abuse Safeguards (§12.4)
   ACCOUNT_ALREADY_LINKED: { status: 409, message: "This Instagram Business Account is already linked to another user profile" },

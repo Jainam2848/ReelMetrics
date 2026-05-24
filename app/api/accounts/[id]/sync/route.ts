@@ -56,6 +56,12 @@ export const POST = withRateLimit(
           case "IG_RATE_LIMITED":
             return apiError("IG_RATE_LIMITED", error.message);
 
+          case "IG_QUOTA_EXHAUSTED":
+            return apiError("IG_QUOTA_EXHAUSTED", error.message);
+
+          case "SYNC_IN_PROGRESS":
+            return apiError("SYNC_IN_PROGRESS", error.message);
+
           default:
             return apiError("INTERNAL_ERROR", error.message);
         }

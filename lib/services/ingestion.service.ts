@@ -19,7 +19,7 @@ import {
   usageTracking,
   auditLog,
 } from "@/lib/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, or, ne, lt, sql } from "drizzle-orm";
 import { decryptToken } from "@/lib/security/encryption";
 import {
   shouldRefresh,
@@ -34,6 +34,14 @@ import {
 } from "@/lib/ingestion/post-fetcher";
 import { normalizeInstagramPosts } from "@/lib/ingestion/data-normalizer";
 import { enqueueJob, JOB_TYPES } from "@/lib/queue";
+import {
+  checkInstagramQuotaForSync,
+  recordAccountApiCalls,
+} from "@/lib/ingestion/instagram-quota";
+import {
+  IG_RATE_LIMIT_COOLDOWN_MS,
+  SYNC_LOCK_STALE_MS,
+} from "@/lib/ingestion/rate-limit-policy";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -53,6 +61,11 @@ export interface SyncResult {
  * Prevents rapid API requests that could exhaust Instagram rate limits.
  */
 const SYNC_COOLDOWN_MS = 5 * 60 * 1000;
+
+export interface SyncAccountOptions {
+  skipCooldown?: boolean;
+  trigger?: "manual" | "scheduled" | "webhook";
+}
 
 // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -75,7 +88,8 @@ const SYNC_COOLDOWN_MS = 5 * 60 * 1000;
  */
 export async function syncAccount(
   userId: string,
-  accountId: string
+  accountId: string,
+  options: SyncAccountOptions = {}
 ): Promise<SyncResult> {
   // 1. Fetch account and verify ownership
   const account = await db.query.instagramAccounts.findFirst({
@@ -92,8 +106,8 @@ export async function syncAccount(
     );
   }
 
-  // 2. Enforce 5-minute cooldown
-  if (account.lastSyncedAt) {
+  // 2. Enforce 5-minute cooldown (manual sync only)
+  if (!options.skipCooldown && account.lastSyncedAt) {
     const timeSinceLastSync = Date.now() - account.lastSyncedAt.getTime();
     if (timeSinceLastSync < SYNC_COOLDOWN_MS) {
       const remainingSeconds = Math.ceil(
@@ -104,6 +118,38 @@ export async function syncAccount(
         `Sync cooldown active. Please wait ${remainingSeconds} seconds.`
       );
     }
+  }
+
+  // 2b. Respect platform rate-limit cooldown (all triggers)
+  if (account.syncStatus === "rate_limited" && account.updatedAt) {
+    const sinceRateLimit = Date.now() - account.updatedAt.getTime();
+    if (sinceRateLimit < IG_RATE_LIMIT_COOLDOWN_MS) {
+      const waitMinutes = Math.ceil(
+        (IG_RATE_LIMIT_COOLDOWN_MS - sinceRateLimit) / 60_000
+      );
+      throw new SyncError(
+        "IG_RATE_LIMITED",
+        `Instagram rate limit cooldown active. Retry in ~${waitMinutes} minutes.`
+      );
+    }
+  }
+
+  // 2c. Pre-flight hourly Graph API quota (per Instagram account)
+  const quota = await checkInstagramQuotaForSync(accountId);
+  if (!quota.allowed) {
+    throw new SyncError(
+      "IG_QUOTA_EXHAUSTED",
+      `Hourly Instagram API quota nearly exhausted (${quota.currentCalls}/${quota.limit} used; need ~${quota.estimatedCalls} calls).`
+    );
+  }
+
+  // 2d. Per-account sync mutex (prevents overlapping full syncs)
+  const lockAcquired = await tryAcquireSyncLock(accountId);
+  if (!lockAcquired) {
+    throw new SyncError(
+      "SYNC_IN_PROGRESS",
+      "Another sync is already in progress for this account."
+    );
   }
 
   // 3. Check if token is valid / needs refresh
@@ -148,12 +194,6 @@ export async function syncAccount(
     }
   }
 
-  // Mark as syncing
-  await db
-    .update(instagramAccounts)
-    .set({ syncStatus: "syncing", updatedAt: new Date() })
-    .where(eq(instagramAccounts.id, accountId));
-
   let syncResult: SyncResult;
 
   try {
@@ -173,6 +213,7 @@ export async function syncAccount(
     // 6. Upsert into database with deduplication
     let postsCreated = 0;
     let postsUpdated = 0;
+    const newMediaIds = new Set<string>();
 
     for (const post of normalizedPosts) {
       const [upserted] = await db
@@ -230,24 +271,25 @@ export async function syncAccount(
           ) < 1000;
         if (isNew) {
           postsCreated++;
+          newMediaIds.add(post.igMediaId);
         } else {
           postsUpdated++;
         }
       }
     }
 
-    // 7. Enqueue AI scoring jobs for all processed posts
+    // 7. Enqueue AI scoring jobs for newly created reels only (avoid queue floods)
     let scoringJobsEnqueued = 0;
-    for (const post of normalizedPosts) {
+    for (const igMediaId of newMediaIds) {
       const enqueued = await enqueueJob(
         JOB_TYPES.SCORE_REEL,
         {
           accountId,
-          igMediaId: post.igMediaId,
+          igMediaId,
           userId,
         },
         {
-          idempotencyKey: `score:${post.igMediaId}:${post.fetchedAt.toISOString()}`,
+          idempotencyKey: `score:${igMediaId}`,
           priority: 0,
         }
       );
@@ -268,8 +310,9 @@ export async function syncAccount(
       })
       .where(eq(instagramAccounts.id, accountId));
 
-    // 9. Track API usage
-    await trackApiUsage(userId, rawPosts.length + 1); // +1 for the media list call
+    const apiCallsUsed = rawPosts.length + 1;
+    await recordAccountApiCalls(accountId, apiCallsUsed);
+    await trackApiUsage(userId, apiCallsUsed);
 
     syncResult = {
       accountId,
@@ -325,6 +368,29 @@ export async function syncAccount(
   }
 
   return syncResult;
+}
+
+/**
+ * Atomically claims a per-account sync lock (status = syncing).
+ * Stale locks older than SYNC_LOCK_STALE_MS may be reclaimed.
+ */
+async function tryAcquireSyncLock(accountId: string): Promise<boolean> {
+  const staleBefore = new Date(Date.now() - SYNC_LOCK_STALE_MS);
+  const rows = await db
+    .update(instagramAccounts)
+    .set({ syncStatus: "syncing", updatedAt: new Date() })
+    .where(
+      and(
+        eq(instagramAccounts.id, accountId),
+        or(
+          ne(instagramAccounts.syncStatus, "syncing"),
+          lt(instagramAccounts.updatedAt, staleBefore)
+        )
+      )
+    )
+    .returning({ id: instagramAccounts.id });
+
+  return rows.length > 0;
 }
 
 // ── Usage Tracking ─────────────────────────────────────────────────────────

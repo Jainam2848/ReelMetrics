@@ -8,6 +8,13 @@
       "when": 1779262741832,
       "tag": "0000_far_mandrill",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779262741833,
+      "tag": "0001_instagram_api_hourly",
+      "breakpoints": true
     }
   ]
 }

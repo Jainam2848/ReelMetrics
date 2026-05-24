@@ -128,6 +128,8 @@ While your app is in **Development Mode**, only accounts associated with your ap
 
 Your test account can now log into Trendoraa successfully using the OAuth callback flow!
 
+> **OAuth initiation:** The app uses `POST /api/auth/social/instagram` (returns `{ authUrl }`). The login UI must not use a plain GET link to Meta.
+
 ---
 
 ## 7. Transitioning to Live Mode (Production)
@@ -159,11 +161,13 @@ To keep these users productive while real OAuth access is unblocked, Trendoraa e
 
 ### Triggering the Sandbox Demo
 
-The dashboard's OAuth error banner and the empty-state onboarding flow both offer a "Use sandbox demo" fallback CTA. Under the hood, the client issues:
+The **home dashboard onboarding wizard** and the **`/accounts` empty state** expose a "Use sandbox demo" button that calls:
 
 ```http
 POST /api/accounts/demo
 ```
+
+The OAuth error banner (`OAuthErrorBanner` on the home dashboard) may **mention** the sandbox in its copy for failed OAuth flows, but it does **not** include a demo button — users must use the onboarding or `/accounts` CTA.
 
 The endpoint (`app/api/accounts/demo/route.ts`) is authenticated. It:
 
@@ -174,8 +178,12 @@ The endpoint (`app/api/accounts/demo/route.ts`) is authenticated. It:
 ### When to Recommend It
 
 * During QA and demos before the Meta App is approved.
-* As a graceful fallback when real OAuth fails — the dashboard OAuth error banner links straight to this flow.
+* As a graceful fallback when real OAuth fails — use the home onboarding wizard or `/accounts` empty-state demo button (not the OAuth banner alone).
 * For internal walkthroughs that should not depend on a live Instagram account.
+
+> **Connect flow:** The UI must `POST /api/auth/social/instagram` (returns `{ authUrl }` + CSRF cookie). Do not use a plain GET link to start OAuth.
+
+> **Scheduled sync (MVP):** Hourly cron enqueues stale-account syncs (`POST /api/cron/ingest`, Bearer `CRON_SECRET`). Jobs run via `POST /api/queue/process` (every 5 minutes on Vercel) or `npx tsx lib/queue/worker.ts`. Manual **Sync Now** (`POST /api/accounts/:id/sync`) keeps a 5-minute cooldown. Apply migration `lib/db/migrations/0001_instagram_api_hourly.sql` for hourly Graph API quota tracking.
 
 > [!NOTE]
 > The sandbox demo is intended for development and onboarding. Once a user successfully connects a real Instagram Professional account, treat the demo account as throwaway data and avoid mixing demo metrics with real ingestion.

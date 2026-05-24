@@ -114,12 +114,15 @@ const INSIGHT_METRICS = [
  */
 const REEL_INSIGHT_METRICS = [
   "views",
+  "total_views",
   "likes",
   "comments",
   "shares",
   "saved",
   "reach",
   "total_interactions",
+  "reels_skip_rate",
+  "public_reposts",
   "ig_reels_avg_watch_time",
   "ig_reels_video_view_total_time",
 ].join(",");

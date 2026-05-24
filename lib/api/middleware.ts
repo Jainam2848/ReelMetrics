@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { AuthService, UserProfile } from "@/lib/services/auth.service";
 import { apiError } from "./response";
+import { env } from "@/lib/env";
 import { z } from "zod";
 
 export interface RouteContext {
@@ -163,6 +164,22 @@ export function withRateLimit(
           rateLimitStore.set(k, validTimes);
         }
       }
+    }
+
+    return handler(request, context);
+  };
+}
+
+/**
+ * Gates cron/queue routes with Bearer CRON_SECRET.
+ */
+export function withCronSecret(handler: RouteHandler): RouteHandler {
+  return async (request: NextRequest, context: RouteContext) => {
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+    if (!token || token !== env.CRON_SECRET) {
+      return apiError("UNAUTHORIZED", "Invalid or missing cron secret");
     }
 
     return handler(request, context);

@@ -1,8 +1,10 @@
 # Architecture Decision Record (ADR) — Trendoraa
 
-**Document Version:** 1.0.0  
-**Status:** Approved  
+**Document Version:** 1.1.0  
+**Status:** Approved (Instagram MVP annotations)  
 **Author:** Software Architect & Principal Engineer  
+
+> **Instagram MVP vs. target architecture:** The **implemented** Instagram MVP uses platform-specific tables (`instagram_accounts`, `reels`, `reel_scores`) and routes (`/api/accounts/:id/reels`, `/api/reels/:id/score`). §8 below describes the **cross-platform target** (`social_accounts`, `posts`, `post_scores`) planned for Phase 11 TikTok expansion — not the current production schema.
 
 ---
 
@@ -20,7 +22,7 @@ C4Container
         Container(frontend, "Frontend SPA", "React / Next.js / Tailwind CSS", "Provides user dashboard, strategy view, calendar, and billing portal")
         Container(api, "Serverless API Gateways", "Next.js API Routes", "Handles OAuth flow, webhooks, manual sync, and triggers background jobs")
         Container(queueWorkers, "Background Worker Cluster", "Next.js Serverless + PG Queue", "Executes data ingestion, AI video scoring, and content calendar strategies asynchronously")
-        ContainerDb(database, "Data Warehouse Layer", "Supabase / PostgreSQL 15+", "Stores unified posts, encrypted social accounts, metrics history, strategy logs, and billing metadata")
+        ContainerDb(database, "Data Warehouse Layer", "Supabase / PostgreSQL 15+", "Stores instagram_accounts, reels, reel_scores, metrics history, strategy logs, and billing metadata (Instagram MVP)")
     }
 
     System_Ext(metaGraph, "Meta Graph API (Instagram)", "Provides Reels insights, reels_skip_rate, and Grid reposts")
@@ -164,7 +166,7 @@ Using a standard seed-stage SaaS product user distribution and our strictly cost
 The application adopts a defensive engineering mindset, treating all external integrations as unreliable dependencies:
 
 ### 6.1 Instagram Graph API (v22.0+)
-* **Dependencies:** Media Ingestion, comment and engagement retrieval, ig_skip_rate insights.
+* **Dependencies:** Media Ingestion, comment and engagement retrieval, Graph API `reels_skip_rate` (stored as `reels.skip_rate`).
 * **Failure Vectors:** OAuth token expirations, 429 rate limit errors (200 requests/hr ceiling), network connection drops.
 * **Fallback Strategy:**
   * **Stale-While-Revalidate (SWR) DB Reads:** Ingestion logic implements SWR caching. Dashboards load cached metrics instantly from PostgreSQL while launching worker threads in the background.
@@ -214,7 +216,7 @@ The system implements 6 secure defensive layers, protecting user data at rest, i
 1. **Network Layer:** All connections use HTTPS exclusively, utilizing Vercel's automated TLS configuration. API routes use CORS limits, blocking unauthorized domains, and enforce CSRF token validation.
 2. **Authentication Layer:** GoTrue processes logins natively. Social access tokens are fetched using secure OAuth2 authorization codes, and user session cookies are protected via `httpOnly` and `SameSite` flags.
 3. **Authorization Layer (RLS):** Row-Level Security is active on every single user-facing table in Supabase. Access policies enforce tenant isolation. RLS policies are validated on every migration and codebase update by running the automated simulation script (`scripts/test-rls.ts`).
-4. **Data Protection Layer (Token Encryption):** Long-lived Instagram access tokens and TikTok refresh tokens are encrypted in PostgreSQL using the AES-256-GCM algorithm. Cryptographic payloads are saved using multi-version tracking keys inside `social_accounts`:
+4. **Data Protection Layer (Token Encryption):** Long-lived Instagram access tokens are encrypted in PostgreSQL using the AES-256-GCM algorithm on **`instagram_accounts.access_token_enc`** (MVP). Cryptographic payloads are saved using multi-version tracking keys:
    * Format: `keyVersion:iv:authTag:ciphertext` (e.g., `v2:32byteIv:32byteTag:ciphertext`).
    * This multi-version format allows SOC2-compliant, zero-downtime key rotation by preserving historical keys in a decryption keys map variable (`TOKEN_ENCRYPTION_KEYS`).
 5. **Webhook Security Layer:** Stripe webhooks verify HMAC-SHA256 headers before processing, and Instagram webhooks check `hub.verify_token` signatures to prevent payload injection.
@@ -236,12 +238,14 @@ const SECRET_PATTERNS = [
 
 ---
 
-## 8. Unified Data Model Architectural Decision (Spec §4)
+## 8. Unified Data Model Architectural Decision (Spec §4) — **Cross-Platform Target**
+
+> **Instagram MVP note:** Production code today uses `instagram_accounts` → `reels` → `reel_scores` (see `lib/db/schema.ts`). The unified model below is the **Phase 11 target** when TikTok joins the same ingestion pipeline without a breaking migration.
 
 To prevent code duplication, logical drift, and database index clutter, we made the architectural decision to design a **Unified Data Model** (fully normalized tables) instead of splitting social networks into individual tables.
 
-### 8.1 Schema Normalization Map
-Instead of creating platform-specific tables (`instagram_accounts`, `tiktok_accounts`, `reels`, `tiktok_videos`), the system maps all connections to unified entities:
+### 8.1 Schema Normalization Map (Target — Post-MVP Cross-Platform)
+Instead of maintaining separate platform tables long-term, the **target** system maps all connections to unified entities (Instagram MVP currently uses dedicated tables for velocity):
 
 ```
 ```mermaid
@@ -277,11 +281,11 @@ erDiagram
 ```
 ```
 
-* **`social_accounts`:** Stores connected social entities, tracking `platform` (`instagram` | `tiktok`) and utilizing AES-256-GCM encryption on token structures.
-* **`posts`:** Stores ingested media metadata, unifying reels and TikTok videos into a platform-agnostic table. Accommodates nullable platform metrics such as `ig_skip_rate` and `tiktok_completion_rate` under a clean, unified index structure.
-* **`post_scores`:** Links AI analysis directly to `posts`, scoring key visual/structural dimensions identically across platforms while modifying the LLM prompt context dynamically based on the post's platform indicator.
+* **`social_accounts` (target):** Stores connected social entities, tracking `platform` (`instagram` | `tiktok`) and utilizing AES-256-GCM encryption on token structures. **MVP:** `instagram_accounts` only.
+* **`posts` (target):** Stores ingested media metadata, unifying reels and TikTok videos into a platform-agnostic table. Accommodates nullable platform metrics such as `skip_rate` and `completion_rate`. **MVP:** `reels` table (Instagram-only).
+* **`post_scores` (target):** Links AI analysis directly to `posts`. **MVP:** `reel_scores` linked to `reels`.
 
 ### 8.2 Operational Benefits
-* **Staged Rollout Simplification:** Complete the Instagram ingestion layer first. Since the schema and core API query code are designed for cross-platform day one, starting the TikTok rollout requires zero table migrations or UI structural rewrites.
-* **Cascading Delete Reliability:** Enforces clean GDPR purge cycles. Triggering deletion on `social_accounts` triggers a single, native PostgreSQL cascade that purges all corresponding `posts`, `post_scores`, and billing logs seamlessly.
+* **Staged Rollout Simplification:** Instagram MVP uses dedicated tables today; migrating to unified `social_accounts` / `posts` is planned for Phase 11 TikTok expansion.
+* **Cascading Delete Reliability:** MVP: deleting `instagram_accounts` cascades to `reels`, `reel_scores`, and related rows. Target: deletion on `social_accounts` cascades to `posts` and `post_scores`.
 

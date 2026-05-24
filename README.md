@@ -8,8 +8,8 @@ By shifting workflows from intuitive guessing to highly tailored, data-backed st
 
 ## ✨ Features
 
-* **Unified Cross-Platform Ingestion:** Dynamic OAuth2 integrations for Meta Graph API (Instagram Reels) and TikTok Display API (TikTok Videos).
-* **The Hook Moat (Strategic Insight):** Surfacing Instagram `reels_skip_rate` as *Strategic Skip Resistance* and TikTok `completion_rate` as *Strategic Video Completion Retention Index* to mathematically dissect opening hooks.
+* **Instagram MVP Ingestion (live):** OAuth2 for Instagram Professional accounts via `POST /api/auth/social/instagram`, Reel sync into `instagram_accounts` / `reels` / `reel_scores`, manual sync, and webhook subscription. TikTok integration is Post-MVP (Phase 11).
+* **The Hook Moat (Strategic Insight):** Surfacing Instagram Graph API `reels_skip_rate` (stored as `reels.skip_rate`) as *Strategic Skip Resistance* to mathematically dissect opening hooks.
 * **9-Dimension Scoring Engine:** Fully customized GPT-4o analytics model mapping hooks, visual pacing, structural retention, and captions.
 * **Profitable Strategy Generation:** Beautiful interactive calendars, automated posting schedules, and personalized copy generation.
 * **Cost-Optimized Architecture:** Strict monthly LLM budget caps and mathematical heuristic fallbacks to ensure sustainable **>90% Gross Margins**.
@@ -42,8 +42,15 @@ Ensure the following variables are configured:
 * `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 * `OPENAI_API_KEY` (AI Engine)
 * `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`
-* `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, and `TIKTOK_REDIRECT_URI`
-* `INSTAGRAM_CLIENT_ID`, `INSTAGRAM_CLIENT_SECRET`, and `INSTAGRAM_REDIRECT_URI`
+* `INSTAGRAM_CLIENT_ID`, `INSTAGRAM_CLIENT_SECRET`, and `INSTAGRAM_REDIRECT_URI` (callback: `/api/auth/social/instagram/callback`)
+
+**Key Instagram API routes (MVP):**
+* `POST /api/auth/social/instagram` — start OAuth (returns `{ authUrl }`)
+* `GET /api/accounts` — list connected `instagram_accounts`
+* `GET /api/accounts/:id/reels` — list ingested Reels
+* `GET|POST /api/reels/:id/score` — fetch or trigger scoring
+* `POST /api/accounts/:id/sync` — manual sync (5-minute cooldown)
+* `POST /api/accounts/demo` — sandbox demo (`alice_reels` seed)
 
 ### 2. Install Dependencies & Build
 Install workspace dependencies and verify compilation and code quality:
@@ -70,7 +77,7 @@ The login page (`app/(auth)/login/page.tsx`) ships with two one-click presets th
 | User A | `userA@example.com` | `password123` |
 | User B | `userB@example.com` | `password123` |
 
-These accounts are populated by `lib/db/seed.ts` and exist purely so contributors can sign in immediately without provisioning Supabase users by hand. They give fast access to the pre-seeded `alice_reels` sandbox data referenced from `docs/instagram-setup.md`.
+These accounts are populated by `lib/db/seed.ts` and exist purely so contributors can sign in immediately without provisioning Supabase users by hand. After login, use **Use sandbox demo** on the home onboarding wizard or `/accounts` empty state (`POST /api/accounts/demo`) to attach the pre-seeded `alice_reels` profile — see `docs/instagram-setup.md` §8.
 
 > [!WARNING]
 > **Development-only.** These presets MUST be removed — or gated behind `process.env.NODE_ENV !== 'production'` — before deploying to any internet-reachable environment. Shipping the buttons (or the seeded passwords) to production would expose a trivial credential-stuffing target.
