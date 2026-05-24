@@ -46,8 +46,26 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 3. Route Protection Gates
-  // Protect all /dashboard/* routes - redirect to /login if anonymous
-  if (pathname.startsWith("/dashboard")) {
+  // Redirect legacy /dashboard paths to route group counterparts to prevent 404s
+  if (pathname === "/dashboard") {
+    const targetUrl = new URL("/", request.url);
+    request.nextUrl.searchParams.forEach((value, key) => {
+      targetUrl.searchParams.set(key, value);
+    });
+    return NextResponse.redirect(targetUrl);
+  }
+  if (pathname.startsWith("/dashboard/")) {
+    const targetUrl = new URL(pathname.replace("/dashboard", ""), request.url);
+    request.nextUrl.searchParams.forEach((value, key) => {
+      targetUrl.searchParams.set(key, value);
+    });
+    return NextResponse.redirect(targetUrl);
+  }
+
+  // Gate all protected dashboard paths in the route group if anonymous
+  const protectedPaths = ["/", "/posts", "/strategy", "/analytics", "/accounts", "/billing", "/settings"];
+  const isProtected = protectedPaths.includes(pathname) || pathname.startsWith("/posts/") || pathname.startsWith("/strategy/");
+  if (isProtected) {
     if (!user) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirectTo", pathname);

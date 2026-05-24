@@ -23,6 +23,8 @@ export const metadata: Metadata = {
   description: "AI-powered short-form video strategy & analytics (Instagram & TikTok)",
 };
 
+import { Providers } from "@/app/providers";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -35,8 +37,11 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );
 }
+
