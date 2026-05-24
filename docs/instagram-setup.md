@@ -14,7 +14,7 @@ See [.env.example](file:///d:/Desktop/reel-logic-ai/.env.example) for reference:
 | :--- | :--- | :--- | :--- |
 | `INSTAGRAM_CLIENT_ID` | Your Meta App ID. | `123456789012345` | Meta App Dashboard (Header or Basic Settings) |
 | `INSTAGRAM_CLIENT_SECRET` | Your Meta App Secret. | Hexadecimal string | Meta App Dashboard (Settings > Basic) |
-| `INSTAGRAM_REDIRECT_URI` | The OAuth callback URL authorized by Meta. | `http://localhost:3000/api/auth/instagram/callback` | Configured under Instagram Product Settings |
+| `INSTAGRAM_REDIRECT_URI` | The OAuth callback URL authorized by Meta. | `http://localhost:3000/api/auth/social/instagram/callback` | Configured under Instagram Product Settings |
 | `INSTAGRAM_VERIFY_TOKEN` | Secure, random token shared with Meta for webhook challenge verification. | Hexadecimal string | Custom generated (e.g. via crypto CLI) |
 | `INSTAGRAM_APP_SECRET` | The same Meta App Secret used to verify webhook signatures. | Hexadecimal string | Meta App Dashboard (Settings > Basic) |
 
@@ -67,10 +67,13 @@ Follow these steps to establish your integration.
 2. Find the **Instagram** or **Instagram Graph API** product card and click **Set Up**.
 3. Once added, navigate to **Instagram** > **Basic Display** (or **Settings** under Instagram Login in the sidebar depending on app type).
 4. Add the following Redirect URLs:
-   * **Valid OAuth Redirect URIs**: `http://localhost:3000/api/auth/instagram/callback`
-   * **Deauthorize Callback URL**: `http://localhost:3000/api/auth/instagram/deauthorize` (or your domain equivalent)
-   * **Data Deletion Request URL**: `http://localhost:3000/api/auth/instagram/delete`
+   * **Valid OAuth Redirect URIs**: `http://localhost:3000/api/auth/social/instagram/callback`
+   * **Deauthorize Callback URL**: `http://localhost:3000/api/auth/social/instagram/deauthorize` (or your domain equivalent)
+   * **Data Deletion Request URL**: `http://localhost:3000/api/auth/social/instagram/delete`
 5. Click **Save Changes**.
+
+> [!NOTE]
+> The deauthorize and data-deletion endpoints are not yet implemented in the codebase but are required entries in your Meta App configuration. Track implementation under `app/api/auth/social/[platform]/deauthorize/route.ts` and `app/api/auth/social/[platform]/delete/route.ts`. Until they exist, Meta may flag the app during App Review.
 
 ---
 
@@ -139,4 +142,40 @@ Once you are ready to launch Trendoraa to real customers:
    * Once approved, toggle the switch at the top of your Meta App Dashboard from **Development** to **Live**.
 3. **Update Production Environment Variables**:
    * Set your live credentials in your hosting platform (Vercel, AWS, etc.).
-   * Ensure `INSTAGRAM_REDIRECT_URI` is set to your production callback URL (e.g., `https://trendoraa.com/api/auth/instagram/callback`).
+   * Ensure `INSTAGRAM_REDIRECT_URI` is set to your production callback URL (e.g., `https://trendoraa.com/api/auth/social/instagram/callback`).
+
+---
+
+## 8. Fallback: Sandbox Demo Account
+
+Not every user can complete the live Instagram OAuth flow on day one. Common blockers include:
+
+* Their Instagram profile is a **personal account** (the Graph API rejects personal profiles with `INSTAGRAM_NOT_BUSINESS_ACCOUNT`).
+* They do **not own or manage a Facebook Page** to link the Instagram Professional account to.
+* The Trendoraa Meta App is still in **Development Mode** and the user is not on the tester allowlist.
+* App Review for `instagram_basic` / `instagram_manage_insights` is still pending.
+
+To keep these users productive while real OAuth access is unblocked, Trendoraa exposes a **sandbox demo account** backed by the pre-seeded `alice_reels` profile (with mock Reels, scores, and a generated strategy).
+
+### Triggering the Sandbox Demo
+
+The dashboard's OAuth error banner and the empty-state onboarding flow both offer a "Use sandbox demo" fallback CTA. Under the hood, the client issues:
+
+```http
+POST /api/accounts/demo
+```
+
+The endpoint (`app/api/accounts/demo/route.ts`) is authenticated. It:
+
+1. Locates the pre-seeded `alice_reels` Instagram account row (created by `lib/db/seed.ts`).
+2. Re-parents that account — plus its related `strategies` rows — to the calling `userId`.
+3. If the seed has not been run (or the row was deleted), it falls back to inserting a fresh `alice_reels` account plus two mock Reels so the dashboard always renders meaningful data.
+
+### When to Recommend It
+
+* During QA and demos before the Meta App is approved.
+* As a graceful fallback when real OAuth fails — the dashboard OAuth error banner links straight to this flow.
+* For internal walkthroughs that should not depend on a live Instagram account.
+
+> [!NOTE]
+> The sandbox demo is intended for development and onboarding. Once a user successfully connects a real Instagram Professional account, treat the demo account as throwaway data and avoid mixing demo metrics with real ingestion.

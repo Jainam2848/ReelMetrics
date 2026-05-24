@@ -133,13 +133,20 @@ All user stories are structured, testable, and completely free of ambiguous term
 
 #### Story 1: Multi-Platform Social Account Connection
 As a Creator, I want to authenticate via Supabase Auth and link either my Instagram Professional account or my TikTok Creator/Business profile so that the system is authorized to ingest my content data.
-* **Acceptance Criterion 1:** Clicking the Facebook OAuth button launches the Meta permission window, returns a valid, long-lived access token, validates that the account type is Professional (rejecting personal profiles with `INSTAGRAM_NOT_BUSINESS_ACCOUNT`), and writes it to `social_accounts` with platform `"instagram"`.
+* **Acceptance Criterion 1:** Clicking the "Connect Instagram" button `POST`s to `/api/auth/social/instagram`, which returns a Meta Facebook Login authorization URL; the browser then redirects there, returns a valid, long-lived access token, validates that the account type is Professional (rejecting personal profiles with `INSTAGRAM_NOT_BUSINESS_ACCOUNT`), and writes it to `social_accounts` with platform `"instagram"`.
 * **Acceptance Criterion 2:** Clicking the TikTok OAuth button launches the TikTok permission window, returns a short-lived `access_token` and a long-lived `refresh_token`, and writes both to `social_accounts` with platform `"tiktok"` and encrypted tokens using AES-256-GCM.
 
 #### Story 2: User Sign-Up Verification
 As a Creator, I want to receive a transaction verification email upon signing up so that I can securely activate my account and prevent bot registration.
 * **Acceptance Criterion 1:** A successful user sign-up inserts a pending user record in the database and automatically queues a `SEND_EMAIL` job in the background table.
 * **Acceptance Criterion 2:** The system blocks login access until the user clicks the unique verification link sent to their email.
+
+#### Story 2b: Resilient OAuth & Onboarding UX
+As a Creator, I want the dashboard to communicate exactly what happened during the Instagram OAuth flow and to give me a productive path forward when something fails so that I am never stranded on a blank or misleading screen.
+* **Acceptance Criterion 1:** The dashboard reads the OAuth callback `?error=` query parameter and renders a dismissible, human-readable banner for each of the documented failure codes: `oauth_denied`, `not_business_account`, `token_exchange_failed`, `pages_api_failed`, `account_already_linked`, `invalid_state`, `missing_oauth_params`, `connection_failed`, and `platform_not_supported`. The banner exposes a sandbox-demo fallback CTA that posts to `/api/accounts/demo`.
+* **Acceptance Criterion 2:** The "Connect Instagram" action from the UI issues a `POST` to `/api/auth/social/instagram` and redirects the browser to the `authUrl` returned in the response payload. It does not render a plain `<a href>` GET link that would bypass the authenticated state-handshake.
+* **Acceptance Criterion 3:** When `GET /api/accounts` fails (network error, 5xx, or any non-2xx response), the dashboard renders a retryable error banner. It does **not** render the onboarding wizard — the onboarding wizard is reserved strictly for the legitimate zero-accounts success response.
+* **Acceptance Criterion 4:** Each row on `/accounts` renders a `syncStatus` chip for the `disconnected`, `error`, and `rate_limited` states with appropriate copy and a `Re-connect` or `Sync` action where applicable. `pending` and `completed` states use neutral / positive copy and do not advertise stale or broken accounts as healthy.
 
 ---
 
@@ -196,6 +203,7 @@ As a Pro User, I want to access a monthly trend detection report so that I can a
 As a Creator, I want to subscribe to a paid tier via Stripe Checkout so that I can unlock unlimited history and AI analysis features.
 * **Acceptance Criterion 1:** Clicking "Upgrade" redirects the user's browser session to a Stripe Checkout URL pre-populated with their unique customer metadata and correct subscription pricing ID.
 * **Acceptance Criterion 2:** Following payment confirmation, the system redirects the user back to the application dashboard and displays a payment success banner.
+* **Status (MVP):** Frontend stub — backend wiring deferred. The Billing page renders plan cards and an "Upgrade" CTA marked as **Coming Soon** instead of redirecting to a live Stripe Checkout session.
 
 #### Story 11: Stripe Webhook Synchronization
 As a System, I want to process Stripe payment webhooks asynchronously so that the database subscription records match Stripe's status immediately.
@@ -210,11 +218,15 @@ As a System, I want to process Stripe payment webhooks asynchronously so that th
 As a Creator, I want to export all my personal data and cross-platform social metrics in a structured JSON file so that I can control my data portability.
 * **Acceptance Criterion 1:** Sending a GET request to `/api/auth/me/data-export` returns a `200 OK` status and triggers the download of a structured JSON file containing all user data, connected accounts, and ingested metric logs.
 * **Acceptance Criterion 2:** The export process retrieves and compiles data from `users`, `subscriptions`, `social_accounts`, `posts`, `post_scores`, and `strategies` tables within 5 seconds of the initial request.
+* **Status (MVP):** Frontend stub — backend wiring deferred. The Settings page surfaces "Export my data" as **Coming Soon**; the underlying endpoint is not yet wired into the UI.
 
 #### Story 13: Cascade Account Purge
 As a Creator, I want to delete my account and purge all my personal and social data from the system so that my privacy is respected.
 * **Acceptance Criterion 1:** Triggering account deletion executes a cascading database delete that permanently deletes the user's records from `social_accounts`, `posts`, `post_scores`, `strategies`, and `usage_tracking` tables.
 * **Acceptance Criterion 2:** The deletion process updates all matching `user_id` values inside the security `audit_log` table to `NULL`, retaining anonymous historical action lines for compliance.
+* **Status (MVP):** Frontend stub — backend wiring deferred. The Settings page surfaces "Delete my account" as **Coming Soon** with no destructive action wired up.
+
+> **MVP Settings & Profile Coverage:** Profile editing (name, avatar) on `/settings` is also a frontend stub for the MVP. Each unfinished settings action is labeled **Coming Soon** in the UI rather than firing a fake success toast — see §6.5 (Story 10), Story 12, and Story 13 for the deferred surfaces.
 
 ---
 

@@ -55,7 +55,7 @@ file_size_limit = "50MiB"
 enabled = true
 site_url = "http://localhost:3000"
 additional_redirect_urls = [
-  "http://localhost:3000/api/auth/instagram/callback",
+  "http://localhost:3000/api/auth/social/instagram/callback",
   "http://localhost:3000/(auth)/callback",
 ]
 jwt_expiry = 3600

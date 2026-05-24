@@ -1638,6 +1638,15 @@ npx tsx scripts/test-prompts.ts
 
 Build the complete dashboard UI: layout, all pages, components, charts, animations, and responsive design. After this phase, the app has a polished, premium dark-mode UI.
 
+## Error UX hardening
+
+These principles are non-negotiable for every page, hook, and shared component built in this phase. Treat them as gate criteria — a beautiful UI that lies about backend state is a regression, not a feature.
+
+- **Distinguish "no data" from "API failed."** Never render the onboarding wizard (or any other "happy-empty" success state) when `GET /api/accounts` — or any list endpoint — returns a network error or a non-2xx status. Show a retryable error banner instead. The onboarding wizard is reserved for the legitimate "200 OK with zero accounts" response.
+- **Surface OAuth callback errors on the dashboard.** Read the OAuth callback `?error=` query parameter and render a dismissible banner with human-readable copy for every documented code (`oauth_denied`, `not_business_account`, `token_exchange_failed`, `pages_api_failed`, `account_already_linked`, `invalid_state`, `missing_oauth_params`, `connection_failed`, `platform_not_supported`). Pair the banner with a sandbox-demo fallback CTA so the user is never stranded.
+- **Never show success toasts for actions that didn't happen.** If a backend endpoint is not wired yet, label the affected UI **Coming Soon** rather than firing a fake "Saved!" toast. This applies to the Settings (profile save, GDPR export, account deletion) and Billing (Stripe Checkout upgrade) surfaces during the MVP.
+- **Show account `syncStatus` in the UI.** Each account row on `/accounts` must render a `syncStatus` chip for `disconnected`, `error`, and `rate_limited` with appropriate copy and a `Re-connect` or `Sync` action where applicable. Do not hide token expiry, OAuth revocation, or rate-limit problems behind a generic "Never synced" placeholder.
+
 ## 🔧 Activate Skills
 
 | Skill | Purpose in This Phase |

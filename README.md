@@ -61,6 +61,20 @@ npm run dev
 
 Trendoraa is now running on [http://localhost:3000](http://localhost:3000).
 
+### 4. Local development credentials
+
+The login page (`app/(auth)/login/page.tsx`) ships with two one-click presets that auto-fill the form with seeded demo accounts:
+
+| Preset | Email | Password |
+| :--- | :--- | :--- |
+| User A | `userA@example.com` | `password123` |
+| User B | `userB@example.com` | `password123` |
+
+These accounts are populated by `lib/db/seed.ts` and exist purely so contributors can sign in immediately without provisioning Supabase users by hand. They give fast access to the pre-seeded `alice_reels` sandbox data referenced from `docs/instagram-setup.md`.
+
+> [!WARNING]
+> **Development-only.** These presets MUST be removed — or gated behind `process.env.NODE_ENV !== 'production'` — before deploying to any internet-reachable environment. Shipping the buttons (or the seeded passwords) to production would expose a trivial credential-stuffing target.
+
 ---
 
 ## 🛡️ Architecture & Boundaries
