@@ -13,36 +13,30 @@
 The system is designed around a unified Next.js monorepo architecture leveraging Supabase for serverless infrastructure services, combining database, authentication, and file storage into a single operational tier. The application decouples operational boundaries at the service layer, keeping execution units isolated and clean.
 
 ```mermaid
-C4Container
-    title Container Diagram for Trendoraa
+flowchart TB
+    subgraph People["👤 Users"]
+        Creator["Content Creator"]
+    end
 
-    Person(creator, "Content Creator", "Uploads short-form videos and monitors strategy")
-    
-    System_Boundary(trendoraa, "Trendoraa System") {
-        Container(frontend, "Frontend SPA", "React / Next.js / Tailwind CSS", "Provides user dashboard, strategy view, calendar, and billing portal")
-        Container(api, "Serverless API Gateways", "Next.js API Routes", "Handles OAuth flow, webhooks, manual sync, and triggers background jobs")
-        Container(queueWorkers, "Background Worker Cluster", "Next.js Serverless + PG Queue", "Executes data ingestion, AI video scoring, and content calendar strategies asynchronously")
-        ContainerDb(database, "Data Warehouse Layer", "Supabase / PostgreSQL 15+", "Stores instagram_accounts, reels, reel_scores, metrics history, strategy logs, and billing metadata (Instagram MVP)")
-    }
+    subgraph Trendoraa["Trendoraa Platform"]
+        FE["Frontend SPA<br/>Next.js · shadcn/ui"]
+        API["API Routes<br/>OAuth · Sync · Webhooks · Cron"]
+        Worker["Queue Processor<br/>lib/queue/processor.ts"]
+        DB[("PostgreSQL<br/>instagram_accounts · reels<br/>reel_scores · job_queue")]
+    end
 
-    System_Ext(metaGraph, "Meta Graph API (Instagram)", "Provides Reels insights, reels_skip_rate, and Grid reposts")
-    System_Ext(tiktokApi, "TikTok Display API", "Provides video metrics, tiktok_completion_rate, and saves")
-    System_Ext(aiProviders, "LLM Routing Engine", "OpenAI / Gemini Flash / DeepSeek-V3", "Analyzes scripts, generates 9-dimension content scores, and compiles strategies")
-    System_Ext(stripe, "Stripe Checkout & Billing", "Handles credit card processing, subscription webhooks, and customer portals")
-    System_Ext(resend, "Resend Email Gateway", "Sends transactional sign-up verification, invoice alerts, and limit warnings")
+    subgraph External["External"]
+        Meta["Meta Graph API"]
+        LLM["LLM Router"]
+        Stripe["Stripe"]
+    end
 
-    Rel(creator, frontend, "Interacts with", "HTTPS")
-    Rel(frontend, api, "Makes Server Action & REST calls to", "JSON/HTTPS")
-    Rel(api, database, "Reads from and writes to", "SQL / Drizzle")
-    Rel(queueWorkers, database, "Pulls pending jobs (SKIP LOCKED) and saves output", "SQL / Drizzle")
-    
-    Rel(api, stripe, "Redirects for upgrades", "HTTPS / OAuth2")
-    Rel(stripe, api, "Dispatches payment status", "Webhooks / HTTPS")
-
-    Rel(queueWorkers, metaGraph, "Ingests Reels metrics", "REST / JSON")
-    Rel(queueWorkers, tiktokApi, "Ingests TikTok metrics", "REST / JSON")
-    Rel(queueWorkers, aiProviders, "Submits post scripts & context for strategy", "REST / JSON")
-    Rel(queueWorkers, resend, "Enqueues outbound transactional mails", "REST / JSON")
+    Creator --> FE --> API --> DB
+    Worker --> DB
+    Worker --> Meta
+    Worker --> LLM
+    API <--> Stripe
+    Meta -.->|webhooks| API
 ```
 
 ---
@@ -89,24 +83,23 @@ The platform operates under a strict **Zero-Extra-Infrastructure** constraint to
 The architecture establishes rigid structural walls around core logical modules. Cross-module imports are blocked at compile-time to maintain absolute service separation.
 
 ```mermaid
-C4Component
-    title Component Diagram for Trendoraa Boundaries & Isolation
+flowchart LR
+    subgraph ServiceLayer["Service Layer (mediator)"]
+        SM["ingestion.service<br/>scoring.service<br/>strategy.service"]
+    end
 
-    Container_Boundary(service_layer, "Next.js Core Service Layer") {
-        Component(service_mediator, "Service Mediator", "TypeScript Service", "Coordinates transactions, acts as the secure wall between AI and Billing")
-        Component(billing_module, "Billing Module", "Stripe Webhooks & Schema", "Processes invoice logs, local plan settings. Isolated from direct AI imports.")
-        Component(ai_engine, "AI Scoring & Strategy Engine", "Multi-Model Router", "Pure utility context pipeline. Never writes to DB or triggers queue jobs.")
-        ComponentDb(job_queue, "PG Skip Locked Queue", "Database Table", "Handles async tasks, prevents race conditions")
-    }
+    subgraph Modules["Isolated Modules"]
+        BILL["Billing<br/>Stripe webhooks<br/>usage-tracker"]
+        AI["AI Engine<br/>llm-client · prompts<br/>PURE — no DB writes"]
+        Q["job_queue table<br/>SKIP LOCKED processor"]
+    end
 
-    Container_Ext(stripe_ext, "Stripe API", "Handles transactions")
-    Container_Ext(llm_ext, "LLM Providers", "Executes analytics prompts")
-
-    Rel(billing_module, service_mediator, "Queries subscription states")
-    Rel(service_mediator, job_queue, "Enqueues ingestion / scoring / strategy tasks")
-    Rel(service_mediator, ai_engine, "Requests scores & strategies")
-    Rel(ai_engine, llm_ext, "Analyzes content", "REST")
-    Rel(billing_module, stripe_ext, "Synchronizes billing webhooks", "HTTPS")
+    BILL -->|"checkUsageLimit"| SM
+    SM -->|"enqueueJob"| Q
+    SM -->|"callLLMPure"| AI
+    Q -->|"executeJob"| SM
+    BILL -.->|"NEVER imports"| AI
+    AI -.->|"NEVER writes"| Q
 ```
 
 ### 4.1 Boundary Rules & Import Guard Policies
@@ -172,6 +165,20 @@ The application adopts a defensive engineering mindset, treating all external in
   * **Stale-While-Revalidate (SWR) DB Reads:** Ingestion logic implements SWR caching. Dashboards load cached metrics instantly from PostgreSQL while launching worker threads in the background.
   * **Rate Limit Exponential Backoff:** API calls failing due to a 429 error automatically schedule a queue retry starting with a 1-minute delay, scaling exponentially up to 15 minutes before calling an admin alert.
   * **Manual Sync Protection:** Cooldown logic blocks frontend-triggered manual synchronization requests for 5 minutes per account.
+
+```mermaid
+flowchart TD
+    START([syncAccount called]) --> COOL{Manual sync<br/>within 5 min?}
+    COOL -->|yes| ERR1[429 SYNC_COOLDOWN]
+    COOL -->|no| RL{rate_limited<br/>cooldown active?}
+    RL -->|yes| ERR2[429 IG_RATE_LIMITED]
+    RL -->|no| Q{Hourly quota<br/>≥ estimated + 10?}
+    Q -->|no| ERR3[429 IG_QUOTA_EXHAUSTED]
+    Q -->|yes| LOCK{Acquire sync lock?}
+    LOCK -->|no| ERR4[409 SYNC_IN_PROGRESS]
+    LOCK -->|yes| FETCH[Graph API fetch<br/>429 → 1–15 min backoff]
+    FETCH --> OK[Upsert reels · record quota]
+```
 
 ### 6.2 TikTok Display API (v2+)
 * **Dependencies:** Video Ingestion, engagement metrics, tiktok_completion_rate, tiktok_saves_count.
@@ -247,39 +254,45 @@ To prevent code duplication, logical drift, and database index clutter, we made 
 ### 8.1 Schema Normalization Map (Target — Post-MVP Cross-Platform)
 Instead of maintaining separate platform tables long-term, the **target** system maps all connections to unified entities (Instagram MVP currently uses dedicated tables for velocity):
 
-```
 ```mermaid
 erDiagram
-    SOCIAL_ACCOUNTS {
+    INSTAGRAM_ACCOUNTS ||--o{ REELS : owns
+    REELS ||--o| REEL_SCORES : has_score
+    INSTAGRAM_ACCOUNTS ||--o{ INSTAGRAM_API_HOURLY : tracks_quota
+
+    INSTAGRAM_ACCOUNTS {
         uuid id PK
         uuid user_id FK
-        string platform "instagram | tiktok"
-        text encrypted_access_token
-        text encrypted_refresh_token
-        string sync_status
+        text ig_user_id UK
+        text username
+        bytea access_token_enc
+        text sync_status
+        timestamp last_synced_at
     }
-    POSTS {
+    REELS {
         uuid id PK
-        uuid social_account_id FK
-        string platform "instagram | tiktok"
-        string platform_media_id
-        integer views_count
-        float skip_rate
-        float completion_rate
-        timestamp posted_at
+        uuid account_id FK
+        text ig_media_id UK
+        int views_count
+        decimal skip_rate
+        int public_reposts
+        timestamp timestamp
     }
-    POST_SCORES {
+    REEL_SCORES {
         uuid id PK
-        uuid post_id FK
-        integer overall_score
-        jsonb dimension_scores
-        string source "ai | heuristic"
+        uuid reel_id FK UK
+        int overall_score
+        jsonb ai_analysis
+        text model_version
     }
+    INSTAGRAM_API_HOURLY {
+        uuid account_id PK_FK
+        text hour_bucket PK
+        int call_count
+    }
+```
 
-    SOCIAL_ACCOUNTS ||--o{ POSTS : "owns"
-    POSTS ||--o| POST_SCORES : "has_score"
-```
-```
+> **MVP today:** `instagram_accounts` → `reels` → `reel_scores`. **Target (Phase 11):** unified `social_accounts` → `posts` → `post_scores` with a `platform` column.
 
 * **`social_accounts` (target):** Stores connected social entities, tracking `platform` (`instagram` | `tiktok`) and utilizing AES-256-GCM encryption on token structures. **MVP:** `instagram_accounts` only.
 * **`posts` (target):** Stores ingested media metadata, unifying reels and TikTok videos into a platform-agnostic table. Accommodates nullable platform metrics such as `skip_rate` and `completion_rate`. **MVP:** `reels` table (Instagram-only).

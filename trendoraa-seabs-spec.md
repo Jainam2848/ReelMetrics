@@ -115,26 +115,21 @@ The platform targets three high-value customer segments, focusing on users who r
 
 ## 1.5 Competitive Positioning
 
-```
-                    High AI Intelligence
-                         ▲
-                         │
-            Trendoraa │  (Target Position - Cross-Platform)
-                     ★    │
-                         │
-   ┌─────────────────────┼─────────────────────┐
-   │                     │                     │
-   │  Metricool          │           Sprout    │
-   │  Later              │           Social    │
-   │                     │                     │
-Low Specialization ──────┼────── High Breadth
-   │                     │                     │
-   │  Free tools         │         Hootsuite   │
-   │  IG / TikTok native │                     │
-   │                     │                     │
-   └─────────────────────┼─────────────────────┘
-                         │
-                    Low AI Intelligence
+```mermaid
+quadrantChart
+    title Competitive Positioning — AI Intelligence vs Platform Breadth
+    x-axis Low Platform Breadth --> High Platform Breadth
+    y-axis Low AI Intelligence --> High AI Intelligence
+    quadrant-1 Niche AI Leaders
+    quadrant-2 Enterprise Suites
+    quadrant-3 Free Native Tools
+    quadrant-4 Legacy Schedulers
+    Trendoraa: [0.72, 0.88]
+    Metricool: [0.35, 0.25]
+    Later: [0.40, 0.20]
+    Sprout Social: [0.85, 0.45]
+    Hootsuite: [0.80, 0.30]
+    IG TikTok Native: [0.25, 0.15]
 ```
 
 **Key Differentiator:** Deep short-form video AI analysis utilizing **skip rate intelligence** (Instagram) and **completion rate analytics** (TikTok) to optimize the opening hooks and structural flow. Not a generic scheduler; Trendoraa is a content performance optimization engine.
@@ -168,36 +163,37 @@ Subscriptions are strictly cost-optimized and cap-monitored to guarantee profit 
 ## 2.1 High-Level Architecture
 
 ```mermaid
-C4Container
-    title Container Diagram for Trendoraa
+flowchart TB
+    subgraph People["👤 Users"]
+        Creator["Content Creator<br/><i>Connects Instagram · monitors Reels performance</i>"]
+    end
 
-    Person(creator, "Content Creator", "Uploads short-form videos and monitors strategy")
-    
-    System_Boundary(trendoraa, "Trendoraa System") {
-        Container(frontend, "Frontend SPA", "React / Next.js / Tailwind CSS", "Provides user dashboard, strategy view, calendar, and billing portal")
-        Container(api, "Serverless API Gateways", "Next.js API Routes", "Handles OAuth flow, webhooks, manual sync, and triggers background jobs")
-        Container(queueWorkers, "Background Worker Cluster", "Next.js Serverless + PG Queue", "Executes data ingestion, AI video scoring, and content calendar strategies asynchronously")
-        ContainerDb(database, "Data Warehouse Layer", "Supabase / PostgreSQL 15+", "Stores unified posts, encrypted social accounts, metrics history, strategy logs, and billing metadata")
-    }
+    subgraph Trendoraa["Trendoraa System"]
+        direction TB
+        FE["Frontend<br/>Next.js App Router · shadcn/ui<br/>Dashboard · Reels · Strategy · Billing"]
+        API["API Layer<br/>OAuth · Manual sync · Webhooks · Cron<br/><i>Enqueues work — no heavy Graph calls inline</i>"]
+        Worker["Background Workers<br/>processor.ts · worker.ts CLI<br/>SKIP LOCKED · time-bounded batches"]
+        DB[("PostgreSQL / Supabase<br/>instagram_accounts · reels · reel_scores<br/>strategies · job_queue · instagram_api_hourly")]
+    end
 
-    System_Ext(metaGraph, "Meta Graph API (Instagram)", "Provides Reels insights, reels_skip_rate, and Grid reposts")
-    System_Ext(tiktokApi, "TikTok Display API", "Provides video metrics, tiktok_completion_rate, and saves")
-    System_Ext(aiProviders, "LLM Routing Engine", "OpenAI / Gemini Flash / DeepSeek-V3", "Analyzes scripts, generates 9-dimension content scores, and compiles strategies")
-    System_Ext(stripe, "Stripe Checkout & Billing", "Handles credit card processing, subscription webhooks, and customer portals")
-    System_Ext(resend, "Resend Email Gateway", "Sends transactional sign-up verification, invoice alerts, and limit warnings")
+    subgraph External["External Integrations"]
+        Meta["Meta Graph API v22<br/>Reels media + insights<br/>reels_skip_rate · total_views"]
+        TikTok["TikTok Display API<br/><i>Post-MVP Phase 11</i>"]
+        LLM["LLM Router<br/>OpenAI · Gemini · DeepSeek"]
+        Stripe["Stripe Billing"]
+        Resend["Resend Email"]
+    end
 
-    Rel(creator, frontend, "Interacts with", "HTTPS")
-    Rel(frontend, api, "Makes Server Action & REST calls to", "JSON/HTTPS")
-    Rel(api, database, "Reads from and writes to", "SQL / Drizzle")
-    Rel(queueWorkers, database, "Pulls pending jobs (SKIP LOCKED) and saves output", "SQL / Drizzle")
-    
-    Rel(api, stripe, "Redirects for upgrades", "HTTPS / OAuth2")
-    Rel(stripe, api, "Dispatches payment status", "Webhooks / HTTPS")
-
-    Rel(queueWorkers, metaGraph, "Ingests Reels metrics", "REST / JSON")
-    Rel(queueWorkers, tiktokApi, "Ingests TikTok metrics", "REST / JSON")
-    Rel(queueWorkers, aiProviders, "Submits post scripts & context for strategy", "REST / JSON")
-    Rel(queueWorkers, resend, "Enqueues outbound transactional mails", "REST / JSON")
+    Creator -->|"HTTPS"| FE
+    FE -->|"JSON API"| API
+    API --> DB
+    Worker --> DB
+    Worker -->|"Ingestion + AI scoring"| Meta
+    Worker -.->|"Deferred"| TikTok
+    Worker --> LLM
+    API <--> Stripe
+    Worker -.-> Resend
+    Meta -->|"Webhooks → fast 200 ack"| API
 ```
 
 ## 2.2 Technology Stack (Locked — No Substitutions)
@@ -228,28 +224,26 @@ For local development, a local Supabase instance is the mandatory standard. Deve
 
 ## 2.3 SEABS Runtime Components
 
-```
-SEABS Runtime
-│
-├── Phase Controller ─────── Ordered state machine; no phase skipping
-│
-├── Agent Executor ───────── LLM wrapper with structured output enforcement
-│
-├── Validator Engine ─────── Rules + AST + Schema checks per phase
-│   ├── Structural Validator (schema match, import guard)
-│   ├── Runtime Simulator (mock execution, payload simulation)
-│   ├── Contract Validator (API shape, RLS, idempotency)
-│   └── Failure Injector (timeout, malformed data, constraint violation)
-│
-├── Repair Engine ────────── Auto-fix with bounded retries (max 3)
-│
-├── Sandbox Runtime ──────── Isolated code execution for validation
-│
-├── Dependency Guard ─────── Import whitelist + architecture boundary enforcement
-│
-├── Telemetry Logger ─────── Structured JSON logs, full traceability
-│
-└── Human Escalation Gate ── HALT + notify when repair fails
+```mermaid
+flowchart TB
+    subgraph SEABS["SEABS Runtime Components"]
+        PC["Phase Controller<br/><i>Ordered pipeline — no skipping</i>"]
+        AE["Agent Executor<br/><i>LLM + structured output</i>"]
+        VE["Validator Engine<br/>Structural · Runtime · Contract · Failure inject"]
+        RE["Repair Engine<br/><i>Max 3 auto-fix attempts</i>"]
+        SR["Sandbox Runtime"]
+        DG["Dependency Guard<br/><i>Import whitelist</i>"]
+        TL["Telemetry Logger"]
+        HE["Human Escalation Gate<br/><i>HALT on repair failure</i>"]
+    end
+
+    PC --> AE --> VE
+    VE -->|"FAIL"| RE
+    RE -->|"retry"| VE
+    VE --> SR
+    AE --> DG
+    VE --> TL
+    RE -->|"still failing"| HE
 ```
 
 ## 2.4 Execution Loop (Core Runtime)
@@ -315,20 +309,18 @@ Where:
 ## 3.1 System State Machine
 
 ```mermaid
-stateDiagram-v2
-    [*] --> INIT : Start Project
-    INIT --> PRD_VALIDATED : Product requirements locked
-    PRD_VALIDATED --> ARCH_LOCKED : Architecture decisions frozen
-    ARCH_LOCKED --> DATABASE_READY : Schema migrated, RLS active
-    DATABASE_READY --> BACKEND_READY : APIs operational, auth working
-    BACKEND_READY --> BILLING_READY : Stripe integrated, plans active
-    BILLING_READY --> INGESTION_READY : Instagram data pipeline working
-    INGESTION_READY --> QUEUE_READY : Workers running, DLQ active
-    QUEUE_READY --> AI_READY : LLM scoring + strategy working
-    AI_READY --> FRONTEND_READY : UI complete, UX validated
-    FRONTEND_READY --> OBSERVABILITY_READY : Logging, alerting, health checks
-    OBSERVABILITY_READY --> DEPLOYED : Production live
-    DEPLOYED --> [*]
+flowchart LR
+    INIT([Start Project]) --> PRD[PRD Validated]
+    PRD --> ARCH[Architecture Locked]
+    ARCH --> DB[Database Ready<br/>Schema + RLS]
+    DB --> BE[Backend Ready<br/>Auth + API]
+    BE --> BILL[Billing Ready<br/>Stripe]
+    BILL --> ING[Ingestion Ready<br/>Instagram OAuth + sync]
+    ING --> QUEUE[Queue Ready<br/>Workers + cron]
+    QUEUE --> AI[AI Ready<br/>Scoring + strategy]
+    AI --> FE[Frontend Ready<br/>Dashboard UI]
+    FE --> OBS[Observability Ready]
+    OBS --> DEP([Deployed])
 ```
 
 ## 3.2 Phase Schema Definition
@@ -1109,19 +1101,35 @@ The token refresh cron job runs daily via a secure, time-bounded serverless endp
 ## 6.3 Data Sync Pipeline
 
 ```mermaid
-graph TD
-    Trigger([Sync Trigger]) -->|Scheduled / Manual / Webhook| LimitCheck[Rate Limit Check: 200 calls/hr]
-    LimitCheck -->|Under limit| FetchReels[Fetch Reels: GET /{user-id}/media]
-    FetchReels -->|Filter: VIDEO| IngestInsights[Fetch Insights per Reel: GET /{media-id}/insights]
-    IngestInsights -->|reels_skip_rate, reach, shares, saves| Normalize[Normalize & Upsert into reels table (MVP)]
-    Normalize -->|Deduplicate by ig_media_id| QueueScoring[Queue Scoring Jobs in PG Queue]
-    QueueScoring -->|AI_SCORE task enqueued| End([End Pipeline])
+flowchart TB
+    subgraph Triggers["① Sync Triggers"]
+        T1["Manual<br/>POST /api/accounts/:id/sync<br/><i>5-min cooldown</i>"]
+        T2["Scheduled<br/>POST /api/cron/ingest<br/><i>enqueue only · 6h stale</i>"]
+        T3["Webhook<br/>Meta → PROCESS_WEBHOOK<br/><i>debounced 10 min</i>"]
+    end
 
-    classDef default fill:#1E1E2E,stroke:#89B4FA,stroke-width:1.5px,color:#CDD6F4;
-    classDef trigger fill:#A6E3A1,stroke:#A6E3A1,stroke-width:2px,color:#11111B;
-    classDef endNode fill:#F38BA8,stroke:#F38BA8,stroke-width:2px,color:#11111B;
-    class Trigger trigger;
-    class End endNode;
+    subgraph Guards["② Rate-Limit Guards (before Graph API)"]
+        G1["Sync mutex<br/><i>one active sync / account</i>"]
+        G2["Hourly quota pre-flight<br/><i>200/hr − 10 reserve</i>"]
+        G3["Skip rate_limited<br/><i>15 min cooldown</i>"]
+    end
+
+    subgraph Fetch["③ Graph API Fetch (~26 calls)"]
+        F1["GET /{ig-user}/media<br/><i>25 reels max</i>"]
+        F2["GET /{media}/insights<br/><i>sequential per reel</i>"]
+        F3["Metrics: views · skip_rate<br/>total_views · public_reposts"]
+    end
+
+    subgraph Persist["④ Persist & Queue"]
+        P1["Upsert reels table<br/><i>ON CONFLICT ig_media_id</i>"]
+        P2["Record instagram_api_hourly"]
+        P3["Enqueue SCORE_REEL<br/><i>new reels only</i>"]
+    end
+
+    T1 & T2 & T3 --> G1 --> G2 --> G3 --> F1 --> F2 --> F3 --> P1 --> P2 --> P3
+
+    F2 -->|"HTTP 429"| BACKOFF["Backoff 1→15 min<br/>sync_status = rate_limited"]
+    BACKOFF -.->|"queue retry"| G3
 ```
 
 ### Scheduled Ingestion Cron Endpoint (`POST /api/cron/ingest` + `POST /api/queue/process`)
@@ -1433,27 +1441,33 @@ If a sync operation encounters a rate limit block:
 
 > The AI module is a **pure function**: it takes data in, returns structured analysis out. It NEVER writes to the database directly. It NEVER makes API calls to external services. All side effects are handled by the calling service.
 
+```mermaid
+flowchart LR
+    subgraph Input["INPUT (from services)"]
+        I1["Reel metrics + caption"]
+        I2["Account baselines"]
+        I3["Trend context"]
+        I4["User plan / model tier"]
+    end
+
+    subgraph AI["AI ENGINE — Pure Functions"]
+        direction TB
+        P["prompt-builder.ts"]
+        L["callLLMPure · model-router"]
+        Z["Zod schemas · heuristic fallback"]
+    end
+
+    subgraph Output["OUTPUT (to services)"]
+        O1["9-dimension scores"]
+        O2["Strategy + calendar JSON"]
+    end
+
+    I1 & I2 & I3 & I4 --> P --> L --> Z --> O1 & O2
+
+    style AI fill:#f0f7ff,stroke:#2563eb
 ```
-┌─────────────────────────────────────────┐
-│           AI ENGINE BOUNDARY            │
-│                                         │
-│  INPUT                  OUTPUT          │
-│  ├── post/reel data     ├── scores      │
-│  ├── account history    ├── analysis    │
-│  ├── trend context      ├── strategy    │
-│  └── user preferences   └── calendar    │
-│                                         │
-│  INTERNAL                               │
-│  ├── prompt templates                   │
-│  ├── output parsers (Zod)               │
-│  ├── cost calculator                    │
-│  └── fallback generator                 │
-│                                         │
-│  ⛔ NO DB WRITES                        │
-│  ⛔ NO EXTERNAL API CALLS              │
-│  ⛔ NO STATE MUTATIONS                 │
-└─────────────────────────────────────────┘
-```
+
+**Hard rules:** No DB writes · No direct external calls except LLM · No queue mutations — all side effects live in `scoring.service` / `strategy.service`.
 
 ## 7.2 Cross-Platform Post Scoring System
 
@@ -1970,37 +1984,28 @@ export class CircuitBreaker {
 
 ## 8.1 Stripe Integration Architecture
 
-```
-┌─────────────────────────────────────────────┐
-│                BILLING FLOW                  │
-│                                             │
-│   User selects plan                          │
-│         │                                   │
-│         ▼                                   │
-│   Create Stripe Checkout Session             │
-│         │                                   │
-│         ▼                                   │
-│   Redirect to Stripe Checkout                │
-│         │                                   │
-│         ▼                                   │
-│   Stripe processes payment                   │
-│         │                                   │
-│         ▼                                   │
-│   Stripe sends webhook ──────────────────┐  │
-│                                          │  │
-│         ┌────────────────────────────────┐│  │
-│         │   Webhook Handler              ││  │
-│         │                                ││  │
-│         │   1. Verify signature          ││  │
-│         │   2. Parse event type          ││  │
-│         │   3. Update subscription DB    ││  │
-│         │   4. Adjust plan limits        ││  │
-│         │   5. Send confirmation email   ││  │
-│         └────────────────────────────────┘│  │
-│                                          │  │
-└──────────────────────────────────────────┘  │
-                                              │
-                                              │
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant App as Trendoraa API
+    participant Stripe as Stripe Checkout
+    participant WH as Webhook Handler
+    participant DB as PostgreSQL
+
+    User->>App: Select plan → Create checkout session
+    App->>Stripe: Redirect to hosted checkout
+    User->>Stripe: Complete payment
+    Stripe->>WH: POST /api/webhooks/stripe (signed)
+    WH->>WH: Verify HMAC signature
+    WH->>DB: INSERT processed_events ON CONFLICT DO NOTHING
+    alt New event
+        WH->>DB: Upsert subscription + plan_id
+        WH->>DB: Reset usage_tracking counters
+        WH-->>Stripe: 200 OK
+    else Duplicate event_id
+        WH-->>Stripe: 200 OK (skip)
+    end
 ```
 
 ## 8.2 Stripe Event Handling Matrix
@@ -2268,27 +2273,38 @@ async function handleManualRetry(req: NextRequest): Promise<NextResponse> {
 
 > **No Redis. No Kafka. No RabbitMQ.** The queue runs on PostgreSQL using `FOR UPDATE SKIP LOCKED` — the same database, zero additional infrastructure.
 
-```
-┌─────────────────────────────────────────────────────┐
-│                    QUEUE ENGINE                      │
-│                                                     │
-│  ┌──────────────┐    ┌──────────────┐    ┌────────┐│
-│  │ Job Producer  │    │ Job Consumer  │    │  DLQ   ││
-│  │              │    │ (Worker)      │    │        ││
-│  │ • API routes  │───►│ • Poll loop   │───►│ Failed ││
-│  │ • Cron jobs   │    │ • SKIP LOCKED │    │ jobs   ││
-│  │ • Webhooks    │    │ • Retry logic │    │ review ││
-│  └──────────────┘    └──────────────┘    └────────┘│
-│                                                     │
-│  Job Types:                                         │
-│  ├── SYNC_ACCOUNT    (Cross-platform data fetch)    │
-│  ├── SCORE_POST      (AI scoring)                   │
-│  ├── GENERATE_STRATEGY (AI strategy)                │
-│  ├── REFRESH_TOKEN   (Token rotation)               │
-│  ├── SEND_EMAIL      (Transactional email)          │
-│  └── PROCESS_WEBHOOK (Stripe/IG event)              │
-│                                                     │
-└─────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Producers["Job Producers (enqueue only)"]
+        P1["API routes<br/>score · strategy · sync"]
+        P2["Cron /api/cron/ingest<br/><i>staggered SYNC_ACCOUNT</i>"]
+        P3["Webhooks<br/>Instagram · Stripe"]
+    end
+
+    subgraph Queue["PostgreSQL job_queue"]
+        Q1["pending → processing<br/>FOR UPDATE SKIP LOCKED"]
+        Q2["Heartbeat every 30s<br/>Zombie reclaim 5 min / 90s"]
+    end
+
+    subgraph Consumer["Consumer (lib/queue/processor.ts)"]
+        C1["processQueueBatch<br/><i>14s serverless · CLI daemon</i>"]
+        C2["Job handlers"]
+    end
+
+    subgraph Handlers["Job Types (MVP)"]
+        H1["SYNC_ACCOUNT"]
+        H2["SCORE_REEL"]
+        H3["GENERATE_STRATEGY"]
+        H4["PROCESS_WEBHOOK → debounced sync"]
+    end
+
+    subgraph DLQ["Failure path"]
+        D1["Retry: IG 429 → 1–15 min backoff"]
+        D2["Max retries → dead_letter"]
+    end
+
+    P1 & P2 & P3 --> Q1 --> C1 --> C2 --> H1 & H2 & H3 & H4
+    C2 -->|"failure"| D1 --> D2
 ```
 
 ## 9.2 Job Queue Table & Worker SQL
@@ -2747,79 +2763,58 @@ App Shell
 
 ### Dashboard (`/`)
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  📊 Dashboard                                           │
-│                                                         │
-│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌─────────┐│
-│  │ Total     │ │ Avg       │ │ Avg Skip │ │ AI      ││
-│  │ Views     │ │ Engagement│ │ Rate     │ │ Credits ││
-│  │           │ │           │ │          │ │ Left    ││
-│  │ 125.4K    │ │ 4.8%      │ │ 28% 🟢  │ │ 87/150  ││
-│  │ ▲ +12.3%  │ │ ▲ +0.3%   │ │ ▼ -4.1% │ │         ││
-│  └───────────┘ └───────────┘ └───────────┘ └─────────┘│
-│                                                         │
-│  ┌─────────────────────────────────────────────────┐   │
-│  │ 📈 Engagement Trend (30 days)                    │   │
-│  │                                                   │   │
-│  │     ╱╲    ╱╲                                     │   │
-│  │   ╱    ╲╱    ╲  ╱╲                              │   │
-│  │  ╱              ╲  ╲╱╲                          │   │
-│  │ ╱                      ╲                         │   │
-│  └─────────────────────────────────────────────────┘   │
-│                                                         │
-│  ┌──────────────────────┐ ┌────────────────────────┐   │
-│  │ 🏆 Top Reels          │ │ 📋 This Week's Plan     │   │
-│  │                      │ │                        │   │
-│  │ 1. "How I grew..."  │ │ Mon: Educational Reel  │   │
-│  │    Score: 92 ⬆      │ │ Wed: Trending format   │   │
-│  │                      │ │ Fri: Behind-the-scenes │   │
-│  │ 2. "3 Tips for..."  │ │                        │   │
-│  │    Score: 87 ⬆      │ │ [View Full Strategy →] │   │
-│  │                      │ │                        │   │
-│  └──────────────────────┘ └────────────────────────┘   │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+block-beta
+    columns 4
+    block:KPI1:1
+        columns 1
+        A["Total Views\n125.4K ▲ +12.3%"]
+    end
+    block:KPI2:1
+        B["Avg Engagement\n4.8% ▲ +0.3%"]
+    end
+    block:KPI3:1
+        C["Avg Skip Rate\n28% ▼ -4.1%"]
+    end
+    block:KPI4:1
+        D["AI Credits\n87 / 150"]
+    end
+
+    block:Chart:4
+        E["Engagement Trend — 30 day line chart"]
+    end
+
+    block:Left:2
+        F["Top Reels list\nScore · caption · ER"]
+    end
+    block:Right:2
+        G["This Week's Strategy\nMon · Wed · Fri plan"]
+    end
 ```
 
 ### Post Detail (`/posts/[id]`) — MVP implemented route
 
 > Data: `GET /api/accounts/:id/reels` + `GET|POST /api/reels/:id/score`. UI shows 9 dimension bars from `reel_scores`.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  ← Back to Reels                                        │
-│                                                         │
-│  ┌─────────────────────────┐ ┌─────────────────────┐   │
-│  │                         │ │ AI SCORE: 87/100     │   │
-│  │    [Reel Thumbnail]     │ │ ████████████████░░░  │   │
-│  │                         │ │                     │   │
-│  │    ▶ Play on Instagram  │ │ Hook:      9/10     │   │
-│  │                         │ │ Skip Rate: 9/10     │   │
-│  │  "Caption text here..." │ │ Retention: 8/10     │   │
-│  │                         │ │ CTA:       7/10     │   │
-│  │  📅 May 15, 2025       │ │ Visual:    9/10     │   │
-│  │  👁 45.2K views         │ │ Audio:     8/10     │   │
-│  │  ⏭ 22% skip rate 🟢    │ │ Trend:     9/10     │   │
-│  │  ❤️ 2.1K likes          │ │ Caption:   8/10     │   │
-│  │  💬 142 comments        │ │ Timing:    9/10     │   │
-│  │  🔄 89 shares           │ │                     │   │
-│  │  🔖 234 saves           │ │ "Strong hook with   │   │
-│  │                         │ │  trending audio      │   │
-│  │  ER: 5.7% ▲            │ │  drove exceptional   │   │
-│  │                         │ │  saves rate."        │   │
-│  └─────────────────────────┘ └─────────────────────┘   │
-│                                                         │
-│  ┌─────────────────────────────────────────────────┐   │
-│  │ 💡 AI Recommendations                            │   │
-│  │                                                   │   │
-│  │ ✅ Strength: Your hook captured attention in       │   │
-│  │    under 1 second with a bold visual statement    │   │
-│  │                                                   │   │
-│  │ 🎯 Opportunity: Add a stronger CTA in the last   │   │
-│  │    2 seconds — "Save this for later" increased    │   │
-│  │    saves by 40% in similar top-performing Reels   │   │
-│  └─────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph Left["Reel preview"]
+        L1["Thumbnail + Play on Instagram"]
+        L2["Caption · date · metrics<br/>views · skip rate · ER"]
+    end
+
+    subgraph Right["AI Score panel"]
+        R1["Overall 87 / 100"]
+        R2["9 dimension bars<br/>Hook · Skip · Retention · CTA …"]
+        R3["Strengths · opportunities"]
+    end
+
+    subgraph Bottom["Recommendations"]
+        B1["Actionable copy suggestions"]
+    end
+
+    Left --- Right
+    Right --> Bottom
 ```
 
 ### Strategy Page (`/strategy`)
@@ -4245,33 +4240,26 @@ Every code artifact MUST include:
 
 ## RULE 3 — ISOLATION ENFORCEMENT (HARD BOUNDARIES)
 
-```
-┌──────────────────────────────────────────────────────────┐
-│                  MODULE BOUNDARY MAP                      │
-│                                                          │
-│  ┌──────────┐   NEVER   ┌──────────┐   NEVER   ┌──────┐│
-│  │ Billing  │◄────────X──│    AI    │────────X──►│Queue ││
-│  │          │    touches  │          │  writes    │      ││
-│  └──────────┘            └──────────┘  to DB     └──────┘│
-│       │                       │                      │    │
-│       │                       │                      │    │
-│       ▼                       ▼                      ▼    │
-│  ┌──────────────────────────────────────────────────────┐│
-│  │              SERVICE LAYER (mediator)                 ││
-│  │  • Orchestrates cross-module operations               ││
-│  │  • Enforces boundaries                                ││
-│  │  • Handles transactions                               ││
-│  └──────────────────────────────────────────────────────┘│
-│                                                          │
-│  Rules:                                                  │
-│  • Billing NEVER touches AI or Queue directly            │
-│  • AI NEVER writes directly to DB tables                 │
-│  • Webhooks NEVER execute business logic (they enqueue)  │
-│  • Workers NEVER bypass the queue layer                  │
-│  • Frontend NEVER contains business logic                │
-│  • API routes NEVER contain business logic (delegate)    │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Forbidden["⛔ Direct cross-imports forbidden"]
+        BILL["Billing Module<br/>Stripe · usage-tracker"]
+        AI["AI Module<br/>llm-client · prompts<br/><i>pure functions</i>"]
+        QUEUE["Queue<br/>job_queue table"]
+    end
+
+    subgraph Mediator["✅ Service Layer (only orchestrator)"]
+        SVC["ingestion.service<br/>scoring.service<br/>strategy.service"]
+    end
+
+    BILL -->|"checkUsageLimit"| SVC
+    SVC -->|"enqueueJob"| QUEUE
+    SVC -->|"callLLMPure"| AI
+    QUEUE -->|"executeJob →"| SVC
+
+    BILL -.->|"NEVER"| AI
+    AI -.->|"NEVER writes"| QUEUE
+    API["API / Webhook routes"] -->|"enqueue only"| QUEUE
 ```
 
 ## RULE 4 — FAIL SAFE OVER FAIL FAST

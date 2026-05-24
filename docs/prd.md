@@ -59,7 +59,7 @@ The platform operates on a tiered monthly subscription model structured around d
 | **Monthly AI call cap** | 10 | **150** | **600** | **2500** |
 | **Strategies per billing cycle** | 0 | 4 | 12 | 40 |
 | **Data sync (Instagram MVP)** | Manual trigger only | Manual trigger only | Manual trigger only | Manual trigger only |
-| **Scheduled background sync** | Planned (cron) | Planned (cron) | Planned (cron) | Planned (cron) |
+| **Scheduled background sync** | Hourly cron enqueue | Hourly cron enqueue | Hourly cron enqueue | Hourly cron enqueue |
 | **Monthly LLM budget cap (design target)** | $0.50 | **$8.00** | **$25.00** | **$75.00** |
 | **AI Scoring Engine** | Heuristic + capped AI | 9-Dimension (Standard Routing) | 9-Dimension (Standard Routing) | 9-Dimension (Premium Routing) |
 | **Content Strategy** | Basic metrics | Weekly strategy generation | Advanced strategy + calendar | Custom white-label strategy briefs |
@@ -74,36 +74,39 @@ The platform operates on a tiered monthly subscription model structured around d
 To support cross-platform ingestion, AI scoring, and background strategy compile jobs, the system maps logical responsibilities to four main container units:
 
 ```mermaid
-C4Container
-    title Container Diagram for Trendoraa
+flowchart TB
+    subgraph People["👤 Users"]
+        Creator["Content Creator<br/><i>Connects Instagram, views scores & strategy</i>"]
+    end
 
-    Person(creator, "Content Creator", "Uploads short-form videos and monitors strategy")
-    
-    System_Boundary(trendoraa, "Trendoraa System") {
-        Container(frontend, "Frontend SPA", "React / Next.js / Tailwind CSS", "Provides user dashboard, strategy view, calendar, and billing portal")
-        Container(api, "Serverless API Gateways", "Next.js API Routes", "Handles OAuth flow, webhooks, manual sync, and triggers background jobs")
-        Container(queueWorkers, "Background Worker Cluster", "Next.js Serverless + PG Queue", "Executes data ingestion, AI video scoring, and content calendar strategies asynchronously")
-        ContainerDb(database, "Data Warehouse Layer", "Supabase / PostgreSQL 15+", "Stores instagram_accounts, reels, reel_scores, metrics history, strategy logs, and billing metadata (Instagram MVP; unified social_accounts/posts target is Post-MVP)")
-    }
+    subgraph Trendoraa["Trendoraa Platform (Next.js Monorepo)"]
+        direction TB
+        FE["Dashboard UI<br/><code>app/(dashboard)</code><br/>Reels · Scores · Strategy · Billing"]
+        API["API Layer<br/><code>app/api/*</code><br/>OAuth · Sync · Webhooks · Cron"]
+        Worker["Queue Processor<br/><code>lib/queue/processor.ts</code><br/>SKIP LOCKED · 14s batches"]
+        DB[("PostgreSQL / Supabase<br/><b>MVP tables:</b> instagram_accounts<br/>reels · reel_scores · job_queue<br/>instagram_api_hourly · strategies")]
+    end
 
-    System_Ext(metaGraph, "Meta Graph API (Instagram)", "Provides Reels insights, reels_skip_rate, and Grid reposts")
-    System_Ext(tiktokApi, "TikTok Display API", "Provides video metrics, tiktok_completion_rate, and saves")
-    System_Ext(aiProviders, "LLM Routing Engine", "OpenAI / Gemini Flash / DeepSeek-V3", "Analyzes scripts, generates 9-dimension content scores, and compiles strategies")
-    System_Ext(stripe, "Stripe Checkout & Billing", "Handles credit card processing, subscription webhooks, and customer portals")
-    System_Ext(resend, "Resend Email Gateway", "Sends transactional sign-up verification, invoice alerts, and limit warnings")
+    subgraph External["External Services"]
+        Meta["Meta Graph API v22<br/>Reels · insights · skip_rate"]
+        LLM["LLM Providers<br/>OpenAI · Gemini · DeepSeek"]
+        Stripe["Stripe<br/>Checkout · Subscriptions"]
+        Resend["Resend<br/>Transactional email"]
+    end
 
-    Rel(creator, frontend, "Interacts with", "HTTPS")
-    Rel(frontend, api, "Makes Server Action & REST calls to", "JSON/HTTPS")
-    Rel(api, database, "Reads from and writes to", "SQL / Drizzle")
-    Rel(queueWorkers, database, "Pulls pending jobs (SKIP LOCKED) and saves output", "SQL / Drizzle")
-    
-    Rel(api, stripe, "Redirects for upgrades", "HTTPS / OAuth2")
-    Rel(stripe, api, "Dispatches payment status", "Webhooks / HTTPS")
+    Creator -->|"HTTPS"| FE
+    FE -->|"REST / Server Actions"| API
+    API -->|"Drizzle ORM"| DB
+    Worker -->|"Claim jobs · write results"| DB
+    API -->|"Enqueue jobs only"| DB
 
-    Rel(queueWorkers, metaGraph, "Ingests Reels metrics", "REST / JSON")
-    Rel(queueWorkers, tiktokApi, "Ingests TikTok metrics", "REST / JSON")
-    Rel(queueWorkers, aiProviders, "Submits post scripts & context for strategy", "REST / JSON")
-    Rel(queueWorkers, resend, "Enqueues outbound transactional mails", "REST / JSON")
+    Worker -->|"~26 calls/sync<br/>429 backoff 1–15 min"| Meta
+    Worker -->|"Scoring & strategy<br/>usage caps enforced"| LLM
+    API <-->|"Checkout + webhooks"| Stripe
+    Worker -.->|"SEND_EMAIL jobs"| Resend
+
+    Meta -->|"Webhooks fast-ack"| API
+    API -->|"CRON_SECRET<br/>/cron/ingest enqueue<br/>/queue/process run"| Worker
 ```
 
 ---
@@ -122,6 +125,22 @@ Integration with external social platforms is subject to structural limits. All 
 * **Webhook Coalescing (implemented):** Webhook HTTP handler enqueues `PROCESS_WEBHOOK` with per-event idempotency. The worker **does not** call Graph inline — it enqueues a debounced `SYNC_ACCOUNT` job (`sync:webhook:{accountId}:{debounce_bucket}`, 10-minute window). Accounts in `rate_limited` skip webhook enqueue.
 * **Cron Scheduling (implemented):** `POST /api/cron/ingest` enqueues stale accounts (>6h, not `disconnected` / `rate_limited` / active `syncing`) with 30s stagger; **does not** process inline. `POST /api/queue/process` (Vercel cron every 5m) runs `processQueueBatch`.
 * **Manual Cooldown:** User-initiated `POST /api/accounts/:id/sync` keeps the 5-minute cooldown; cron/webhook jobs pass `skipCooldown: true`.
+
+```mermaid
+flowchart LR
+    subgraph Triggers
+        M[Manual sync]
+        C[Cron enqueue]
+        W[Webhook debounce]
+    end
+    subgraph Guards
+        G[Quota · mutex · cooldown]
+    end
+    subgraph API
+        IG[Graph API ~26 calls]
+    end
+    M & C & W --> G --> IG
+```
 
 ### 4.2 TikTok Display API v2+
 * **Quota & Rate Limits:** 10,000 requests per day per client key.

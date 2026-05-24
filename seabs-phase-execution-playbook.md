@@ -950,6 +950,36 @@ curl http://localhost:3000/api/billing/usage          # (with auth)
 
 Build the Instagram social data ingestion pipeline for the MVP rollout: OAuth2 authorization flows for Instagram, long-lived token lifecycle management with AES-256-GCM encryption, database data sync, rate limit handling, and webhook subscriptions. (All TikTok-specific files, handlers, and endpoints are deferred to the Post-MVP Growth Stage in Phase 11).
 
+### Ingestion pipeline (reference diagram)
+
+```mermaid
+flowchart LR
+    subgraph Connect["Connect"]
+        O1["POST /auth/social/instagram"]
+        O2["Meta OAuth callback"]
+        O3["Encrypt token → instagram_accounts"]
+    end
+
+    subgraph Sync["Sync paths"]
+        S1["Manual sync<br/>5 min cooldown"]
+        S2["Cron ingest<br/>6h stale · enqueue"]
+        S3["Webhook<br/>debounced 10 min"]
+    end
+
+    subgraph Graph["Graph API"]
+        G1["List media"]
+        G2["Per-reel insights<br/>skip_rate · views"]
+    end
+
+    subgraph Store["Database"]
+        D1["reels upsert"]
+        D2["instagram_api_hourly"]
+    end
+
+    O1 --> O2 --> O3 --> S1 & S2 & S3
+    S1 & S2 & S3 --> G1 --> G2 --> D1 --> D2
+```
+
 
 ## 🔧 Activate Skills
 
@@ -1198,6 +1228,31 @@ grep -r "PROCESS_WEBHOOK" app/api/webhooks/
 
 Build the PostgreSQL-based job queue using SKIP LOCKED, worker system, dead letter queue, and idempotency enforcement. After this phase, background jobs can be queued, processed, retried, and dead-lettered.
 
+### Queue architecture (reference diagram)
+
+```mermaid
+flowchart TB
+    subgraph Cron["Vercel Cron"]
+        CR1["/api/cron/ingest<br/>hourly · enqueue SYNC"]
+        CR2["/api/queue/process<br/>every 5 min · run batch"]
+    end
+
+    subgraph Table["job_queue"]
+        J["status: pending → processing → completed | failed"]
+    end
+
+    subgraph Worker["lib/queue/processor.ts"]
+        W1["claimNextJob SKIP LOCKED"]
+        W2["executeJob + heartbeat"]
+        W3["IG 429 → 1–15 min retry"]
+    end
+
+    CR1 -->|"SYNC_ACCOUNT jobs"| J
+    CR2 --> W1
+    W1 --> W2 --> J
+    W2 --> W3
+```
+
 ## 🔧 Activate Skills
 
 | Skill | Purpose in This Phase |
@@ -1360,7 +1415,7 @@ IDEMPOTENCY KEYS (from spec §9.4):
 | `lib/queue/types.ts` | Queue type definitions |
 | `lib/queue/job-orchestrator.ts` | Job producer + idempotency |
 | `lib/queue/worker.ts` | Serverless-bounded SKIP LOCKED worker |
-| `app/api/queue/process/route.ts` | Secure queue execution API (**target — not in Instagram MVP**) |
+| `app/api/queue/process/route.ts` | Secure queue batch processor (Vercel cron */5) |
 | `app/api/cron/token-refresh/route.ts` | Secure daily token refresh trigger (**target — not in Instagram MVP**) |
 | `app/api/cron/ingest/route.ts` | Hourly stale-account sync enqueue (Bearer `CRON_SECRET`) |
 | `app/api/queue/process/route.ts` | Queue batch processor (Vercel cron */5) |

@@ -185,5 +185,25 @@ The endpoint (`app/api/accounts/demo/route.ts`) is authenticated. It:
 
 > **Scheduled sync (MVP):** Hourly cron enqueues stale-account syncs (`POST /api/cron/ingest`, Bearer `CRON_SECRET`). Jobs run via `POST /api/queue/process` (every 5 minutes on Vercel) or `npx tsx lib/queue/worker.ts`. Manual **Sync Now** (`POST /api/accounts/:id/sync`) keeps a 5-minute cooldown. Apply migration `lib/db/migrations/0001_instagram_api_hourly.sql` for hourly Graph API quota tracking.
 
+```mermaid
+sequenceDiagram
+    participant Cron as Vercel Cron
+    participant Ingest as /api/cron/ingest
+    participant Queue as job_queue
+    participant Process as /api/queue/process
+    participant Worker as processor.ts
+    participant IG as Meta Graph API
+
+    Cron->>Ingest: Hourly POST (CRON_SECRET)
+    Ingest->>Queue: Enqueue SYNC_ACCOUNT (staggered)
+    Note over Ingest: Does NOT call Graph inline
+
+    Cron->>Process: Every 5 min POST
+    Process->>Worker: processQueueBatch(14s)
+    Worker->>Queue: SKIP LOCKED claim
+    Worker->>IG: syncAccount (guarded)
+    Worker->>Queue: Mark completed / retry
+```
+
 > [!NOTE]
 > The sandbox demo is intended for development and onboarding. Once a user successfully connects a real Instagram Professional account, treat the demo account as throwaway data and avoid mixing demo metrics with real ingestion.
