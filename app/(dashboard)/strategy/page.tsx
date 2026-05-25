@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useActiveAccount } from "@/components/shared/active-account-context";
 import { useStrategy } from "@/hooks/use-strategy";
 import { StrategyCard } from "@/components/dashboard/strategy-card";
+import { ReelPreviewPlayer } from "@/components/dashboard/reel-preview-player";
 import { LoadingSkeleton } from "@/components/dashboard/loading-skeleton";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { LoadError } from "@/components/shared/load-error";
@@ -18,7 +19,9 @@ import {
   AlertCircle,
   HelpCircle,
   TrendingUp,
-  Award
+  Award,
+  Video,
+  Smartphone
 } from "lucide-react";
 
 export default function StrategyPage() {
@@ -36,9 +39,12 @@ export default function StrategyPage() {
 
   // Active checkable priorities list for high creator engagement
   const [todos, setTodos] = useState<Array<{ id: number; text: string; checked: boolean }>>([]);
+  
+  // Track selected calendar timeline item for interactive preview player
+  const [selectedItemIndex, setSelectedItemIndex] = useState<number>(0);
 
   // Reset checkable priorities whenever strategy ID changes to align with real API tactics
-  React.useEffect(() => {
+  useEffect(() => {
     if (strategy?.content?.tactics) {
       setTodos(
         strategy.content.tactics.map((tactic: string, idx: number) => ({
@@ -50,6 +56,7 @@ export default function StrategyPage() {
     } else {
       setTodos([]);
     }
+    setSelectedItemIndex(0); // reset preview pointer
   }, [strategy?.id, strategy?.content?.tactics]);
 
   const toggleTodo = (id: number) => {
@@ -83,6 +90,7 @@ export default function StrategyPage() {
   // Parse strategy content
   const content = strategy?.content;
   const calendarItems = content?.contentCalendar || [];
+  const selectedItem = calendarItems[selectedItemIndex];
 
   const focusNiche = isLoading
     ? "Analyzing profile focus..."
@@ -127,7 +135,7 @@ export default function StrategyPage() {
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="p-6 border border-glass bg-glass backdrop-blur-2xl rounded-2xl shadow-glow text-center py-12 flex flex-col items-center justify-center gap-4 select-none"
+            className="p-6 border border-glass bg-glass backdrop-blur-2xl rounded-2xl shadow-glow text-center py-12 flex flex-col items-center justify-center gap-4 select-none z-30 relative"
           >
             <div className="w-10 h-10 rounded-full border-4 border-white/5 border-t-brand-primary animate-spin" />
             <div>
@@ -142,21 +150,21 @@ export default function StrategyPage() {
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* ── LEFT PANEL: Focus Card & Checkable Priorities ── */}
-        <div className="lg:col-span-1 flex flex-col gap-6 select-none">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* ── LEFT COLUMN: Focus Card & Checkable Priorities (3/12 width) ── */}
+        <div className="lg:col-span-3 flex flex-col gap-6 select-none sticky top-24">
           {/* Active week focus card */}
           <div className="border border-glass bg-glass rounded-2xl p-5 shadow-glow relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-brand-primary/5 rounded-full blur-2xl" />
+            <div className="absolute top-0 right-0 w-24 h-24 bg-brand-primary/5 rounded-full blur-2xl animate-pulse" />
             <div className="flex items-center gap-2 mb-4">
               <Target className="w-5 h-5 text-brand-primary" />
-              <h3 className="font-display font-extrabold text-sm text-white uppercase tracking-wider">
+              <h3 className="font-display font-extrabold text-xs text-white uppercase tracking-wider">
                 Weekly Moat Focus
               </h3>
             </div>
             
             <div className="p-3 bg-white/5 border border-glass rounded-xl mb-4">
-              <strong className="text-xs text-gray-200 block mb-1">Target Niche Focus:</strong>
+              <strong className="text-[10px] text-gray-400 block mb-1 uppercase tracking-wide">Target Niche Focus:</strong>
               <span className="text-xs text-brand-primary font-bold">{focusNiche}</span>
             </div>
 
@@ -169,7 +177,7 @@ export default function StrategyPage() {
           <div className="border border-glass bg-glass rounded-2xl p-5 shadow-glow">
             <div className="flex items-center gap-2 mb-4">
               <CheckSquare className="w-5 h-5 text-brand-secondary" />
-              <h3 className="font-display font-extrabold text-sm text-white uppercase tracking-wider">
+              <h3 className="font-display font-extrabold text-xs text-white uppercase tracking-wider">
                 Creator Priority Matrix
               </h3>
             </div>
@@ -180,7 +188,7 @@ export default function StrategyPage() {
                   <button
                     key={todo.id}
                     onClick={() => toggleTodo(todo.id)}
-                    className="flex gap-3 text-left items-start p-3 bg-white/5 rounded-xl border border-glass transition-colors hover:bg-white/10"
+                    className="flex gap-3 text-left items-start p-3 bg-white/5 rounded-xl border border-glass transition-colors hover:bg-white/10 active:scale-98"
                   >
                     <div
                       className={`w-4 h-4 rounded border mt-0.5 shrink-0 flex items-center justify-center transition-all ${
@@ -209,8 +217,8 @@ export default function StrategyPage() {
           </div>
         </div>
 
-        {/* ── RIGHT PANEL: Vertical Timeline Scheduler ── */}
-        <div className="lg:col-span-2 flex flex-col gap-6">
+        {/* ── MIDDLE COLUMN: Vertical Timeline Scheduler (6/12 width) ── */}
+        <div className="lg:col-span-5 xl:col-span-6 flex flex-col gap-6">
           <div className="border border-glass bg-glass rounded-2xl p-6 shadow-glow relative">
             <div className="flex justify-between items-center mb-6 select-none">
               <div>
@@ -218,7 +226,7 @@ export default function StrategyPage() {
                   Content Timeline Matrix
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Vertical strategy showing daily content format details
+                  Click a strategy card to preview its output inside the active phone mockup
                 </p>
               </div>
               <div className="px-2 py-0.5 border border-brand-accent/30 bg-brand-accent/10 text-[9px] font-bold text-brand-accent rounded-full uppercase tracking-wider">
@@ -236,26 +244,44 @@ export default function StrategyPage() {
               <LoadingSkeleton variant="strategy" count={3} />
             ) : calendarItems.length > 0 ? (
               <div className="flex flex-col gap-6 pl-4 border-l border-white/5 relative">
-                {calendarItems.map((item: any, idx: number) => (
-                  <div key={idx} className="relative">
-                    {/* Circle Node point */}
-                    <div className="absolute -left-[22px] top-1.5 w-3 h-3 rounded-full bg-brand-primary border-4 border-[#1E1E2A] box-content shadow-glow" />
-                    
-                    <StrategyCard
-                      day={item.day}
-                      time={item.time}
-                      topic={item.topic}
-                      contentType={item.contentType || "Reel"}
-                      hookSuggestion={item.hookSuggestion || "Open with a visual pattern disrupt..."}
-                      estEngagement={
-                        typeof item.estEngagement === "string"
-                          ? item.estEngagement.charAt(0).toUpperCase() + item.estEngagement.slice(1)
-                          : "Medium"
-                      }
-                      audio={item.audio || "Trending Developer Lo-Fi Beat"}
-                    />
-                  </div>
-                ))}
+                {calendarItems.map((item: any, idx: number) => {
+                  const isSelected = selectedItemIndex === idx;
+                  return (
+                    <div 
+                      key={idx} 
+                      className="relative cursor-pointer"
+                      onClick={() => {
+                        setSelectedItemIndex(idx);
+                        toast.info(`Swapped preview video to ${item.day} topic blueprint!`);
+                      }}
+                    >
+                      {/* Circle Node point */}
+                      <div className={`absolute -left-[22px] top-1.5 w-3 h-3 rounded-full border-4 border-[#1E1E2A] box-content shadow-glow transition-all duration-300 ${
+                        isSelected ? "bg-brand-accent scale-125" : "bg-brand-primary"
+                      }`} />
+                      
+                      <div className={`rounded-2xl transition-all duration-300 ${
+                        isSelected 
+                          ? "ring-2 ring-brand-primary shadow-glow bg-brand-primary/5 scale-[1.01]" 
+                          : "hover:scale-[1.005] hover:bg-white/5"
+                      }`}>
+                        <StrategyCard
+                          day={item.day}
+                          time={item.time}
+                          topic={item.topic}
+                          contentType={item.contentType || "Reel"}
+                          hookSuggestion={item.hookSuggestion || "Open with a visual pattern disrupt..."}
+                          estEngagement={
+                            typeof item.estEngagement === "string"
+                              ? item.estEngagement.charAt(0).toUpperCase() + item.estEngagement.slice(1)
+                              : "Medium"
+                          }
+                          audio={item.audio || "Trending Developer Lo-Fi Beat"}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <EmptyState
@@ -267,7 +293,43 @@ export default function StrategyPage() {
             )}
           </div>
         </div>
+
+        {/* ── RIGHT COLUMN: Interactive Simulated Phone Mockup Reel Preview (3/12 width) ── */}
+        <div className="lg:col-span-4 xl:col-span-3 flex flex-col gap-6 sticky top-24">
+          <div className="border border-glass bg-glass rounded-2xl p-5 shadow-glow relative select-none">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-display font-extrabold text-xs text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Video className="w-4 h-4 text-brand-primary animate-pulse" />
+                Live Reel Simulator
+              </h3>
+              <span className="px-2 py-0.5 border border-brand-primary/30 bg-brand-primary/10 text-[8px] font-black uppercase text-brand-primary rounded-full tracking-widest">
+                Mockup Player
+              </span>
+            </div>
+
+            {selectedItem ? (
+              <ReelPreviewPlayer
+                day={selectedItem.day}
+                time={selectedItem.time}
+                contentType={selectedItem.contentType || "Reel"}
+                topic={selectedItem.topic}
+                hookSuggestion={selectedItem.hookSuggestion}
+                audio={selectedItem.audio || "Trending Lo-Fi Audio Track"}
+                estEngagement={selectedItem.estEngagement}
+                niche={focusNiche}
+              />
+            ) : (
+              <div className="py-20 text-center border border-dashed border-white/10 rounded-2xl">
+                <Smartphone className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground px-4">
+                  Initialize a weekly content plan to activate the interactive short-form video mockup previewer.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+

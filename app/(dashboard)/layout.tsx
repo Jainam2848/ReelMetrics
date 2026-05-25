@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import dynamic from "next/dynamic";
 import {
   LayoutDashboard,
   Film,
@@ -16,6 +17,10 @@ import {
   X,
   ChevronRight,
 } from "lucide-react";
+
+const StrategyMatrix3D = dynamic(() => import("@/components/dashboard/strategy-matrix-3d"), {
+  ssr: false,
+});
 import { AccountSwitcher } from "@/components/shared/account-switcher";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { m, AnimatePresence } from "framer-motion";
@@ -70,6 +75,8 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen flex bg-background text-foreground relative pb-20 md:pb-0">
+      {/* Global 3D Strategy Particle Constellation */}
+      <StrategyMatrix3D />
       {/* ── DESKTOP COLLAPSIBLE SIDEBAR (Hidden on mobile) ──────────────── */}
       <aside className="hidden md:flex flex-col w-64 border-r border-glass bg-glass backdrop-blur-xl shrink-0 p-5 z-40 select-none">
         {/* Brand Header */}

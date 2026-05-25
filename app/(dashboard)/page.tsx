@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useActiveAccount } from "@/components/shared/active-account-context";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { usePosts } from "@/hooks/use-posts";
@@ -21,7 +22,12 @@ import {
   Users, 
   TrendingUp, 
   Video, 
-  AlertCircle 
+  AlertCircle,
+  ChevronUp,
+  ChevronDown,
+  Eye,
+  EyeOff,
+  Settings
 } from "lucide-react";
 import { Instagram } from "@/components/shared/icons";
 import { InstagramConnectButton } from "@/components/shared/instagram-connect";
@@ -29,6 +35,10 @@ import { OAuthErrorBanner } from "@/components/dashboard/oauth-error-banner";
 import { LoadError } from "@/components/shared/load-error";
 import { SyncStatusChip } from "@/components/dashboard/sync-status-chip";
 import Link from "next/link";
+
+const OnboardingCore3D = dynamic(() => import("@/components/dashboard/onboarding-core-3d"), {
+  ssr: false,
+});
 
 const NICHE_STRATEGY_TEMPLATES = {
   tech: [
@@ -75,6 +85,61 @@ export default function DashboardHome() {
   const { posts, isLoading: postsLoading } = usePosts();
   const { usage, isLoading: usageLoading } = useSubscription();
   const toast = useToast();
+
+  // Dashboard customization states
+  const [layoutOrder, setLayoutOrder] = useState<string[]>(["metrics", "charts", "strategy", "posts"]);
+  const [hiddenBlocks, setHiddenBlocks] = useState<string[]>([]);
+  const [isCustomizing, setIsCustomizing] = useState(false);
+
+  // Sync layout from localStorage on client-side mount
+  useEffect(() => {
+    const savedOrder = localStorage.getItem("trendoraa_layout_order");
+    const savedHidden = localStorage.getItem("trendoraa_hidden_blocks");
+    if (savedOrder) {
+      try {
+        setLayoutOrder(JSON.parse(savedOrder));
+      } catch (e) {}
+    }
+    if (savedHidden) {
+      try {
+        setHiddenBlocks(JSON.parse(savedHidden));
+      } catch (e) {}
+    }
+  }, []);
+
+  const moveBlock = (index: number, direction: "up" | "down") => {
+    const newOrder = [...layoutOrder];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex >= 0 && targetIndex < newOrder.length) {
+      const temp = newOrder[index]!;
+      newOrder[index] = newOrder[targetIndex]!;
+      newOrder[targetIndex] = temp;
+      setLayoutOrder(newOrder);
+    }
+  };
+
+  const toggleHideBlock = (blockId: string) => {
+    if (hiddenBlocks.includes(blockId)) {
+      setHiddenBlocks(hiddenBlocks.filter((id) => id !== blockId));
+    } else {
+      setHiddenBlocks([...hiddenBlocks, blockId]);
+    }
+  };
+
+  const saveLayout = () => {
+    localStorage.setItem("trendoraa_layout_order", JSON.stringify(layoutOrder));
+    localStorage.setItem("trendoraa_hidden_blocks", JSON.stringify(hiddenBlocks));
+    setIsCustomizing(false);
+    toast.success("Dashboard layout saved successfully!");
+  };
+
+  const resetLayout = () => {
+    setLayoutOrder(["metrics", "charts", "strategy", "posts"]);
+    setHiddenBlocks([]);
+    localStorage.removeItem("trendoraa_layout_order");
+    localStorage.removeItem("trendoraa_hidden_blocks");
+    toast.success("Dashboard layout reset to defaults!");
+  };
 
   // Onboarding Wizard states
   const [onboardingStep, setOnboardingStep] = useState(1);
@@ -305,109 +370,132 @@ export default function DashboardHome() {
             <m.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex flex-col gap-5 text-center"
+              className="flex flex-col gap-6"
             >
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                Step 3: Connect Social Profile
-              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-8 items-center">
+                {/* Left column: Actions */}
+                <div className="md:col-span-3 flex flex-col gap-4 text-center md:text-left">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    Step 3: Connect Social Profile
+                  </h3>
+                  
+                  {syncStatus === "idle" && (
+                    <div className="flex flex-col gap-3">
+                      {/* Option 1: Sandbox seeding */}
+                      <button
+                        onClick={triggerSandboxSeeding}
+                        className="w-full min-h-[52px] bg-gradient-to-r from-brand-primary to-brand-accent hover:opacity-90 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-95 shadow-glow cursor-pointer"
+                      >
+                        <Sparkles className="w-4 h-4 animate-pulse" />
+                        <span>Explore Sandbox Demo Account</span>
+                      </button>
 
-              {syncStatus === "idle" && (
-                <div className="flex flex-col gap-3">
-                  {/* Option 1: Sandbox seeding (Proven retention value) */}
-                  <button
-                    onClick={triggerSandboxSeeding}
-                    className="w-full min-h-[52px] bg-gradient-to-r from-brand-primary to-brand-accent hover:opacity-90 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-95 shadow-glow cursor-pointer"
-                  >
-                    <Sparkles className="w-4 h-4 animate-pulse" />
-                    <span>Explore Sandbox Demo Account</span>
-                  </button>
+                      <div className="flex items-center justify-center gap-4 my-2 select-none">
+                        <div className="h-px bg-white/10 flex-grow" />
+                        <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">
+                          or link production
+                        </span>
+                        <div className="h-px bg-white/10 flex-grow" />
+                      </div>
 
-                  <div className="flex items-center justify-center gap-4 my-2 select-none">
-                    <div className="h-px bg-white/10 flex-grow" />
-                    <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">
-                      or link production
-                    </span>
-                    <div className="h-px bg-white/10 flex-grow" />
-                  </div>
+                      {/* Option 2: Production Links */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <InstagramConnectButton label="Instagram" />
+                        <button
+                          onClick={() => toast.info("TikTok OAuth integration is in beta. Try the sandbox!")}
+                          className="min-h-[46px] rounded-xl border border-glass bg-white/5 hover:bg-white/10 text-gray-200 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95"
+                        >
+                          <Video className="w-4 h-4 text-brand-secondary" />
+                          <span>TikTok</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
-                  {/* Option 2: Production Links */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <InstagramConnectButton label="Instagram" />
+                  {syncStatus === "sandbox_syncing" && (
+                    <div className="py-6 flex flex-col items-center md:items-start justify-center gap-4 select-none">
+                      <div className="relative w-16 h-16 rounded-full border-4 border-white/5 border-t-brand-primary animate-spin mx-auto md:mx-0" />
+                      <div className="flex flex-col gap-1 text-center md:text-left">
+                        <p className="font-bold text-sm text-white animate-pulse">
+                          Generating sandbox metrics...
+                        </p>
+                        <p className="text-xs text-muted-foreground tracking-wide font-mono">
+                          {syncProgress}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {syncStatus === "success" && (
+                    <div className="py-6 flex flex-col items-center md:items-start justify-center gap-3 select-none">
+                      <div className="w-12 h-12 rounded-full bg-brand-secondary/15 border border-brand-secondary flex items-center justify-center text-brand-secondary mb-2 animate-bounce">
+                        <Check className="w-6 h-6" />
+                      </div>
+                      <h4 className="font-display font-extrabold text-white text-lg">
+                        Sandbox Ready!
+                      </h4>
+                      <p className="text-xs text-muted-foreground max-w-xs">
+                        We connected your test credentials and imported mock data. Press continue to view your dashboard!
+                      </p>
+                      <button
+                        onClick={mutateAccounts}
+                        className="mt-4 px-6 min-h-[40px] bg-white text-black font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-gray-100 flex items-center gap-2 mx-auto active:scale-95"
+                      >
+                        <span>Go to Dashboard</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
+                  {syncStatus === "error" && (
+                    <div className="py-6 flex flex-col items-center md:items-start justify-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-red-500/15 border border-red-500 flex items-center justify-center text-red-500 mb-2">
+                        <AlertCircle className="w-6 h-6" />
+                      </div>
+                      <h4 className="font-display font-extrabold text-white text-lg">
+                        Demo Seeding Failed
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        There was an issue claiming Alice&apos;s pre-seeded data. Ensure database migrations were run.
+                      </p>
+                      <button
+                        onClick={() => setSyncStatus("idle")}
+                        className="mt-4 px-4 py-2 border border-glass bg-white/5 rounded-lg text-xs font-semibold text-white hover:bg-white/10"
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                  )}
+
+                  {syncStatus === "idle" && (
                     <button
-                      onClick={() => toast.info("TikTok OAuth integration is in beta. Try the sandbox!")}
-                      className="min-h-[46px] rounded-xl border border-glass bg-white/5 hover:bg-white/10 text-gray-200 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95"
+                      onClick={() => setOnboardingStep(2)}
+                      className="text-xs font-semibold text-gray-500 hover:text-white mt-2 underline self-center md:self-start"
                     >
-                      <Video className="w-4 h-4 text-brand-secondary" />
-                      <span>TikTok</span>
+                      Back to Goal Selection
                     </button>
-                  </div>
+                  )}
                 </div>
-              )}
 
-              {syncStatus === "sandbox_syncing" && (
-                <div className="py-6 flex flex-col items-center justify-center gap-4 select-none">
-                  {/* Beautiful gradient pulse spinner */}
-                  <div className="relative w-16 h-16 rounded-full border-4 border-white/5 border-t-brand-primary animate-spin" />
-                  <div className="flex flex-col gap-1">
-                    <p className="font-bold text-sm text-white animate-pulse">
-                      Generating sandbox metrics...
+                {/* Right column: Interactive 3D Onboarding Strategy Core */}
+                <div className="md:col-span-2 flex flex-col items-center justify-center border border-glass bg-glass-deep p-5 rounded-2xl relative shadow-glow">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 rounded-full blur-2xl" />
+                  
+                  <div className="w-full h-[220px] flex items-center justify-center">
+                    <OnboardingCore3D niche={niche} goal={goal} />
+                  </div>
+
+                  <div className="w-full mt-3 p-3 rounded-xl bg-white/5 border border-glass text-center select-none z-10">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] font-black uppercase bg-brand-primary/20 text-brand-primary border border-brand-primary/30 tracking-wider">
+                      <Sparkles className="w-2.5 h-2.5 animate-pulse" />
+                      Active 3D Strategy Core
+                    </span>
+                    <p className="text-[10px] text-gray-300 font-bold mt-1.5 leading-relaxed">
+                      Holographic shell aligned to <strong className="text-brand-accent">{niche ? niche.toUpperCase() : "GENERAL"}</strong> niche and morphing under <strong className="text-brand-secondary">{goal ? goal.toUpperCase() : "GROWTH"}</strong> parameters.
                     </p>
-                    <p className="text-xs text-muted-foreground tracking-wide font-mono">
-                      {syncProgress}
-                    </p>
                   </div>
                 </div>
-              )}
-
-              {syncStatus === "success" && (
-                <div className="py-6 flex flex-col items-center justify-center gap-3 select-none">
-                  <div className="w-12 h-12 rounded-full bg-brand-secondary/15 border border-brand-secondary flex items-center justify-center text-brand-secondary mb-2 animate-bounce">
-                    <Check className="w-6 h-6" />
-                  </div>
-                  <h4 className="font-display font-extrabold text-white text-lg">
-                    Sandbox Ready!
-                  </h4>
-                  <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                    We connected your test credentials and imported mock data. Press continue to view your dashboard!
-                  </p>
-                  <button
-                    onClick={mutateAccounts}
-                    className="mt-4 px-6 min-h-[40px] bg-white text-black font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-gray-100 flex items-center gap-2 mx-auto active:scale-95"
-                  >
-                    <span>Go to Dashboard</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-
-              {syncStatus === "error" && (
-                <div className="py-6 flex flex-col items-center justify-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-red-500/15 border border-red-500 flex items-center justify-center text-red-500 mb-2">
-                    <AlertCircle className="w-6 h-6" />
-                  </div>
-                  <h4 className="font-display font-extrabold text-white text-lg">
-                    Demo Seeding Failed
-                  </h4>
-                  <p className="text-xs text-muted-foreground">
-                    There was an issue claiming Alice&apos;s pre-seeded data. Ensure database migrations were run.
-                  </p>
-                  <button
-                    onClick={() => setSyncStatus("idle")}
-                    className="mt-4 px-4 py-2 border border-glass bg-white/5 rounded-lg text-xs font-semibold text-white hover:bg-white/10"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              )}
-
-              {syncStatus === "idle" && (
-                <button
-                  onClick={() => setOnboardingStep(2)}
-                  className="text-xs font-semibold text-gray-500 hover:text-white mt-2 underline"
-                >
-                  Back to Goal Selection
-                </button>
-              )}
+              </div>
             </m.div>
           )}
         </m.div>
@@ -503,153 +591,418 @@ export default function DashboardHome() {
         )}
       </m.div>
 
-      {/* ── 4 Metric Bento Grid Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {analyticsLoading ? (
-          <LoadingSkeleton variant="metrics" />
+      {/* ── Dashboard Customizer Toolbar ── */}
+      <div className="flex justify-end gap-3 select-none relative z-20 -mb-2">
+        {isCustomizing ? (
+          <div className="flex items-center gap-2 bg-white/5 p-1 rounded-xl border border-glass">
+            <button
+              onClick={saveLayout}
+              className="px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-brand-primary text-white shadow-glow-sm cursor-pointer hover:opacity-90 active:scale-95 transition-all"
+            >
+              Save Layout
+            </button>
+            <button
+              onClick={resetLayout}
+              className="px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/5 text-gray-400 hover:text-white cursor-pointer active:scale-95 transition-all"
+            >
+              Reset
+            </button>
+          </div>
         ) : (
-          <>
-            <MetricCard
-              label="Proprietary Hook Retention"
-              value={isInstagram ? hookRetentionAvg : "—"}
-              description="Scroll-stop percentage. Renamed from Instagram skip rate."
-              sourceBadge={goal === "retention" ? "🎯 Goal Focus" : (activeAccount?.platform === "tiktok" ? "TikTok Watch-Through" : "Instagram Reels")}
-            />
-            <MetricCard
-              label="Strategic Watch-Through"
-              value={watchThroughAvg}
-              description="Proprietary Watch-Through score signifying retention completion."
-              sourceBadge={goal === "retention" ? "🎯 Goal Focus" : (activeAccount?.platform === "tiktok" ? "TikTok Complete" : "Instagram Average")}
-            />
-            <MetricCard
-              label="Accumulated Impressions"
-              value={totalViews > 0 ? totalViews.toLocaleString() : "—"}
-              description="Total display views across your tracked short-form content."
-              sourceBadge={goal === "followers" ? "🎯 Goal Focus" : undefined}
-            />
-            <MetricCard
-              label="Average Engagement Rate"
-              value={averageEngagement}
-              description="Average like + comment + share + save divided by views across your tracked posts."
-              sourceBadge={goal === "engagement" ? "🎯 Goal Focus" : undefined}
-            />
-          </>
+          <button
+            onClick={() => setIsCustomizing(true)}
+            className="px-4 py-2 border border-glass bg-glass hover:bg-white/5 rounded-xl text-xs font-bold text-gray-300 hover:text-white cursor-pointer active:scale-95 transition-all flex items-center gap-1.5"
+          >
+            <Settings className="w-4 h-4 text-brand-primary animate-spin" style={{ animationDuration: "6s" }} />
+            <span>Customize Dashboard</span>
+          </button>
         )}
       </div>
 
-      {/* ── Charts & Plan Bento Row ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Analytics engagement chart (2/3 width) */}
-        <div className="lg:col-span-2 border border-glass bg-glass rounded-2xl p-6 shadow-glow relative">
-          <div className="flex justify-between items-center mb-6 select-none">
-            <div>
-              <h3 className="text-base font-display font-extrabold text-white">
-                Engagement Velocity Trend
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                30-day average interaction rate changes
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5 px-2 py-1 border border-glass bg-white/5 rounded-lg text-[10px] font-bold text-brand-primary uppercase tracking-wider">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>Moat Velocity</span>
-            </div>
+      {/* ── Dynamic Customizable Bento Blocks ── */}
+      {layoutOrder.map((blockId, index) => {
+        const isHidden = hiddenBlocks.includes(blockId);
+        if (isHidden && !isCustomizing) return null;
+
+        // Swapping/Customizing Header Controls for each block while in edit mode
+        const blockControls = isCustomizing && (
+          <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 bg-black/85 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-brand-primary/30 select-none">
+            <span className="text-[9px] font-black text-brand-primary uppercase mr-2">
+              {blockId === "metrics" ? "Bento Metric Cards" : blockId === "charts" ? "Engagement Trend" : blockId === "strategy" ? "Content Strategy" : "Peak Performers"}
+            </span>
+            <button
+              onClick={() => moveBlock(index, "up")}
+              disabled={index === 0}
+              className="p-1 text-gray-400 hover:text-brand-primary disabled:opacity-30 disabled:hover:text-gray-400 cursor-pointer transition-colors"
+              title="Move Up"
+            >
+              <ChevronUp className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => moveBlock(index, "down")}
+              disabled={index === layoutOrder.length - 1}
+              className="p-1 text-gray-400 hover:text-brand-primary disabled:opacity-30 disabled:hover:text-gray-400 cursor-pointer transition-colors"
+              title="Move Down"
+            >
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => toggleHideBlock(blockId)}
+              className={`p-1 cursor-pointer transition-colors ${isHidden ? "text-brand-primary" : "text-gray-400 hover:text-white"}`}
+              title={isHidden ? "Show Section" : "Hide Section"}
+            >
+              {isHidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+            </button>
           </div>
+        );
 
-          {analyticsLoading ? (
-            <LoadingSkeleton variant="chart" />
-          ) : trendsHasData && trends.length > 0 ? (
-            <TrendChart data={trends} />
-          ) : (
-            <p className="text-sm text-muted-foreground py-16 text-center">
-              Sync your account to see engagement trends from real reel data.
-            </p>
-          )}
-        </div>
+        const wrapBlock = (content: React.ReactNode, className = "") => (
+          <m.div
+            key={blockId}
+            layout
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className={`relative transition-all duration-300 ${className} ${
+              isCustomizing
+                ? "border-2 border-dashed border-brand-primary/50 rounded-3xl p-3 bg-brand-primary/5 scale-[0.99] shadow-glow-sm"
+                : ""
+            } ${isHidden ? "opacity-30 grayscale pointer-events-none" : ""}`}
+          >
+            {blockControls}
+            {content}
+          </m.div>
+        );
 
-        {/* Weekly planning summary widget (1/3 width) */}
-        <div className="border border-glass bg-glass rounded-2xl p-6 shadow-glow relative select-none flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-display font-extrabold text-white">
-                Weekly Content Strategy
-              </h3>
-              <span className="px-2 py-0.5 border border-white/10 bg-white/5 text-[10px] font-bold text-gray-400 rounded-full uppercase tracking-wider">
-                {niche ? `${niche} focus` : "Sample"}
-              </span>
+        if (blockId === "metrics") {
+          return wrapBlock(
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {analyticsLoading ? (
+                <LoadingSkeleton variant="metrics" />
+              ) : (
+                <>
+                  <MetricCard
+                    label="Proprietary Hook Retention"
+                    value={isInstagram ? hookRetentionAvg : "—"}
+                    description="Scroll-stop percentage. Renamed from Instagram skip rate."
+                    sourceBadge={goal === "retention" ? "🎯 Goal Focus" : (activeAccount?.platform === "tiktok" ? "TikTok Watch-Through" : "Instagram Reels")}
+                  />
+                  <MetricCard
+                    label="Strategic Watch-Through"
+                    value={watchThroughAvg}
+                    description="Proprietary Watch-Through score signifying retention completion."
+                    sourceBadge={goal === "retention" ? "🎯 Goal Focus" : (activeAccount?.platform === "tiktok" ? "TikTok Complete" : "Instagram Average")}
+                  />
+                  <MetricCard
+                    label="Accumulated Impressions"
+                    value={totalViews > 0 ? totalViews.toLocaleString() : "—"}
+                    description="Total display views across your tracked short-form content."
+                    sourceBadge={goal === "followers" ? "🎯 Goal Focus" : undefined}
+                  />
+                  <MetricCard
+                    label="Average Engagement Rate"
+                    value={averageEngagement}
+                    description="Average like + comment + share + save divided by views across your tracked posts."
+                    sourceBadge={goal === "engagement" ? "🎯 Goal Focus" : undefined}
+                  />
+                </>
+              )}
             </div>
-            <p className="text-xs text-muted-foreground mb-6">
-              Below is a sample plan personalized to your niche. Open Strategy to generate a full calendar.
-            </p>
+          );
+        }
 
-            <div className="flex flex-col gap-4">
-              {(() => {
-                const key = (niche && niche in NICHE_STRATEGY_TEMPLATES ? niche : "tech") as keyof typeof NICHE_STRATEGY_TEMPLATES;
-                return NICHE_STRATEGY_TEMPLATES[key];
-              })().map((item, idx) => (
-                <div key={idx} className="flex gap-4 items-start">
-                  <div className="w-2.5 h-2.5 rounded-full bg-brand-primary mt-1.5 shrink-0" />
-                  <div>
-                    <h4 className="font-bold text-xs text-gray-200">
-                      {item.day} • <span className="text-brand-accent">{item.time}</span>
-                    </h4>
-                    <p className="text-xs text-muted-foreground font-semibold">
-                      {item.topic} ({item.format})
-                    </p>
-                  </div>
+        // To keep layout organic and stunning, if charts and strategy are adjacent and both visible, we group them into a 3-column row.
+        // Otherwise, they expand standalone to take full screen width beautifully.
+        const chartsIdx = layoutOrder.indexOf("charts");
+        const strategyIdx = layoutOrder.indexOf("strategy");
+        const areAdjacent = Math.abs(chartsIdx - strategyIdx) === 1;
+
+        if (blockId === "charts") {
+          if (areAdjacent && !hiddenBlocks.includes("strategy") && !isCustomizing) {
+            if (chartsIdx < strategyIdx) {
+              return (
+                <div key="charts-strategy-row" className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* Analytics engagement chart (2/3 width) */}
+                  <m.div layout className="lg:col-span-2 border border-glass bg-glass rounded-2xl p-6 shadow-glow relative">
+                    <div className="flex justify-between items-center mb-6 select-none">
+                      <div>
+                        <h3 className="text-base font-display font-extrabold text-white">
+                          Engagement Velocity Trend
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          30-day average interaction rate changes
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-2 py-1 border border-glass bg-white/5 rounded-lg text-[10px] font-bold text-brand-primary uppercase tracking-wider">
+                        <TrendingUp className="w-3.5 h-3.5" />
+                        <span>Moat Velocity</span>
+                      </div>
+                    </div>
+
+                    {analyticsLoading ? (
+                      <LoadingSkeleton variant="chart" />
+                    ) : trendsHasData && trends.length > 0 ? (
+                      <TrendChart data={trends} />
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-16 text-center">
+                        Sync your account to see engagement trends from real reel data.
+                      </p>
+                    )}
+                  </m.div>
+
+                  {/* Weekly planning summary widget (1/3 width) */}
+                  <m.div layout className="border border-glass bg-glass rounded-2xl p-6 shadow-glow relative select-none flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-base font-display font-extrabold text-white">
+                          Weekly Content Strategy
+                        </h3>
+                        <span className="px-2 py-0.5 border border-white/10 bg-white/5 text-[10px] font-bold text-gray-400 rounded-full uppercase tracking-wider">
+                          {niche ? `${niche} focus` : "Sample"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-6">
+                        Below is a sample plan personalized to your niche. Open Strategy to generate a full calendar.
+                      </p>
+
+                      <div className="flex flex-col gap-4">
+                        {(() => {
+                          const key = (niche && niche in NICHE_STRATEGY_TEMPLATES ? niche : "tech") as keyof typeof NICHE_STRATEGY_TEMPLATES;
+                          return NICHE_STRATEGY_TEMPLATES[key];
+                        })().map((item, idx) => (
+                          <div key={idx} className="flex gap-4 items-start">
+                            <div className="w-2.5 h-2.5 rounded-full bg-brand-primary mt-1.5 shrink-0" />
+                            <div>
+                              <h4 className="font-bold text-xs text-gray-200">
+                                {item.day} • <span className="text-brand-accent">{item.time}</span>
+                              </h4>
+                              <p className="text-xs text-muted-foreground font-semibold">
+                                {item.topic} ({item.format})
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <Link
+                      href="/strategy"
+                      className="w-full mt-8 min-h-[40px] rounded-xl border border-glass bg-white/5 hover:bg-white/10 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 text-white active:scale-95 transition-all"
+                    >
+                      <span>Explore Planner Matrix</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </m.div>
                 </div>
-              ))}
+              );
+            } else {
+              return null; // strategy rendered first, handled the row
+            }
+          }
+
+          // Render standalone full-width charts card
+          return wrapBlock(
+            <div className="border border-glass bg-glass rounded-2xl p-6 shadow-glow relative w-full">
+              <div className="flex justify-between items-center mb-6 select-none">
+                <div>
+                  <h3 className="text-base font-display font-extrabold text-white">
+                    Engagement Velocity Trend
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    30-day average interaction rate changes
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 border border-glass bg-white/5 rounded-lg text-[10px] font-bold text-brand-primary uppercase tracking-wider">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>Moat Velocity</span>
+                </div>
+              </div>
+
+              {analyticsLoading ? (
+                <LoadingSkeleton variant="chart" />
+              ) : trendsHasData && trends.length > 0 ? (
+                <div className="w-full h-[280px]">
+                  <TrendChart data={trends} />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-16 text-center">
+                  Sync your account to see engagement trends from real reel data.
+                </p>
+              )}
             </div>
-          </div>
+          );
+        }
 
-          <Link
-            href="/strategy"
-            className="w-full mt-8 min-h-[40px] rounded-xl border border-glass bg-white/5 hover:bg-white/10 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 text-white active:scale-95 transition-all"
-          >
-            <span>Explore Planner Matrix</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      </div>
+        if (blockId === "strategy") {
+          if (areAdjacent && !hiddenBlocks.includes("charts") && !isCustomizing) {
+            if (strategyIdx < chartsIdx) {
+              return (
+                <div key="strategy-charts-row" className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* Weekly planning summary widget (1/3 width) */}
+                  <m.div layout className="border border-glass bg-glass rounded-2xl p-6 shadow-glow relative select-none flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-base font-display font-extrabold text-white">
+                          Weekly Content Strategy
+                        </h3>
+                        <span className="px-2 py-0.5 border border-white/10 bg-white/5 text-[10px] font-bold text-gray-400 rounded-full uppercase tracking-wider">
+                          {niche ? `${niche} focus` : "Sample"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-6">
+                        Below is a sample plan personalized to your niche. Open Strategy to generate a full calendar.
+                      </p>
 
-      {/* ── Top Scored Posts Grid ── */}
-      <div>
-        <div className="flex justify-between items-center mb-6 select-none">
-          <div>
-            <h3 className="text-lg font-display font-extrabold text-white">
-              Peak Performing Reels
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Your top 3 video creations evaluated by the Trendoraa AI engine
-            </p>
-          </div>
-          <Link
-            href="/posts"
-            className="text-xs font-bold text-brand-primary hover:underline flex items-center gap-1 active:scale-95"
-          >
-            <span>See All Posts</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
+                      <div className="flex flex-col gap-4">
+                        {(() => {
+                          const key = (niche && niche in NICHE_STRATEGY_TEMPLATES ? niche : "tech") as keyof typeof NICHE_STRATEGY_TEMPLATES;
+                          return NICHE_STRATEGY_TEMPLATES[key];
+                        })().map((item, idx) => (
+                          <div key={idx} className="flex gap-4 items-start">
+                            <div className="w-2.5 h-2.5 rounded-full bg-brand-primary mt-1.5 shrink-0" />
+                            <div>
+                              <h4 className="font-bold text-xs text-gray-200">
+                                {item.day} • <span className="text-brand-accent">{item.time}</span>
+                              </h4>
+                              <p className="text-xs text-muted-foreground font-semibold">
+                                {item.topic} ({item.format})
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {postsLoading ? (
-            <LoadingSkeleton variant="posts" count={3} />
-          ) : posts && posts.length > 0 ? (
-            posts.slice(0, 3).map((post) => <PostCard key={post.id} post={post} />)
-          ) : (
-            <div className="col-span-3 text-center py-10 border border-glass bg-glass rounded-2xl">
-              <p className="text-sm text-muted-foreground">No posts have been scored yet.</p>
+                    <Link
+                      href="/strategy"
+                      className="w-full mt-8 min-h-[40px] rounded-xl border border-glass bg-white/5 hover:bg-white/10 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 text-white active:scale-95 transition-all"
+                    >
+                      <span>Explore Planner Matrix</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </m.div>
+
+                  {/* Analytics engagement chart (2/3 width) */}
+                  <m.div layout className="lg:col-span-2 border border-glass bg-glass rounded-2xl p-6 shadow-glow relative">
+                    <div className="flex justify-between items-center mb-6 select-none">
+                      <div>
+                        <h3 className="text-base font-display font-extrabold text-white">
+                          Engagement Velocity Trend
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          30-day average interaction rate changes
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-2 py-1 border border-glass bg-white/5 rounded-lg text-[10px] font-bold text-brand-primary uppercase tracking-wider">
+                        <TrendingUp className="w-3.5 h-3.5" />
+                        <span>Moat Velocity</span>
+                      </div>
+                    </div>
+
+                    {analyticsLoading ? (
+                      <LoadingSkeleton variant="chart" />
+                    ) : trendsHasData && trends.length > 0 ? (
+                      <TrendChart data={trends} />
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-16 text-center">
+                        Sync your account to see engagement trends from real reel data.
+                      </p>
+                    )}
+                  </m.div>
+                </div>
+              );
+            } else {
+              return null; // charts rendered first, handled the row
+            }
+          }
+
+          // Render standalone strategy planner (expanded into gorgeous 3 columns)
+          return wrapBlock(
+            <div className="border border-glass bg-glass rounded-2xl p-6 shadow-glow relative select-none w-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-display font-extrabold text-white">
+                  Weekly Content Strategy
+                </h3>
+                <span className="px-2 py-0.5 border border-white/10 bg-white/5 text-[10px] font-bold text-gray-400 rounded-full uppercase tracking-wider">
+                  {niche ? `${niche} focus` : "Sample"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mb-6">
+                Below is a sample plan personalized to your niche. Open Strategy to generate a full calendar.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                {(() => {
+                  const key = (niche && niche in NICHE_STRATEGY_TEMPLATES ? niche : "tech") as keyof typeof NICHE_STRATEGY_TEMPLATES;
+                  return NICHE_STRATEGY_TEMPLATES[key];
+                })().map((item, idx) => (
+                  <div key={idx} className="flex gap-4 items-start p-4 rounded-xl bg-white/5 border border-white/5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-brand-primary mt-1.5 shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-xs text-gray-200">
+                        {item.day} • <span className="text-brand-accent">{item.time}</span>
+                      </h4>
+                      <p className="text-xs text-muted-foreground font-semibold mt-0.5">
+                        {item.topic} ({item.format})
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               <Link
-                href="/posts"
-                className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-brand-primary rounded-xl text-xs font-bold uppercase tracking-wider text-white"
+                href="/strategy"
+                className="w-fit mt-6 px-6 min-h-[40px] rounded-xl border border-glass bg-white/5 hover:bg-white/10 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 text-white active:scale-95 transition-all"
               >
-                Go to Posts Manager
+                <span>Explore Planner Matrix</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
-          )}
-        </div>
-      </div>
+          );
+        }
+
+        if (blockId === "posts") {
+          return wrapBlock(
+            <div>
+              <div className="flex justify-between items-center mb-6 select-none">
+                <div>
+                  <h3 className="text-lg font-display font-extrabold text-white">
+                    Peak Performing Reels
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Your top 3 video creations evaluated by the Trendoraa AI engine
+                  </p>
+                </div>
+                <Link
+                  href="/posts"
+                  className="text-xs font-bold text-brand-primary hover:underline flex items-center gap-1 active:scale-95"
+                >
+                  <span>See All Posts</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {postsLoading ? (
+                  <LoadingSkeleton variant="posts" count={3} />
+                ) : posts && posts.length > 0 ? (
+                  posts.slice(0, 3).map((post) => <PostCard key={post.id} post={post} />)
+                ) : (
+                  <div className="col-span-3 text-center py-10 border border-glass bg-glass rounded-2xl">
+                    <p className="text-sm text-muted-foreground">No posts have been scored yet.</p>
+                    <Link
+                      href="/posts"
+                      className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-brand-primary rounded-xl text-xs font-bold uppercase tracking-wider text-white"
+                    >
+                      Go to Posts Manager
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        return null;
+      })}
     </div>
   );
 }
