@@ -5,6 +5,9 @@ import useSWR from "swr";
 import { useActiveAccount } from "@/components/shared/active-account-context";
 import { useToast } from "@/components/shared/toast";
 
+const STRATEGY_POLL_INTERVAL_MS = 5000;
+const STRATEGY_POLL_MAX_MS = 5 * 60 * 1000;
+
 export interface CalendarItem {
   day: string;
   time: string;
@@ -39,12 +42,12 @@ export interface StrategyData {
 export function useStrategy() {
   const { activeAccount } = useActiveAccount();
   const toast = useToast();
-  
+
   const [isGenerating, setIsGenerating] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollStartedAtRef = useRef<number | null>(null);
   const previousGeneratedAtRef = useRef<string | null>(null);
 
-  // Fetch the latest strategy
   const {
     data: strategy,
     error,
@@ -58,7 +61,6 @@ export function useStrategy() {
     }
   );
 
-  // Cache previous generation time to check for updates
   useEffect(() => {
     if (strategy?.generatedAt) {
       previousGeneratedAtRef.current = strategy.generatedAt;
@@ -70,11 +72,30 @@ export function useStrategy() {
       clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = null;
     }
+    pollStartedAtRef.current = null;
   }, []);
 
-  // Poll strategy status until new one is generated
+  const failGeneration = useCallback(
+    (userMessage: string) => {
+      setIsGenerating(false);
+      stopPolling();
+      toast.error(userMessage);
+    },
+    [stopPolling, toast]
+  );
+
   const pollStrategy = useCallback(async () => {
     if (!activeAccount) return;
+
+    if (
+      pollStartedAtRef.current &&
+      Date.now() - pollStartedAtRef.current > STRATEGY_POLL_MAX_MS
+    ) {
+      failGeneration(
+        "Strategy generation is taking longer than expected. Check back shortly or try again."
+      );
+      return;
+    }
 
     try {
       const res = await fetch(`/api/accounts/${activeAccount.id}/strategy`);
@@ -82,12 +103,12 @@ export function useStrategy() {
 
       if (json.success && json.data) {
         const newStrategy: StrategyData = json.data;
-        
-        // If generatedAt timestamp is newer than what we had before, it finished!
+
         const isNew =
           newStrategy.generatedAt !== null &&
           (!previousGeneratedAtRef.current ||
-            new Date(newStrategy.generatedAt).getTime() > new Date(previousGeneratedAtRef.current).getTime());
+            new Date(newStrategy.generatedAt).getTime() >
+              new Date(previousGeneratedAtRef.current).getTime());
 
         if (isNew) {
           setIsGenerating(false);
@@ -99,19 +120,20 @@ export function useStrategy() {
     } catch (err) {
       console.error("Error polling strategy:", err);
     }
-  }, [activeAccount, stopPolling, mutate, toast]);
+  }, [activeAccount, failGeneration, stopPolling, mutate, toast]);
 
   useEffect(() => {
     return () => stopPolling();
   }, [stopPolling]);
 
-  // Trigger strategy generation
   const generateStrategy = useCallback(async () => {
     if (!activeAccount) return;
 
     try {
       setIsGenerating(true);
-      toast.info("Enqueuing strategy job. AI is analyzing your last 30 posts to compile a new weekly plan...");
+      toast.info(
+        "Enqueuing strategy job. AI is analyzing your last 30 posts to compile a new weekly plan..."
+      );
 
       const res = await fetch(`/api/accounts/${activeAccount.id}/strategy`, {
         method: "POST",
@@ -119,18 +141,30 @@ export function useStrategy() {
       });
       const json = await res.json();
 
-      if (json.success) {
-        stopPolling();
-        pollIntervalRef.current = setInterval(pollStrategy, 5000); // Poll every 5s per spec
-      } else {
+      if (!json.success) {
+        if (json.error?.code === "USAGE_LIMIT_EXCEEDED") {
+          failGeneration(
+            json.error.message ||
+              "Monthly usage limit reached for strategy generation. Upgrade your plan on Billing."
+          );
+          return;
+        }
         throw new Error(json.error?.message || "Failed to trigger strategy");
       }
+
+      stopPolling();
+      pollStartedAtRef.current = Date.now();
+      pollIntervalRef.current = setInterval(
+        pollStrategy,
+        STRATEGY_POLL_INTERVAL_MS
+      );
     } catch (err) {
       console.error("Strategy generation failed:", err);
-      setIsGenerating(false);
-      toast.error(err instanceof Error ? err.message : "Failed to compile strategy.");
+      failGeneration(
+        err instanceof Error ? err.message : "Failed to compile strategy."
+      );
     }
-  }, [activeAccount, pollStrategy, stopPolling, toast]);
+  }, [activeAccount, failGeneration, pollStrategy, stopPolling, toast]);
 
   return {
     strategy,

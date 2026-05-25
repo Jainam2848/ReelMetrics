@@ -5,22 +5,14 @@ import { SWRConfig } from "swr";
 import { MotionProvider } from "@/components/shared/motion-provider";
 import { ToastProvider } from "@/components/shared/toast";
 import { ActiveAccountProvider } from "@/components/shared/active-account-context";
+import { apiFetcher } from "@/lib/api/client-fetcher";
 
 interface ProvidersProps {
   children: React.ReactNode;
 }
 
 const swrConfig = {
-  fetcher: (url: string) =>
-    fetch(url)
-      .then((res) => {
-        if (!res.ok) throw new Error("HTTP error in fetcher");
-        return res.json();
-      })
-      .then((json) => {
-        if (!json.success) throw new Error(json.error?.message || "API request failed");
-        return json.data;
-      }),
+  fetcher: apiFetcher,
   revalidateOnFocus: false,
   shouldRetryOnError: false,
 };

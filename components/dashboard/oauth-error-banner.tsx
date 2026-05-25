@@ -41,6 +41,14 @@ function resolveCopy(code: string, message: string | null): ErrorCopy {
         description:
           "For security, an Instagram account can only be connected to one Trendoraa workspace at a time. Disconnect it from the other workspace before linking it here.",
       };
+    case "account_limit_reached": {
+      const max = message?.replace(/^max=/, "") || "your plan";
+      return {
+        title: "Account limit reached for your plan",
+        description: `You have reached the maximum number of Instagram accounts (${max}) allowed on your current subscription. Upgrade your plan on Billing or disconnect an existing account before connecting another.`,
+        action: { label: "View plans", href: "/billing" },
+      };
+    }
     case "token_exchange_failed":
     case "pages_api_failed":
       return {
@@ -87,7 +95,12 @@ export function OAuthErrorBanner() {
   const [snapshot] = useState<{ code: string; message: string | null } | null>(() => {
     const code = searchParams.get("error");
     if (!code) return null;
-    return { code, message: searchParams.get("message") };
+    const max = searchParams.get("max");
+    const message =
+      code === "account_limit_reached" && max
+        ? `max=${max}`
+        : searchParams.get("message");
+    return { code, message };
   });
 
   const [dismissed, setDismissed] = useState(false);
@@ -99,6 +112,7 @@ export function OAuthErrorBanner() {
     if (!next.has("error")) return; // already cleaned
     next.delete("error");
     next.delete("message");
+    next.delete("max");
     next.delete("platform");
     const qs = next.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });

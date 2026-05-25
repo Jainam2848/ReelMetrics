@@ -143,16 +143,7 @@ export async function syncAccount(
     );
   }
 
-  // 2d. Per-account sync mutex (prevents overlapping full syncs)
-  const lockAcquired = await tryAcquireSyncLock(accountId);
-  if (!lockAcquired) {
-    throw new SyncError(
-      "SYNC_IN_PROGRESS",
-      "Another sync is already in progress for this account."
-    );
-  }
-
-  // 3. Check if token is valid / needs refresh
+  // 3. Token must exist before claiming the sync lock (avoids stuck "syncing" status)
   if (!account.accessTokenEnc) {
     throw new SyncError(
       "IG_TOKEN_INVALID",
@@ -175,6 +166,16 @@ export async function syncAccount(
     updatedAt: account.updatedAt,
   };
 
+  // 2d. Per-account sync mutex (prevents overlapping full syncs)
+  const lockAcquired = await tryAcquireSyncLock(accountId);
+  if (!lockAcquired) {
+    throw new SyncError(
+      "SYNC_IN_PROGRESS",
+      "Another sync is already in progress for this account."
+    );
+  }
+
+  try {
   if (shouldRefresh(socialAccount)) {
     try {
       await refreshToken(socialAccount);
@@ -368,6 +369,47 @@ export async function syncAccount(
   }
 
   return syncResult;
+  } catch (error) {
+    await revertStuckSyncLock(accountId, error);
+    throw error;
+  }
+}
+
+/**
+ * If sync failed while status is still "syncing", restore a terminal status.
+ */
+async function revertStuckSyncLock(
+  accountId: string,
+  error: unknown
+): Promise<void> {
+  const row = await db.query.instagramAccounts.findFirst({
+    where: eq(instagramAccounts.id, accountId),
+    columns: { syncStatus: true },
+  });
+
+  if (row?.syncStatus !== "syncing") return;
+
+  if (error instanceof SyncError) {
+    if (error.code === "IG_RATE_LIMITED") {
+      await db
+        .update(instagramAccounts)
+        .set({ syncStatus: "rate_limited", updatedAt: new Date() })
+        .where(eq(instagramAccounts.id, accountId));
+      return;
+    }
+    if (error.code === "IG_TOKEN_INVALID") {
+      await db
+        .update(instagramAccounts)
+        .set({ syncStatus: "disconnected", updatedAt: new Date() })
+        .where(eq(instagramAccounts.id, accountId));
+      return;
+    }
+  }
+
+  await db
+    .update(instagramAccounts)
+    .set({ syncStatus: "error", updatedAt: new Date() })
+    .where(eq(instagramAccounts.id, accountId));
 }
 
 /**

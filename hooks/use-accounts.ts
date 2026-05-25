@@ -3,7 +3,8 @@
 import { useState, useCallback } from "react";
 import useSWR from "swr";
 import { useToast } from "@/components/shared/toast";
-import { useActiveAccount, SocialAccountDetails } from "@/components/shared/active-account-context";
+import { useActiveAccount } from "@/components/shared/active-account-context";
+import { syncErrorToast } from "@/lib/client/sync-toast";
 
 export function useAccounts() {
   const toast = useToast();
@@ -26,15 +27,14 @@ export function useAccounts() {
         const json = await res.json();
 
         if (json.success) {
-          await mutate(); // Refresh active account metadata
-          toast.success("Social metrics sync successfully completed!");
+          await mutate();
+          toast.success(
+            json.data?.message || "Sync enqueued — processing in background."
+          );
         } else {
-          // Map sync active error
-          if (json.error?.code === "SYNC_COOLDOWN_ACTIVE") {
-            toast.info("Sync cooldown active. Please wait 5 minutes between manual syncs.");
-          } else {
-            throw new Error(json.error?.message || "Sync failed");
-          }
+          const { variant, message } = syncErrorToast(json.error);
+          if (variant === "info") toast.info(message);
+          else toast.error(message);
         }
       } catch (err) {
         console.error("Manual sync failed:", err);

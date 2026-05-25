@@ -20,6 +20,7 @@ import { Instagram } from "@/components/shared/icons";
 import { InstagramConnectButton } from "@/components/shared/instagram-connect";
 import { SyncStatusChip } from "@/components/dashboard/sync-status-chip";
 import { LoadError } from "@/components/shared/load-error";
+import { syncErrorToast } from "@/lib/client/sync-toast";
 
 export default function AccountsPage() {
   const { 
@@ -45,11 +46,9 @@ export default function AccountsPage() {
         toast.success(data.data?.message || "Sync enqueued — processing in background.");
         await mutate();
       } else {
-        if (data.error?.code === "SYNC_COOLDOWN_ACTIVE") {
-          toast.info("Sync cooldown active. You can sync again in 5 minutes.");
-        } else {
-          toast.error(data.error?.message || "Failed to trigger sync.");
-        }
+        const { variant, message } = syncErrorToast(data.error);
+        if (variant === "info") toast.info(message);
+        else toast.error(message);
       }
     } catch (err) {
       toast.error("Failed to run manual account sync.");

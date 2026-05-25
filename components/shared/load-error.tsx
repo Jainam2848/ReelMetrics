@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import { describeApiError } from "@/lib/api/client-fetcher";
 
 interface LoadErrorProps {
   title?: string;
@@ -27,7 +28,7 @@ export function LoadError({
 
   const errorMessage =
     description ||
-    (error instanceof Error ? error.message : null) ||
+    (error ? describeApiError(error) : null) ||
     "The request to our API failed. Check your connection or try again.";
 
   const handleRetry = async () => {

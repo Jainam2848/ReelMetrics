@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import useSWR from "swr";
+import { apiFetcher } from "@/lib/api/client-fetcher";
 
 export interface SocialAccountDetails {
   id: string;
@@ -32,19 +33,19 @@ interface ActiveAccountContextType {
 
 const ActiveAccountContext = createContext<ActiveAccountContextType | undefined>(undefined);
 
-const fetcher = (url: string) =>
-  fetch(url)
-    .then((res) => res.json())
-    .then((json) => {
-      if (!json.success) throw new Error(json.error?.message || "An error occurred");
-      
-      // Inject standard platform attribute on response
-      const items = json.data || [];
-      return items.map((acc: any) => ({
-        ...acc,
-        platform: acc.username.includes("tiktok") || acc.username.includes("bob") ? ("tiktok" as const) : ("instagram" as const),
-      })) as SocialAccountDetails[];
-    });
+const fetcher = async (url: string): Promise<SocialAccountDetails[]> => {
+  const items = await apiFetcher<
+    Array<Omit<SocialAccountDetails, "platform">>
+  >(url);
+
+  return items.map((acc) => ({
+    ...acc,
+    platform:
+      acc.username.includes("tiktok") || acc.username.includes("bob")
+        ? ("tiktok" as const)
+        : ("instagram" as const),
+  }));
+};
 
 export function ActiveAccountProvider({ children }: { children: React.ReactNode }) {
   const { data: accounts = [], error, isLoading, mutate } = useSWR<SocialAccountDetails[]>("/api/accounts", fetcher, {

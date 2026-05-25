@@ -106,14 +106,39 @@ export function usePosts(platformFilter: "all" | "instagram" | "tiktok" = "all")
       toast.info(`Enqueuing ${unscored.length} posts for AI evaluation...`);
 
       // Trigger POST score for all unscored posts
-      await Promise.all(
-        unscored.map((post) =>
-          fetch(`/api/reels/${post.id}/score`, {
+      const results = await Promise.all(
+        unscored.map(async (post) => {
+          const res = await fetch(`/api/reels/${post.id}/score`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-          })
-        )
+          });
+          const json = await res.json().catch(() => ({}));
+          return { postId: post.id, ok: res.ok && json.success, error: json.error };
+        })
       );
+
+      const failed = results.filter((r) => !r.ok);
+      const limitHit = failed.some(
+        (r) => r.error?.code === "USAGE_LIMIT_EXCEEDED"
+      );
+
+      if (limitHit) {
+        setBulkScoringInProgress(false);
+        setBulkScoreProgress("");
+        stopPolling();
+        toast.error(
+          failed.find((r) => r.error?.code === "USAGE_LIMIT_EXCEEDED")?.error
+            ?.message ||
+            "Monthly usage limit reached for reel scoring. Upgrade your plan on Billing."
+        );
+        return;
+      }
+
+      if (failed.length > 0) {
+        toast.info(
+          `Enqueued ${results.length - failed.length} of ${results.length} posts. ${failed.length} could not be queued.`
+        );
+      }
 
       // Start custom interval polling to check scoring states incrementally
       stopPolling();
