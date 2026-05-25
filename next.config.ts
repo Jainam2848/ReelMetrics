@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 // IMPORTANT: importing the env sentinel here causes a fast-fail at build/start
 // time if any required environment variable is missing or malformed. See
@@ -11,6 +12,14 @@ const nextConfig: NextConfig = {
   compress: true,
   experimental: {
     typedRoutes: true,
+  },
+  webpack(config) {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "react$": require.resolve("react"),
+      "react-dom$": require.resolve("react-dom"),
+    };
+    return config;
   },
   // Baseline security headers (defense-in-depth — see spec §11.9).
   // Granular per-route CSP and additional headers are layered on by
