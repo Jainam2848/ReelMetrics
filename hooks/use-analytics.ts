@@ -5,9 +5,9 @@ import { useActiveAccount } from "@/components/shared/active-account-context";
 
 export interface AnalyticsSummary {
   totalViews: number;
-  avgEngagementRate: number;
-  avgHookRetention: number;
-  avgWatchThrough: number;
+  avgEngagementRate: number | null;
+  avgHookRetention: number | null;
+  avgWatchThrough: number | null;
 }
 
 export interface ContentTypePerformance {
@@ -23,6 +23,7 @@ export interface HeatmapItem {
 }
 
 export interface AnalyticsData {
+  hasData?: boolean;
   summary: AnalyticsSummary;
   contentTypes: ContentTypePerformance[];
   heatmap: HeatmapItem[];
@@ -32,13 +33,17 @@ export interface TrendItem {
   date: string;
   engagementRate: number;
   hookRetention: number;
-  watchThrough: number;
+  watchThrough: number | null;
+}
+
+interface TrendsResponse {
+  hasData: boolean;
+  timeline: TrendItem[];
 }
 
 export function useAnalytics(timeframeDays: 7 | 30 | 90 = 30) {
   const { activeAccount } = useActiveAccount();
 
-  // Fetch metrics summaries
   const {
     data: metrics,
     error: metricsError,
@@ -54,13 +59,12 @@ export function useAnalytics(timeframeDays: 7 | 30 | 90 = 30) {
     }
   );
 
-  // Fetch trend line timeline
   const {
-    data: trends = [],
+    data: trendsPayload,
     error: trendsError,
     isLoading: trendsLoading,
     mutate: mutateTrends,
-  } = useSWR<TrendItem[]>(
+  } = useSWR<TrendsResponse>(
     activeAccount
       ? `/api/accounts/${activeAccount.id}/trends?days=${timeframeDays}`
       : null,
@@ -70,6 +74,9 @@ export function useAnalytics(timeframeDays: 7 | 30 | 90 = 30) {
     }
   );
 
+  const trends = trendsPayload?.timeline ?? [];
+  const trendsHasData = trendsPayload?.hasData ?? trends.length > 0;
+
   const mutate = async () => {
     await Promise.all([mutateMetrics(), mutateTrends()]);
   };
@@ -77,6 +84,8 @@ export function useAnalytics(timeframeDays: 7 | 30 | 90 = 30) {
   return {
     metrics,
     trends,
+    trendsHasData,
+    metricsHasData: metrics?.hasData ?? (metrics?.summary?.totalViews ?? 0) > 0,
     error: metricsError || trendsError,
     isLoading: (metricsLoading || trendsLoading) && activeAccount !== null,
     mutate,

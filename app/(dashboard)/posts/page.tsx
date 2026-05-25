@@ -44,7 +44,7 @@ export default function PostsPage() {
     scoreAllPosts,
     bulkScoringInProgress,
     bulkScoreProgress 
-  } = usePosts(platformFilter === "all" ? undefined : platformFilter);
+  } = usePosts(platformFilter);
 
   // Filter and Sort in client memory for blazing fast feel
   const filteredPosts = React.useMemo(() => {

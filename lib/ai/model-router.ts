@@ -193,6 +193,13 @@ function isRecentPost(postedAt?: Date | string): boolean {
   return hoursSincePosted <= 48;
 }
 
+/** True when at least one LLM provider has an API key configured. */
+export function isAnyLlmProviderConfigured(): boolean {
+  return (Object.keys(MODEL_CONFIGS) as ModelId[]).some((id) =>
+    isModelAvailable(id)
+  );
+}
+
 /**
  * Checks if a model's API key is configured in the environment.
  */

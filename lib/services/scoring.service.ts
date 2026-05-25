@@ -7,7 +7,7 @@ import {
 } from "@/lib/ai/scoring-engine";
 import { buildScoringPrompt } from "@/lib/ai/prompt-builder";
 import { callLLMPure } from "@/lib/ai/llm-client";
-import { selectModel } from "@/lib/ai/model-router";
+import { isAnyLlmProviderConfigured, selectModel } from "@/lib/ai/model-router";
 import {
   checkUsageLimit,
   getUserPlanContext,
@@ -173,7 +173,7 @@ async function runScoringPipeline(
   const canUseLlm =
     reelAnalysisCap.allowed &&
     aiCallCap.allowed &&
-    Boolean(process.env.OPENAI_API_KEY);
+    isAnyLlmProviderConfigured();
 
   if (canUseLlm) {
     const { modelTier } = await getUserPlanContext(userId);

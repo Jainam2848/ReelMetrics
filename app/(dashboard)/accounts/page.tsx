@@ -19,13 +19,15 @@ import {
 import { Instagram } from "@/components/shared/icons";
 import { InstagramConnectButton } from "@/components/shared/instagram-connect";
 import { SyncStatusChip } from "@/components/dashboard/sync-status-chip";
+import { LoadError } from "@/components/shared/load-error";
 
 export default function AccountsPage() {
   const { 
     accounts = [], 
     activeAccount, 
     setActiveAccount, 
-    isLoading, 
+    isLoading,
+    error,
     mutate 
   } = useActiveAccount();
   const toast = useToast();
@@ -40,7 +42,7 @@ export default function AccountsPage() {
       const data = await res.json();
       
       if (data.success) {
-        toast.success(data.data?.message || "Sync completed successfully!");
+        toast.success(data.data?.message || "Sync enqueued — processing in background.");
         await mutate();
       } else {
         if (data.error?.code === "SYNC_COOLDOWN_ACTIVE") {
@@ -115,6 +117,15 @@ export default function AccountsPage() {
           </button>
         )}
       </div>
+
+      {error && (
+        <LoadError
+          title="Couldn't load accounts"
+          error={error}
+          onRetry={() => mutate()}
+          variant="inline"
+        />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* ── LEFT PANEL: Connected profiles list ── */}

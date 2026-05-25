@@ -15,7 +15,7 @@ interface DataPoint {
   date: string;
   engagementRate: number;
   hookRetention: number;
-  watchThrough: number;
+  watchThrough?: number | null;
 }
 
 interface TrendChartProps {

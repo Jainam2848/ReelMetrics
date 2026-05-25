@@ -15,10 +15,12 @@ import { createClient } from "@/lib/supabase/server";
 import { AuthService } from "@/lib/services/auth.service";
 import { db } from "@/lib/db";
 import { instagramAccounts, auditLog } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 import { encryptToken } from "@/lib/security/encryption";
 import { enqueueJob, JOB_TYPES } from "@/lib/queue";
 import { env } from "@/lib/env";
+import { getUserPlanContext } from "@/lib/billing/usage-tracker";
+import { getPlanLimits } from "@/lib/billing/plans";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -288,6 +290,31 @@ export async function GET(
       }
       accountId = updated.id;
     } else {
+      const { planId } = await getUserPlanContext(user.id);
+      const { maxAccounts } = getPlanLimits(planId);
+
+      const [countRow] = await db
+        .select({ total: count() })
+        .from(instagramAccounts)
+        .where(eq(instagramAccounts.userId, user.id));
+
+      const connectedCount = Number(countRow?.total ?? 0);
+      if (connectedCount >= maxAccounts) {
+        await AuthService.logAudit({
+          userId: user.id,
+          action: "social.account_limit_reached",
+          resourceType: "instagram_account",
+          metadata: { planId, maxAccounts, connectedCount },
+          ipAddress,
+        });
+        return NextResponse.redirect(
+          new URL(
+            `/dashboard?error=account_limit_reached&max=${maxAccounts}`,
+            APP_URL
+          )
+        );
+      }
+
       // Create new account
       const [created] = await db
         .insert(instagramAccounts)

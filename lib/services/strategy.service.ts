@@ -4,7 +4,7 @@ import { eq, and, gte, desc, inArray } from "drizzle-orm";
 import { buildStrategyPrompt } from "@/lib/ai/prompt-builder";
 import { StrategyOutputSchema, type StrategyOutput } from "@/lib/ai/strategy-schema";
 import { callLLMPure } from "@/lib/ai/llm-client";
-import { selectModel } from "@/lib/ai/model-router";
+import { isAnyLlmProviderConfigured, selectModel } from "@/lib/ai/model-router";
 import { computeTimeDecayFactor } from "@/lib/ai/scoring-engine";
 import {
   checkUsageLimit,
@@ -279,7 +279,7 @@ export async function generateStrategy(userId: string, accountId: string) {
   const canUseLlm =
     strategyCap.allowed &&
     aiCallCap.allowed &&
-    Boolean(process.env.OPENAI_API_KEY);
+    isAnyLlmProviderConfigured();
 
   let output: StrategyOutput;
   let source: "ai" | "heuristic" = "heuristic";

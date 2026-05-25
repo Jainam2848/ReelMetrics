@@ -71,7 +71,7 @@ export default function DashboardHome() {
     error: accountsError,
     mutate: mutateAccounts,
   } = useActiveAccount();
-  const { metrics, trends, isLoading: analyticsLoading } = useAnalytics();
+  const { metrics, trends, trendsHasData, isLoading: analyticsLoading } = useAnalytics();
   const { posts, isLoading: postsLoading } = usePosts();
   const { usage, isLoading: usageLoading } = useSubscription();
   const toast = useToast();
@@ -558,24 +558,12 @@ export default function DashboardHome() {
 
           {analyticsLoading ? (
             <LoadingSkeleton variant="chart" />
-          ) : trends && trends.length > 0 ? (
+          ) : trendsHasData && trends.length > 0 ? (
             <TrendChart data={trends} />
           ) : (
-            <div className="flex flex-col gap-3">
-              <div className="px-3 py-1 self-start rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                Sample data — sync your account for live trends
-              </div>
-              <TrendChart
-                data={[
-                  { date: "May 1", engagementRate: 4.2, hookRetention: 72, watchThrough: 65 },
-                  { date: "May 5", engagementRate: 4.8, hookRetention: 75, watchThrough: 68 },
-                  { date: "May 10", engagementRate: 5.6, hookRetention: 82, watchThrough: 74 },
-                  { date: "May 15", engagementRate: 5.1, hookRetention: 78, watchThrough: 71 },
-                  { date: "May 20", engagementRate: 6.2, hookRetention: 85, watchThrough: 79 },
-                  { date: "May 24", engagementRate: 5.9, hookRetention: 83, watchThrough: 77 },
-                ]}
-              />
-            </div>
+            <p className="text-sm text-muted-foreground py-16 text-center">
+              Sync your account to see engagement trends from real reel data.
+            </p>
           )}
         </div>
 
