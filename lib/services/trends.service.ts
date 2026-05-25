@@ -3,8 +3,7 @@ import { trendAnalyses, instagramAccounts, reels, nicheTrendsFeed } from "@/lib/
 import { eq, and, desc } from "drizzle-orm";
 import { generateTrendsAnalysis, getHeuristicTrendFallback } from "@/lib/ai/trend-generator";
 import { checkUsageLimit, incrementUsage, getUserPlanContext } from "@/lib/billing/usage-tracker";
-import { selectModel } from "@/lib/ai/model-router";
-import { callLLMPure } from "@/lib/ai/llm-client";
+import { callLLMWithFallback } from "@/lib/ai/llm-with-fallback";
 import { z } from "zod";
 import { type ErrorCode } from "@/lib/api/response";
 
@@ -49,27 +48,25 @@ export class TrendService {
    */
   static async refreshGlobalTrendsFeed() {
     const niches = ["tech", "comedy", "finance", "education", "lifestyle", "fashion", "fitness"];
-    const selection = selectModel("analysis", "standard");
     
     for (const niche of niches) {
       try {
         let trendSignals = "";
         
-        if (selection) {
-          // Query cheap model to fetch latest trends for this niche
-          const prompt = `Identify top 3 surging hashtags, top 2 trending audio clips, and 1 viral content format on Instagram Reels for creators in the "${niche}" niche. Return them as a clean, brief bulleted list.`;
-          
-          const response = await callLLMPure({
-            prompt,
-            outputSchema: z.object({ trends: z.string() }),
-            model: selection.model,
-            temperature: 0.5,
-            maxTokens: 500,
-          });
-          
-          if (response.success) {
-            trendSignals = response.data.trends;
-          }
+        // In refreshGlobalTrendsFeed (daily cron cost control): force analysis operation with standard tier
+        const prompt = `Identify top 3 surging hashtags, top 2 trending audio clips, and 1 viral content format on Instagram Reels for creators in the "${niche}" niche. Return them as a clean, brief bulleted list.`;
+        
+        const response = await callLLMWithFallback({
+          operation: "analysis",
+          modelTier: "standard",
+          prompt,
+          outputSchema: z.object({ trends: z.string() }),
+          temperature: 0.5,
+          maxTokens: 500,
+        });
+        
+        if (response.success) {
+          trendSignals = response.data.trends;
         }
         
         if (!trendSignals) {

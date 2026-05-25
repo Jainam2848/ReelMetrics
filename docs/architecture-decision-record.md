@@ -54,7 +54,7 @@ The core technology stack is strictly locked. No substitutions or additions are 
 | **ORM Layer** | Drizzle ORM | Provides an SQL-first, lightweight, compile-time type-safe mapper. Eliminates ORM runtime overhead and maps complex database queries natively. |
 | **Authentication** | Supabase Auth (GoTrue) | Manages authentication flows natively, supporting secure OAuth2 handshakes for Instagram and TikTok logins and session tokens. |
 | **Background Queue** | Custom PG SKIP LOCKED Queue | Eliminates the cost and operational footprint of Redis or Kafka. Provides database-native ACID-compliant job processing. |
-| **AI/LLM Engines** | OpenAI GPT-4o/mini, Gemini 2.0 Flash, DeepSeek-V3 | Multi-model routing tier ensures >98% cost savings on batch analyses while retaining GPT-4o for high-value strategies. |
+| **AI/LLM Engines** | Google Gemini (2.0/2.5 Flash), DeepSeek (V4 Chat/Reasoner) | Multi-model routing tier ensures cost-efficiency across all scoring and strategy runs, completely independent of OpenAI. |
 | **Payment Gateway** | Stripe Subscriptions + Checkout | Standardizes subscription logic and billing portal generation, utilizing secure webhook signatures. |
 | **Email Gateway** | Resend | transactional email delivery service with simple REST APIs, tailored for serverless execution runtimes. |
 | **Deployment Platform**| Vercel (Frontend) + Supabase (DB) | Minimizes deployment surface by automating serverless function distribution, SSL management, and database replication. |
@@ -104,7 +104,7 @@ flowchart LR
 
 ### 4.1 Boundary Rules & Import Guard Policies
 1. **Billing Isolation:** The `Billing` module operates purely on Stripe webhook parsing and subscription table modifications. It never imports functions from the `AI` engine or enqueues items into the `Queue` directly.
-2. **AI Module Purity:** The `AI` module is a pure execution pipeline. It receives raw parameters and returns typed values. It **never** writes directly to DB tables, and it **never** makes network requests to external APIs other than OpenAI. All database writes are mediated by the `Service` layer.
+2. **AI Module Purity:** The `AI` module is a pure execution pipeline. It receives raw parameters and returns typed values. It **never** writes directly to DB tables, and it **never** makes network requests to external APIs other than Google Gemini and DeepSeek. All database writes are mediated by the `Service` layer.
 3. **Queue Ingestion Limits:** Webhook routes and API endpoints never execute heavy business or synchronization logic. They extract parameters and write a `pending` job into the queue, deferring runtime load to workers.
 4. **Compile-Time Enforcement:** A custom ESLint rule inside `eslint.config.mjs` enforces imports limits. Public routes under `app/(public)/**/*` are restricted from importing `@/lib/db`, `@/lib/supabase`, or `@/lib/crypto`.
 5. **Database Transaction Safety:** The `Service` mediator wraps cross-module routines in standard SQL transactions. If an AI write or webhook ingestion step fails, the transaction rolls back, preventing data corruption.
@@ -123,9 +123,9 @@ To ensure high profitability from Day 1, the platform operates on highly optimiz
 * **Total Base Fixed Cost:** **$91.00 / month**
 
 ### 5.2 Variable Cost Targets (Per-User API Costs)
-* **Gemini 2.0 Flash / DeepSeek-V3 (Batch/Budget Scoring):** ~$0.0003 / post analyzed (98%+ cost savings)
-* **GPT-4o-mini (Real-time Standard Scoring):** ~$0.0006 / post analyzed
-* **GPT-4o (Premium Strategy & Analysis):** ~$0.08 / Strategy run (avg. 2,000 input, 2,000 output tokens)
+* **Gemini 2.0 Flash (Batch/Budget Scoring):** ~$0.0003 / post analyzed (extreme cost-efficiency)
+* **DeepSeek V4-Flash / Gemini 2.5 Flash (Real-time Standard Scoring & Strategy):** ~$0.0004 / post analyzed
+* **DeepSeek Reasoner (Premium Strategy & Analysis):** ~$0.01 / Strategy run (Thinking R1 tier with excellent value-cost ratio)
 * **Stripe Fees:** 2.9% + $0.30 per customer transaction
 * **Instagram & TikTok API Queries:** $0.00 (Free)
 
@@ -134,9 +134,9 @@ Using a standard seed-stage SaaS product user distribution and our strictly cost
 
 * **User Mix Assumptions (1,000 total active users):**
   * **Free Tier:** 80% (800 users) — Variable cost: $0.00/user/mo (0 posts AI limit)
-  * **Creator Tier:** 15% (150 users) — Variable cost: $1.07/user/mo (Capped at 50 posts analyzed with GPT-4o-mini + 4 weekly strategy runs)
-  * **Pro Tier:** 4% (40 users) — Variable cost: $3.32/user/mo (Capped at 200 posts analyzed with GPT-4o-mini + 4 weekly strategy runs)
-  * **Agency Tier:** 1% (10 users) — Variable cost: $24.00/user/mo (Avg 400 posts analyzed with GPT-4o + priority strategy briefs)
+  * **Creator Tier:** 15% (150 users) — Variable cost: $0.35/user/mo (Capped at 50 posts analyzed with DeepSeek V4-Flash + 4 weekly standard strategy runs)
+  * **Pro Tier:** 4% (40 users) — Variable cost: $1.20/user/mo (Capped at 200 posts analyzed with DeepSeek V4-Flash + 4 weekly standard strategy runs)
+  * **Agency Tier:** 1% (10 users) — Variable cost: $4.50/user/mo (Avg 400 posts analyzed with DeepSeek V4-Flash + premium DeepSeek Reasoner strategy briefs)
 
 * **Monthly Cost Breakdown:**
   * **Free Tier Variable Cost:** 800 * $0.00 = $0.00 / month
@@ -192,8 +192,8 @@ flowchart TD
 * **Dependencies:** Deep video scoring, hook quality analysis, strategy generation.
 * **Failure Vectors:** LLM API server outages, connection timeouts, monthly user LLM budget or count overruns, Gemini free-tier rate limits (15 RPM).
 * **Fallback Strategy:**
-  * **Intelligent Routing Layer:** Routes real-time standard tier analyses to GPT-4o-mini, high-value strategy generation to GPT-4o, and background batch processing of older posts (>48 hours) to Gemini 2.0 Flash or DeepSeek-V3.
-  * **Rate-Limit & Circuit Breakers:** Monitors Gemini's 15 RPM free tier; automatically bypasses to next-cheapest provider (DeepSeek-V3/GPT-4o-mini) on quota exhaustion.
+  * **Intelligent Routing Layer:** Routes real-time standard tier analyses to DeepSeek V4-Flash, premium strategy generation to DeepSeek Reasoner (Thinking), and background batch processing of older posts (>48 hours) to Gemini 2.0 Flash (saving ~45% cost).
+  * **Rate-Limit & Circuit Breakers:** Monitors Gemini's 15 RPM free tier; automatically bypasses to the next-cheapest provider (DeepSeek V4-Flash) on quota exhaustion.
   * **Monthly LLM Budget & Analysis Caps:** Before invoking any LLM, the system validates that the user is under their monthly count and budget caps. If exceeded, operations fall back to heuristics.
   * **Heuristic Fallback Engine:** If all configured API candidates fail or trip circuit breakers, the Heuristic Fallback Engine calculates exact mathematical scoring using native metrics (skip rate, completion rate, engagement velocity) to preserve dashboard rendering under `source: "heuristic"`. The upgraded heuristic includes follower tier skip-rate threshold scaling, video duration retention modifiers, log10 CTA magnitude scaling, views momentum classifications, peak active hour timing score calculations, and stretch normalization to map raw scores into a true 1-100 range.
   * **NaN Prevention Default:** If a new account lacks historical posts to calculate baseline averages, engagement defaults to `2.0%`, skip rate to `50.0%`, and completion rate to `30.0%` within calculations.

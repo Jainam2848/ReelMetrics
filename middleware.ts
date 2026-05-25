@@ -79,7 +79,7 @@ export async function middleware(request: NextRequest) {
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.vercel-insights.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://*.cdninstagram.com https://scontent.cdninstagram.com",
-    "connect-src 'self' https://api.openai.com https://api.stripe.com https://graph.instagram.com https://graph.facebook.com https://*.supabase.co wss://*.supabase.co",
+    "connect-src 'self' https://generativelanguage.googleapis.com https://api.deepseek.com https://api.stripe.com https://graph.instagram.com https://graph.facebook.com https://*.supabase.co wss://*.supabase.co",
     "frame-src 'self' https://js.stripe.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",

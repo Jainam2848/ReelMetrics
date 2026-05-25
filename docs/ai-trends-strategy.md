@@ -16,7 +16,7 @@ flowchart TD
     
     A[Raw Platform Data] -->|Sync| B[Database: Reels / Video Stats]
     B & NTF -->|Niche & Performance Data| E[AI Strategy Prompt Builder]
-    E -->|Structured Prompt| F[callLLMPure OpenAI Interface]
+    E -->|Structured Prompt| F[callLLMWithFallback Routing Interface]
     F -->|JSON Output| G[Zod Schema Validator]
     G -->|Success| H[Save to Database: strategies / trend_analysis]
     G -->|Failure / Outage| I[Heuristic Fallback Strategy Engine]
@@ -145,7 +145,7 @@ export type TrendAnalysisOutput = z.infer<typeof TrendAnalysisOutputSchema>;
 
 ## 🛠️ Data-Driven Heuristic Outage Fallback
 
-If OpenAI is unreachable (circuit breaker trips) or API credits are exhausted, the worker falls back to the heuristic strategy engine, returning a deterministic template corresponding to their chosen `niche`:
+If all candidate LLM models are exhausted (rate limits saturated or API credit exhaustions), the worker falls back to the heuristic strategy engine, returning a deterministic template corresponding to their chosen `niche`:
 
 ```typescript
 export function getHeuristicTrendFallback(niche: string): TrendAnalysisOutput {

@@ -1,14 +1,13 @@
 /**
- * Trendoraa — LLM Client (spec §7.4, upgraded for multi-model support).
+ * Trendoraa — LLM Client (spec §7.4, upgraded for Gemini + DeepSeek routing).
  *
  * Pure function wrapper for all LLM calls. Has ZERO database dependencies
  * and ZERO side effects. All user budget checks, token usage tracking, and
  * database commits MUST be performed by the calling service.
  *
  * Supports multiple providers:
- * - OpenAI (GPT-4o, GPT-4o-mini) via the `openai` SDK
- * - Google Gemini (2.0 Flash) via REST API
- * - DeepSeek (V3) via OpenAI-compatible API
+ * - Google Gemini (2.0 Flash, 2.5 Flash) via REST API
+ * - DeepSeek (V4 Flash, V4 Reasoner) via OpenAI-compatible API
  *
  * @module llm-client
  */
@@ -40,6 +39,7 @@ export type LLMCallResult<T> =
       success: false;
       error: string;
       modelId: ModelId;
+      isRateLimit?: boolean;
     };
 
 // ── Timeout Utility ────────────────────────────────────────────────────────
@@ -62,45 +62,12 @@ function sanitizeForLogs(message: string): string {
   return message.replace(/\b(sk-|AIza|dsk_)[A-Za-z0-9_-]{10,}\b/g, "[REDACTED]");
 }
 
-// ── OpenAI Adapter ─────────────────────────────────────────────────────────
-
-async function callOpenAI(
-  prompt: string,
-  model: ModelConfig,
-  maxTokens: number,
-  temperature: number
-): Promise<{ content: string; totalTokens: number }> {
-  // Dynamic import to avoid hard dependency if OpenAI isn't used
-  const OpenAI = (await import("openai")).default;
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-  const completion = await withTimeout(
-    client.chat.completions.create({
-      model: model.id,
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      max_tokens: maxTokens,
-      temperature,
-    }),
-    30_000
-  );
-
-  return {
-    content: completion.choices[0]?.message?.content ?? "",
-    totalTokens: completion.usage?.total_tokens ?? 0,
-  };
-}
-
 // ── Gemini Adapter ─────────────────────────────────────────────────────────
 
 /**
  * Calls Google Gemini via REST API.
  * Adapts to Gemini's format:
- * - System instructions via `systemInstruction` field
  * - JSON output via `response_mime_type: 'application/json'`
- *
- * NOTE: Uses raw fetch to avoid adding a heavy SDK dependency.
- * Google AI Studio free tier: 15 RPM (tracked by model-router.ts).
  */
 async function callGemini(
   prompt: string,
@@ -171,15 +138,20 @@ async function callDeepSeek(
     baseURL: "https://api.deepseek.com",
   });
 
+  const isReasoner = model.id === "deepseek-reasoner";
+
+  // DeepSeek Reasoner (Thinking R1) specifications:
+  // - Does NOT support response_format / json_object mode
+  // - Does NOT support custom temperature / top_p (must omit or keep undefined)
   const completion = await withTimeout(
     client.chat.completions.create({
-      model: model.id === "deepseek-v3" ? "deepseek-chat" : model.id,
+      model: model.id,
       messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
+      response_format: isReasoner ? undefined : { type: "json_object" },
       max_tokens: maxTokens,
-      temperature,
+      temperature: isReasoner ? undefined : temperature,
     }),
-    30_000
+    60_000 // Increase thinking model timeout to 60 seconds
   );
 
   return {
@@ -196,12 +168,6 @@ async function callDeepSeek(
  * Routes to the appropriate provider adapter based on the model config,
  * parses the JSON response against the Zod schema, and returns a
  * typed result with cost and latency metadata.
- *
- * The calling service is responsible for:
- * - Budget checks (before calling)
- * - Usage tracking (after calling)
- * - Database writes (after calling)
- * - Circuit breaker wrapping (around this call)
  */
 export async function callLLMPure<T>(
   params: LLMCallParams<T>
@@ -224,9 +190,6 @@ export async function callLLMPure<T>(
     let result: { content: string; totalTokens: number };
 
     switch (model.provider) {
-      case "openai":
-        result = await callOpenAI(prompt, model, maxTokens, temperature);
-        break;
       case "gemini":
         result = await callGemini(prompt, model, maxTokens, temperature);
         break;
@@ -242,7 +205,15 @@ export async function callLLMPure<T>(
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown LLM error";
     console.error(`[llm-client] ${model.id} call failed:`, sanitizeForLogs(message));
-    return { success: false, error: message, modelId: model.id };
+    
+    // Standardize rate limit recognition
+    const isRateLimit =
+      message.includes("429") ||
+      message.toLowerCase().includes("rate limit") ||
+      message.toLowerCase().includes("quota") ||
+      message.includes("RESOURCE_EXHAUSTED");
+
+    return { success: false, error: message, modelId: model.id, isRateLimit };
   }
 
   // Parse and validate the JSON response against the Zod schema

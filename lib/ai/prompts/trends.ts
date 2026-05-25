@@ -25,6 +25,11 @@ Analyze the raw trend signals through the strict lens of the creator's specific 
 - **Hook Mutations:** Take 3 high-velocity platform hooks and mutate them specifically to fit the creator's niche and goal.
 - **Actionable Content Blueprints:** Draft 3 quick-execution Reel/TikTok ideas utilizing these trends.
 
+## STRICT TRENDS CONSTRAINTS
+- Use ONLY the actual niche, goal, and performance statistics provided; NEVER invent or extrapolate metrics.
+- Keep recommendations specific and creator-friendly; do not include generic fluff.
+- Output MUST validate against the Zod JSON schema exactly.
+
 Return ONLY a valid JSON payload matching this Zod-enforceable schema:
 {
   "niche_trend_score": <number 1-100>,

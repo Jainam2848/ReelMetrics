@@ -8,10 +8,9 @@
  * - Provider rate limits and availability
  *
  * Key design decisions:
- * - Gemini 2.0 Flash is the default for batch scoring (98% cheaper than GPT-4o)
- * - GPT-4o reserved for premium-tier strategy generation
- * - GPT-4o-mini is the default real-time scoring model for standard tiers
- * - Automatic heuristic fallback when all providers are rate-limited
+ * - Google Gemini (Flash) and DeepSeek are the primary engines.
+ * - OpenAI is fully removed from all routing paths.
+ * - Automatic heuristic fallback when all providers are rate-limited or exhausted.
  * - In-memory rate limit tracker for Gemini free tier (15 RPM)
  *
  * @module model-router
@@ -20,12 +19,12 @@
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export type ModelId =
-  | "gpt-4o"
-  | "gpt-4o-mini"
   | "gemini-2.0-flash"
-  | "deepseek-v3";
+  | "gemini-2.5-flash"
+  | "deepseek-chat"
+  | "deepseek-reasoner";
 
-export type ModelProvider = "openai" | "gemini" | "deepseek";
+export type ModelProvider = "gemini" | "deepseek";
 
 export type OperationType =
   | "scoring"         // Real-time single post scoring
@@ -56,30 +55,10 @@ export interface ModelSelection {
 
 /**
  * Model pricing and capabilities configuration.
- * Updated manually when providers change pricing.
- * All prices in USD per 1K tokens.
+ * Pricing updated per official DeepSeek/Google pricing sheets.
+ * All prices in USD per 1K tokens (converted from per-1M values).
  */
 export const MODEL_CONFIGS: Record<ModelId, ModelConfig> = {
-  "gpt-4o": {
-    id: "gpt-4o",
-    provider: "openai",
-    displayName: "GPT-4o (Premium)",
-    inputPer1KTokens: 0.005,
-    outputPer1KTokens: 0.015,
-    maxTokens: 4096,
-    supportsJsonMode: true,
-    freeRpmLimit: 0,
-  },
-  "gpt-4o-mini": {
-    id: "gpt-4o-mini",
-    provider: "openai",
-    displayName: "GPT-4o-mini (Standard)",
-    inputPer1KTokens: 0.00015,
-    outputPer1KTokens: 0.0006,
-    maxTokens: 4096,
-    supportsJsonMode: true,
-    freeRpmLimit: 0,
-  },
   "gemini-2.0-flash": {
     id: "gemini-2.0-flash",
     provider: "gemini",
@@ -90,13 +69,33 @@ export const MODEL_CONFIGS: Record<ModelId, ModelConfig> = {
     supportsJsonMode: true,
     freeRpmLimit: 15, // Google AI Studio free tier: 15 RPM
   },
-  "deepseek-v3": {
-    id: "deepseek-v3",
+  "gemini-2.5-flash": {
+    id: "gemini-2.5-flash",
+    provider: "gemini",
+    displayName: "Gemini 2.5 Flash (Budget Pro)",
+    inputPer1KTokens: 0.000075,
+    outputPer1KTokens: 0.0003,
+    maxTokens: 8192,
+    supportsJsonMode: true,
+    freeRpmLimit: 15,
+  },
+  "deepseek-chat": {
+    id: "deepseek-chat",
     provider: "deepseek",
-    displayName: "DeepSeek-V3 (Budget)",
-    inputPer1KTokens: 0.00014,
-    outputPer1KTokens: 0.00028,
+    displayName: "DeepSeek V4 Flash",
+    inputPer1KTokens: 0.00014,  // $0.14 per 1M tokens
+    outputPer1KTokens: 0.00028, // $0.28 per 1M tokens
     maxTokens: 4096,
+    supportsJsonMode: true,
+    freeRpmLimit: 0,
+  },
+  "deepseek-reasoner": {
+    id: "deepseek-reasoner",
+    provider: "deepseek",
+    displayName: "DeepSeek V4 Reasoner (Thinking)",
+    inputPer1KTokens: 0.00055,  // $0.55 per 1M tokens
+    outputPer1KTokens: 0.00219, // $2.19 per 1M tokens
+    maxTokens: 8192,
     supportsJsonMode: true,
     freeRpmLimit: 0,
   },
@@ -108,9 +107,6 @@ export const MODEL_CONFIGS: Record<ModelId, ModelConfig> = {
  * Simple in-memory rate limiter for Gemini free tier.
  * Tracks request timestamps in a sliding 60-second window.
  * If the window has 15+ requests, Gemini is considered rate-limited.
- *
- * NOTE: This is per-process. In multi-instance deployments, a shared
- * counter in Redis or Postgres would be needed for cross-instance tracking.
  */
 class GeminiRateLimiter {
   private timestamps: number[] = [];
@@ -148,44 +144,51 @@ class GeminiRateLimiter {
 
 export const geminiRateLimiter = new GeminiRateLimiter();
 
-// ── Model Selection Logic ──────────────────────────────────────────────────
+// ── Model Routing Table ────────────────────────────────────────────────────
 
 /**
  * Operation-to-model routing table.
- *
- * Priority order for each operation:
- * 1. Try the cheapest viable model first
- * 2. Fall back to more expensive models if cheap ones are unavailable
- * 3. Return null if no model is available (caller should use heuristic fallback)
+ * Resolves candidate list in order of preference.
  */
 const ROUTING_TABLE: Record<OperationType, { standard: ModelId[]; premium: ModelId[] }> = {
   scoring: {
-    // Standard tier: GPT-4o-mini for real-time, Gemini as fallback
-    standard: ["gpt-4o-mini", "gemini-2.0-flash", "deepseek-v3"],
-    // Premium tier: GPT-4o for real-time, GPT-4o-mini as fallback
-    premium: ["gpt-4o-mini", "gpt-4o", "gemini-2.0-flash"],
+    // Scoring (recent reels): DeepSeek V4-Flash -> Gemini 2.0-Flash
+    standard: ["deepseek-chat", "gemini-2.0-flash"],
+    premium: ["deepseek-chat", "gemini-2.0-flash"],
   },
   batch_scoring: {
-    // Batch scoring prioritizes cost: Gemini > DeepSeek > GPT-4o-mini
-    standard: ["gemini-2.0-flash", "deepseek-v3", "gpt-4o-mini"],
-    premium: ["gemini-2.0-flash", "deepseek-v3", "gpt-4o-mini"],
+    // Batch scoring (reels older than 48h): prioritizes Gemini Flash first for cost savings
+    standard: ["gemini-2.0-flash", "deepseek-chat"],
+    premium: ["gemini-2.0-flash", "deepseek-chat"],
   },
   strategy: {
-    // Strategy generation needs the best model for nuanced analysis
-    standard: ["gpt-4o-mini", "deepseek-v3", "gemini-2.0-flash"],
-    premium: ["gpt-4o", "gpt-4o-mini", "deepseek-v3"],
+    // Strategy standard: DeepSeek V4-Flash -> Gemini 2.5-Flash -> Gemini 2.0-Flash
+    standard: ["deepseek-chat", "gemini-2.5-flash", "gemini-2.0-flash"],
+    // Strategy premium: DeepSeek Reasoner (Thinking) -> DeepSeek V4-Flash -> Gemini 2.5-Flash
+    premium: ["deepseek-reasoner", "deepseek-chat", "gemini-2.5-flash"],
   },
   analysis: {
-    standard: ["gpt-4o-mini", "gemini-2.0-flash", "deepseek-v3"],
-    premium: ["gpt-4o", "gpt-4o-mini", "gemini-2.0-flash"],
+    // Analysis (ad-hoc trends): DeepSeek V4-Flash -> Gemini 2.5-Flash -> Gemini 2.0-Flash
+    standard: ["deepseek-chat", "gemini-2.5-flash", "gemini-2.0-flash"],
+    premium: ["deepseek-chat", "gemini-2.5-flash", "gemini-2.0-flash"],
   },
 };
+
+/**
+ * Returns the candidate model configurations list for a given operation.
+ */
+export function getModelCandidates(
+  operation: OperationType,
+  modelTier: ModelTier = "standard"
+): ModelId[] {
+  return ROUTING_TABLE[operation][modelTier];
+}
 
 /**
  * Determines if a post is "recent" (posted within the last 48 hours).
  * Recent posts get real-time scoring; older posts use batch/budget models.
  */
-function isRecentPost(postedAt?: Date | string): boolean {
+export function isRecentPost(postedAt?: Date | string): boolean {
   if (!postedAt) return false;
   const posted = typeof postedAt === "string" ? new Date(postedAt) : postedAt;
   if (isNaN(posted.getTime())) return false;
@@ -195,19 +198,15 @@ function isRecentPost(postedAt?: Date | string): boolean {
 
 /** True when at least one LLM provider has an API key configured. */
 export function isAnyLlmProviderConfigured(): boolean {
-  return (Object.keys(MODEL_CONFIGS) as ModelId[]).some((id) =>
-    isModelAvailable(id)
-  );
+  return !!(process.env.GEMINI_API_KEY || process.env.DEEPSEEK_API_KEY);
 }
 
 /**
  * Checks if a model's API key is configured in the environment.
  */
-function isModelAvailable(modelId: ModelId): boolean {
+export function isModelAvailable(modelId: ModelId): boolean {
   const config = MODEL_CONFIGS[modelId];
   switch (config.provider) {
-    case "openai":
-      return !!process.env.OPENAI_API_KEY;
     case "gemini":
       return !!process.env.GEMINI_API_KEY;
     case "deepseek":
@@ -218,38 +217,41 @@ function isModelAvailable(modelId: ModelId): boolean {
 }
 
 /**
- * Selects the best model for a given operation.
- *
- * @param operation - The type of AI operation to perform.
- * @param modelTier - User's plan tier ("standard" for free/creator, "premium" for pro/agency).
- * @param postedAt - When the post was published (for age-based routing).
- * @returns The selected model config and reason, or null if no model is available.
+ * Resolves the effective operation based on age routing rules.
+ * Old posts (>48 hours) mapped to batch_scoring.
+ */
+export function resolveEffectiveOperation(
+  operation: OperationType,
+  postedAt?: Date | string
+): OperationType {
+  if (operation === "scoring" && postedAt && !isRecentPost(postedAt)) {
+    return "batch_scoring";
+  }
+  return operation;
+}
+
+/**
+ * Selects the best model for a given operation (legacy compat layer).
+ * Used when fallback loop is not needed, otherwise callLLMWithFallback is preferred.
  */
 export function selectModel(
   operation: OperationType,
   modelTier: ModelTier = "standard",
   postedAt?: Date | string
 ): ModelSelection | null {
-  // Override: for scoring of older posts, switch to batch_scoring for cost savings
-  let effectiveOperation = operation;
-  if (operation === "scoring" && postedAt && !isRecentPost(postedAt)) {
-    effectiveOperation = "batch_scoring";
-  }
+  const effectiveOperation = resolveEffectiveOperation(operation, postedAt);
 
-  const candidates = ROUTING_TABLE[effectiveOperation][modelTier];
+  const candidates = getModelCandidates(effectiveOperation, modelTier);
 
   for (const modelId of candidates) {
     const config = MODEL_CONFIGS[modelId];
 
-    // Check if API key is configured
     if (!isModelAvailable(modelId)) continue;
 
-    // Check Gemini rate limits
     if (config.provider === "gemini" && !geminiRateLimiter.canRequest()) {
-      continue; // Skip Gemini if rate-limited, try next candidate
+      continue;
     }
 
-    // Record the request if it's Gemini
     if (config.provider === "gemini") {
       geminiRateLimiter.recordRequest();
     }
@@ -260,7 +262,6 @@ export function selectModel(
     };
   }
 
-  // No model available — caller should use heuristic fallback
   return null;
 }
 

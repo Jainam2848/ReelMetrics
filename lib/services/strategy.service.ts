@@ -3,8 +3,8 @@ import { reels, reelScores, strategies, instagramAccounts } from "@/lib/db/schem
 import { eq, and, gte, desc, inArray } from "drizzle-orm";
 import { buildStrategyPrompt } from "@/lib/ai/prompt-builder";
 import { StrategyOutputSchema, type StrategyOutput } from "@/lib/ai/strategy-schema";
-import { callLLMPure } from "@/lib/ai/llm-client";
-import { isAnyLlmProviderConfigured, selectModel } from "@/lib/ai/model-router";
+import { callLLMWithFallback } from "@/lib/ai/llm-with-fallback";
+import { isAnyLlmProviderConfigured } from "@/lib/ai/model-router";
 import { computeTimeDecayFactor } from "@/lib/ai/scoring-engine";
 import {
   checkUsageLimit,
@@ -289,51 +289,50 @@ export async function generateStrategy(userId: string, accountId: string) {
 
   if (canUseLlm) {
     const { modelTier } = await getUserPlanContext(userId);
-    const model = selectModel("strategy", modelTier);
 
-    if (model) {
-      const prompt = buildStrategyPrompt({
-        platform: "instagram",
-        postsCount: accountReels.length,
-        avgEngagement: agg.avgEngagement,
-        bestPostCaption: agg.best?.caption ?? "",
-        bestEr: agg.best?.engagementRate ? parseFloat(agg.best.engagementRate) : 0,
-        worstPostCaption: agg.worst?.caption ?? "",
-        worstEr: agg.worst?.engagementRate ? parseFloat(agg.worst.engagementRate) : 0,
-        avgViews: agg.avgViews,
-        avgSkipRate: agg.avgSkipRate,
-        topThemes: "Educational, how-to, niche tips",
-        strongestDim: agg.strongest.key,
-        strongestAvg: agg.strongest.avg,
-        weakestDim: agg.weakest.key,
-        weakestAvg: agg.weakest.avg,
-        postingWindows: "Weekday 9 AM, Wed 12 PM, Fri 5 PM",
-        timeDecayFactors: agg.decayFactors || "1.0",
-        strategyType: "weekly",
-        periodStart: periodStart.toISOString().slice(0, 10),
-        periodEnd: periodEnd.toISOString().slice(0, 10),
-      });
+    const prompt = buildStrategyPrompt({
+      platform: "instagram",
+      postsCount: accountReels.length,
+      avgEngagement: agg.avgEngagement,
+      bestPostCaption: agg.best?.caption ?? "",
+      bestEr: agg.best?.engagementRate ? parseFloat(agg.best.engagementRate) : 0,
+      worstPostCaption: agg.worst?.caption ?? "",
+      worstEr: agg.worst?.engagementRate ? parseFloat(agg.worst.engagementRate) : 0,
+      avgViews: agg.avgViews,
+      avgSkipRate: agg.avgSkipRate,
+      topThemes: "Educational, how-to, niche tips",
+      strongestDim: agg.strongest.key,
+      strongestAvg: agg.strongest.avg,
+      weakestDim: agg.weakest.key,
+      weakestAvg: agg.weakest.avg,
+      postingWindows: "Weekday 9 AM, Wed 12 PM, Fri 5 PM",
+      timeDecayFactors: agg.decayFactors || "1.0",
+      strategyType: "weekly",
+      periodStart: periodStart.toISOString().slice(0, 10),
+      periodEnd: periodEnd.toISOString().slice(0, 10),
+    });
 
-      const llmResult = await callLLMPure({
-        prompt,
-        outputSchema: StrategyOutputSchema,
-        model: model.model,
-      });
+    // Premium strategy only: deepseek-reasoner can take longer.
+    // Standard worker has 15s Vercel timeout context; callLLMWithFallback
+    // will limit deepseek-reasoner to premium tier to prevent timeouts.
+    const fallbackResult = await callLLMWithFallback({
+      operation: "strategy",
+      modelTier,
+      prompt,
+      outputSchema: StrategyOutputSchema,
+    });
 
-      if (llmResult.success) {
-        output = llmResult.data;
-        source = "ai";
-        modelVersion = llmResult.modelId;
-        tokensUsed = llmResult.tokensUsed;
-        costUsd = llmResult.costUsd.toFixed(6);
+    if (fallbackResult.success) {
+      output = fallbackResult.data;
+      source = "ai";
+      modelVersion = fallbackResult.modelId;
+      tokensUsed = fallbackResult.tokensUsed;
+      costUsd = fallbackResult.costUsd.toFixed(6);
 
-        await incrementUsage(userId, "strategiesGen");
-        await incrementUsage(userId, "aiCallsCount");
-        await incrementUsage(userId, "aiTokensUsed", llmResult.tokensUsed);
-        await incrementUsage(userId, "aiCostUsd", llmResult.costUsd);
-      } else {
-        output = buildHeuristicStrategy(accountReels, scores);
-      }
+      await incrementUsage(userId, "strategiesGen");
+      await incrementUsage(userId, "aiCallsCount");
+      await incrementUsage(userId, "aiTokensUsed", fallbackResult.tokensUsed);
+      await incrementUsage(userId, "aiCostUsd", fallbackResult.costUsd);
     } else {
       output = buildHeuristicStrategy(accountReels, scores);
     }

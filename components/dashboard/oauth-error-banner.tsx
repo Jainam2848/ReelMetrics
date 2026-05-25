@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, X, ExternalLink } from "lucide-react";
+import { AlertTriangle, X, ExternalLink, BookOpen } from "lucide-react";
 
 interface ErrorCopy {
   title: string;
@@ -27,13 +27,9 @@ function resolveCopy(code: string, message: string | null): ErrorCopy {
       };
     case "not_business_account":
       return {
-        title: "Instagram Business or Creator account required",
+        title: "Instagram Business or Creator Profile Required",
         description:
-          "Trendoraa can only ingest analytics from Instagram Business or Creator profiles linked to a Facebook Page. Convert your profile in Instagram settings and try again.",
-        action: {
-          label: "How to switch account type",
-          href: "https://help.instagram.com/502981923235522",
-        },
+          "Trendoraa requires an Instagram Professional account (Business or Creator) linked to a managed Facebook Page. If you don't have this linkage set up yet, don't worry! Expand our step-by-step connection guide below or skip it instantly using our Sandbox Demo.",
       };
     case "account_already_linked":
       return {
@@ -128,7 +124,7 @@ export function OAuthErrorBanner() {
   return (
     <div
       role="alert"
-      className="mb-6 border border-red-500/40 bg-red-500/10 backdrop-blur-xl rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row gap-4 items-start"
+      className="mb-6 border border-red-500/40 bg-red-500/10 backdrop-blur-xl rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row gap-4 items-start select-none"
     >
       <div className="w-9 h-9 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0">
         <AlertTriangle className="w-5 h-5 text-red-400" />
@@ -141,16 +137,42 @@ export function OAuthErrorBanner() {
         <p className="text-xs text-red-100/80 leading-relaxed">
           {copy.description}
         </p>
-        {copy.action && (
-          <a
-            href={copy.action.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 mt-3 text-xs font-bold text-red-200 hover:text-white underline underline-offset-2"
-          >
-            <span>{copy.action.label}</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
+
+        {snapshot.code === "not_business_account" ? (
+          <div className="flex flex-wrap gap-4 mt-4 items-center">
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("open-instagram-connect-guide"));
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-500/30 bg-red-500/20 text-xs font-bold text-white hover:bg-red-500/30 transition-all cursor-pointer active:scale-95 shadow-sm"
+            >
+              <BookOpen className="w-4 h-4 text-brand-accent animate-pulse" />
+              <span>Open Linkage Guide & Sandbox Demo</span>
+            </button>
+            
+            <a
+              href="https://help.instagram.com/502981923235522"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-red-200 hover:text-white underline underline-offset-2"
+            >
+              <span>Meta Help Page</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        ) : (
+          copy.action && (
+            <a
+              href={copy.action.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 mt-3 text-xs font-bold text-red-200 hover:text-white underline underline-offset-2"
+            >
+              <span>{copy.action.label}</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )
         )}
       </div>
 

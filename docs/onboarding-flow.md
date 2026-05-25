@@ -46,10 +46,14 @@ When a user has no connected accounts (`accounts.length === 0`), `app/(dashboard
 * **Goal:** Establishes user intent and sets expectations for customized metrics feedback.
 * **State Persisted:** `goal` state variable.
 
-### 3. Step 3: Social Connection or Sandbox Fallback
-This step presents two clear choices:
-1. **Explore Sandbox Demo Account:** The **recommended first-win engine** that connects the user to a pre-seeded mockup environment within seconds.
-2. **Production Connect:** Initiates production OAuth connect flows for Instagram Business or TikTok accounts.
+### 3. Step 3: Social Connection, Pre-Flight Validation, and Sandbox Fallback
+This step offers a highly resilient and supportive social linking portal:
+1. **Instagram Connect with Pre-Flight Modal**: Clicking "Connect Instagram" opens an interactive verification checklist. To prevent early failures and Meta API errors, users must confirm two conditions before the Meta Connect button unlocks:
+   - **Instagram Business or Creator Profile**: Meta Graph API does not support Personal accounts.
+   - **Linked to a Managed Facebook Page**: Instagram must be linked to a Facebook Page the user has administrative rights to.
+2. **Setup Linkage Guide**: If the user is unlinked or unsure how to configure these settings, they can toggle an inline, animated guide with detailed instructions for switching profile types and linking accounts on Facebook or Instagram.
+3. **Explore Sandbox Demo Account (First-Win Fallback)**: Available in both the main portal and connection guide modal, this allows users to instantly skip setup and seed a high-fidelity mock environment (ingesting `@alice_reels` statistics) with simulated loading logs to prove product value immediately.
+
 
 ---
 

@@ -70,7 +70,7 @@ const envSchema = z.object({
   INSTAGRAM_APP_SECRET: z.string().min(1),
 
   // ─── OpenAI ────────────────────────────────────────────────────────────
-  OPENAI_API_KEY: z.string().min(1),
+  OPENAI_API_KEY: z.string().min(1).optional(),
 
   // ─── Gemini (Google AI Studio) ─────────────────────────────────────────
   GEMINI_API_KEY: z.string().min(1).optional(),
@@ -124,6 +124,11 @@ function parseEnv(): Env {
     if (!keys[result.data.ACTIVE_KEY_VERSION]) {
       throw new Error(
         `[env] ACTIVE_KEY_VERSION="${result.data.ACTIVE_KEY_VERSION}" is not present in TOKEN_ENCRYPTION_KEYS. Configure the active key before boot.`
+      );
+    }
+    if (!result.data.GEMINI_API_KEY && !result.data.DEEPSEEK_API_KEY) {
+      throw new Error(
+        `[env] Environment validation failed. At least one of GEMINI_API_KEY or DEEPSEEK_API_KEY must be configured to start the application.`
       );
     }
     return result.data;

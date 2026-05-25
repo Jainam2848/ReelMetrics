@@ -15,7 +15,10 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
-    "shadcn:add": "npx shadcn@latest add"
+    "shadcn:add": "npx shadcn@latest add",
+    "eval:llm": "tsx scripts/eval-llm-routing.ts",
+    "eval:llm:fallback": "tsx scripts/eval-llm-fallback.ts",
+    "test:service:branching": "tsx scripts/test-service-branching.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

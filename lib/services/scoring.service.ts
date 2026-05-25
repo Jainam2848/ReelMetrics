@@ -6,8 +6,8 @@ import {
   PostScoreSchema,
 } from "@/lib/ai/scoring-engine";
 import { buildScoringPrompt } from "@/lib/ai/prompt-builder";
-import { callLLMPure } from "@/lib/ai/llm-client";
-import { isAnyLlmProviderConfigured, selectModel } from "@/lib/ai/model-router";
+import { callLLMWithFallback } from "@/lib/ai/llm-with-fallback";
+import { isAnyLlmProviderConfigured } from "@/lib/ai/model-router";
 import {
   checkUsageLimit,
   getUserPlanContext,
@@ -177,48 +177,47 @@ async function runScoringPipeline(
 
   if (canUseLlm) {
     const { modelTier } = await getUserPlanContext(userId);
-    const model = selectModel("scoring", modelTier, reel.timestamp);
 
-    if (model) {
-      const prompt = buildScoringPrompt({
-        platform: "instagram",
-        caption: reel.caption,
-        timestamp: reel.timestamp,
-        viewsCount: reel.viewsCount,
-        totalViews: reel.totalViews,
-        likesCount: reel.likesCount,
-        commentsCount: reel.commentsCount,
-        sharesCount: reel.sharesCount,
-        savesCount: reel.savesCount,
-        skipRate: reel.skipRate ? parseFloat(reel.skipRate.toString()) : null,
-        publicReposts: reel.publicReposts,
-        reach: reel.reach,
-        username: account.username,
-        followersCount: account.followersCount,
-        avgEngagementRate: baselines.avgEngagementRate,
-        avgSkipRate: baselines.avgSkipRate,
-      });
+    const prompt = buildScoringPrompt({
+      platform: "instagram",
+      caption: reel.caption,
+      timestamp: reel.timestamp,
+      viewsCount: reel.viewsCount,
+      totalViews: reel.totalViews,
+      likesCount: reel.likesCount,
+      commentsCount: reel.commentsCount,
+      sharesCount: reel.sharesCount,
+      savesCount: reel.savesCount,
+      skipRate: reel.skipRate ? parseFloat(reel.skipRate.toString()) : null,
+      publicReposts: reel.publicReposts,
+      reach: reel.reach,
+      username: account.username,
+      followersCount: account.followersCount,
+      avgEngagementRate: baselines.avgEngagementRate,
+      avgSkipRate: baselines.avgSkipRate,
+    });
 
-      const llmResult = await callLLMPure({
-        prompt,
-        outputSchema: PostScoreSchema,
-        model: model.model,
-      });
+    const fallbackResult = await callLLMWithFallback({
+      operation: "scoring",
+      modelTier,
+      postedAt: reel.timestamp,
+      prompt,
+      outputSchema: PostScoreSchema,
+    });
 
-      if (llmResult.success) {
-        await incrementUsage(userId, "reelsAnalyzed");
-        await incrementUsage(userId, "aiCallsCount");
-        await incrementUsage(userId, "aiTokensUsed", llmResult.tokensUsed);
-        await incrementUsage(userId, "aiCostUsd", llmResult.costUsd);
+    if (fallbackResult.success) {
+      await incrementUsage(userId, "reelsAnalyzed");
+      await incrementUsage(userId, "aiCallsCount");
+      await incrementUsage(userId, "aiTokensUsed", fallbackResult.tokensUsed);
+      await incrementUsage(userId, "aiCostUsd", fallbackResult.costUsd);
 
-        return {
-          score: llmResult.data,
-          source: "ai",
-          modelVersion: llmResult.modelId,
-          tokensUsed: llmResult.tokensUsed,
-          costUsd: llmResult.costUsd.toFixed(6),
-        };
-      }
+      return {
+        score: fallbackResult.data,
+        source: "ai",
+        modelVersion: fallbackResult.modelId,
+        tokensUsed: fallbackResult.tokensUsed,
+        costUsd: fallbackResult.costUsd.toFixed(6),
+      };
     }
   }
 

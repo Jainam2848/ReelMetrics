@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useToast } from "@/components/shared/toast";
 import { Instagram } from "@/components/shared/icons";
+import { InstagramConnectionGuide } from "./instagram-connection-guide";
 
 interface InstagramConnectButtonProps {
   variant?: "primary" | "secondary";
@@ -14,9 +15,9 @@ interface InstagramConnectButtonProps {
 /**
  * Initiates Instagram OAuth correctly.
  *
+ * Refactored to mount the InstagramConnectionGuide checklist modal first.
  * The backend exposes POST /api/auth/social/instagram which returns a JSON
- * payload containing the Meta auth URL plus an HTTP-only CSRF cookie. A bare
- * GET link does not start the flow and previously silently failed.
+ * payload containing the Meta auth URL plus an HTTP-only CSRF cookie.
  */
 export function InstagramConnectButton({
   variant = "secondary",
@@ -25,9 +26,22 @@ export function InstagramConnectButton({
   onError,
 }: InstagramConnectButtonProps) {
   const toast = useToast();
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleClick = async () => {
+  // Global event listener to support triggering the linkage guide modal from
+  // the OAuthErrorBanner when a 'not_business_account' redirection error occurs.
+  useEffect(() => {
+    const handleOpenModal = () => {
+      setIsModalOpen(true);
+    };
+    window.addEventListener("open-instagram-connect-guide", handleOpenModal);
+    return () => {
+      window.removeEventListener("open-instagram-connect-guide", handleOpenModal);
+    };
+  }, []);
+
+  const handleConnectStart = async () => {
     if (loading) return;
     setLoading(true);
     try {
@@ -64,17 +78,26 @@ export function InstagramConnectButton({
       : "border border-glass bg-white/5 hover:bg-white/10 text-gray-200";
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={loading}
-      className={
-        className ??
-        `min-h-[46px] rounded-xl ${baseClasses} font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed`
-      }
-    >
-      <Instagram className="w-4 h-4 text-brand-accent" />
-      <span>{loading ? "Redirecting…" : label}</span>
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => setIsModalOpen(true)}
+        className={
+          className ??
+          `min-h-[46px] rounded-xl ${baseClasses} font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed`
+        }
+      >
+        <Instagram className="w-4 h-4 text-brand-accent" />
+        <span>{label}</span>
+      </button>
+
+      {/* Reusable Pre-Flight & Setup Linkage Wizard Guide */}
+      <InstagramConnectionGuide
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConnectStart={handleConnectStart}
+        isConnectLoading={loading}
+      />
+    </>
   );
 }

@@ -89,7 +89,7 @@ flowchart TB
 
     subgraph External["External Services"]
         Meta["Meta Graph API v22<br/>Reels · insights · skip_rate"]
-        LLM["LLM Providers<br/>OpenAI · Gemini · DeepSeek"]
+        LLM["LLM Providers<br/>Gemini · DeepSeek"]
         Stripe["Stripe<br/>Checkout · Subscriptions"]
         Resend["Resend<br/>Transactional email"]
     end
@@ -299,5 +299,5 @@ As a System, I want to enforce monthly budget caps and monthly AI post analysis 
 
 ### 7.3 Availability & Resilience
 * **Uptime Target:** Hosting infrastructure must maintain a blended uptime rating of 99.9%.
-* **Graceful Degradation:** The application must utilize data-driven fallback scoring when external APIs (Meta, TikTok, or OpenAI/Gemini APIs) experience service outages, keeping dashboards functional.
+* **Graceful Degradation:** The application must utilize data-driven fallback scoring when external APIs (Meta, TikTok, or Gemini/DeepSeek APIs) experience service outages, keeping dashboards functional.
 * **Queue Resilience:** The PostgreSQL queue must isolate task execution, enforcing a limit of 3 automated retries per job before escalating to a halted state for manual admin review.

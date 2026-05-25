@@ -34,6 +34,9 @@ Before beginning, ensure you have the following assets ready:
    * Go to your Facebook Page > **Settings** > **Linked Accounts** > **Instagram**.
    * Click **Connect Account** and follow the prompts.
 
+> [!TIP]
+> **Interactive Verification Wizard**: To simplify this process for users, the Trendoraa UI incorporates an interactive **Pre-Flight Connection Guide & Checklist** directly inside the connect flow. If an OAuth connection is initiated, the app verifies these prerequisites, presents clean step-by-step linkage steps if they are missing, and offers a **Sandbox Demo** fallback to try the dashboard instantly in a single click.
+
 ---
 
 ## 3. Detailed Setup Instructions

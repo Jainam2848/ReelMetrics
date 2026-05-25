@@ -1,5 +1,4 @@
-import { callLLMPure } from "./llm-client";
-import { selectModel } from "./model-router";
+import { callLLMWithFallback } from "./llm-with-fallback";
 import { TRENDS_ANALYSIS_PROMPT, TrendAnalysisOutputSchema, type TrendAnalysisOutput } from "./prompts/trends";
 import type { ModelTier } from "./model-router";
 
@@ -67,22 +66,7 @@ export async function generateTrendsAnalysis(
     modelTier = "standard",
   } = params;
 
-  // 1. Resolve model selection
-  const selection = selectModel("analysis", modelTier);
-  if (!selection) {
-    console.warn("[trend-generator] No configured LLM model available. Falling back to heuristics.");
-    return {
-      success: true,
-      data: getHeuristicTrendFallback(niche),
-      tokensUsed: 0,
-      costUsd: 0,
-      latencyMs: 0,
-      modelId: "heuristic",
-      source: "heuristic",
-    };
-  }
-
-  // 2. Build prompt template
+  // 1. Build prompt template
   const filledPrompt = TRENDS_ANALYSIS_PROMPT
     .replaceAll("{username}", username)
     .replaceAll("{niche}", niche)
@@ -96,11 +80,12 @@ export async function generateTrendsAnalysis(
   const startTime = Date.now();
 
   try {
-    // 3. Call LLM pure adaptor
-    const response = await callLLMPure({
+    // 2. Call LLM fallback wrapper
+    const response = await callLLMWithFallback({
+      operation: "analysis",
+      modelTier,
       prompt: filledPrompt,
       outputSchema: TrendAnalysisOutputSchema,
-      model: selection.model,
       temperature: 0.3,
       maxTokens: 2000,
     });
@@ -123,7 +108,7 @@ export async function generateTrendsAnalysis(
         tokensUsed: 0,
         costUsd: 0,
         latencyMs: Date.now() - startTime,
-        modelId: response.modelId,
+        modelId: "heuristic",
         source: "heuristic",
         error: response.error,
       };
@@ -136,7 +121,7 @@ export async function generateTrendsAnalysis(
       tokensUsed: 0,
       costUsd: 0,
       latencyMs: Date.now() - startTime,
-      modelId: selection.model.id,
+      modelId: "heuristic",
       source: "heuristic",
       error: err.message,
     };
