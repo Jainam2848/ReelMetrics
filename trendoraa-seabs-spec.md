@@ -797,9 +797,10 @@ Strategy:
   POST   /api/accounts/:id/strategy    → Generate new strategy
   GET    /api/strategies/:id           → Get specific strategy
 
-Analytics:
+Analytics & Trends:
   GET    /api/accounts/:id/analytics   → Aggregated analytics
-  GET    /api/accounts/:id/trends      → Trend analysis
+  GET    /api/accounts/:id/trends      → Get timeline chart data, or cached AI trend analysis (when using ?type=analysis)
+  POST   /api/accounts/:id/trends/analyze → Trigger async AI Trend Analysis (enqueues background job, returns 202 Accepted)
 
 Billing:
   GET    /api/billing/subscription     → Current subscription

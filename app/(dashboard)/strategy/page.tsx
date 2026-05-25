@@ -35,12 +35,22 @@ export default function StrategyPage() {
   } = useStrategy();
 
   // Active checkable priorities list for high creator engagement
-  const [todos, setTodos] = useState([
-    { id: 1, text: "Record flexbox vs grid split-screen clip", checked: false },
-    { id: 2, text: "Hook viewers under 1.5s using bold purple text overlays", checked: true },
-    { id: 3, text: "Queue setup unboxing reel to post on Wednesday commute peak", checked: false },
-    { id: 4, text: "Integrate 'Save for Later' CTA into the caption template", checked: false },
-  ]);
+  const [todos, setTodos] = useState<Array<{ id: number; text: string; checked: boolean }>>([]);
+
+  // Reset checkable priorities whenever strategy ID changes to align with real API tactics
+  React.useEffect(() => {
+    if (strategy?.content?.tactics) {
+      setTodos(
+        strategy.content.tactics.map((tactic: string, idx: number) => ({
+          id: idx + 1,
+          text: tactic,
+          checked: false,
+        }))
+      );
+    } else {
+      setTodos([]);
+    }
+  }, [strategy?.id, strategy?.content?.tactics]);
 
   const toggleTodo = (id: number) => {
     setTodos(prev =>
@@ -70,16 +80,17 @@ export default function StrategyPage() {
     );
   }
 
-  // Parse strategy content or use mock calendar fallbacks
-  const content = strategy?.content as any;
-  const calendarItems = content?.calendar || [
-    { day: "Monday", time: "08:15 AM", topic: "CSS Grid vs Flexbox", format: "Fast Split-Screen Reel", hook: "Why are you still using floats? Stop!", engagementIndex: 82 },
-    { day: "Wednesday", time: "05:30 PM", topic: "Desk Setup Unboxing", format: "Aesthetic B-Roll with ASMR", hook: "This single item changed my dev productivity...", engagementIndex: 89 },
-    { day: "Friday", time: "08:30 AM", topic: "10s CSS Gradients Tricks", format: "Fast code walkthrough", hook: "Make your dark mode designs 10x cooler...", engagementIndex: 78 },
-  ];
+  // Parse strategy content
+  const content = strategy?.content;
+  const calendarItems = content?.contentCalendar || [];
 
-  const focusNiche = content?.nicheFocus || "Technical Educational Content";
-  const recommendationIndex = content?.nicheRecommendation || "Leverage high-pacing micro-cuts and dark theme styling elements to maximize retention during morning commute hours.";
+  const focusNiche = isLoading
+    ? "Analyzing profile focus..."
+    : content?.focus || "Connect your account and sync reels to generate a data-driven strategy";
+
+  const recommendationIndex = isLoading
+    ? "Generating key recommendations..."
+    : content?.keyInsight || "No strategy blueprint has been generated yet. Click generate below to construct your weekly calendar.";
 
   return (
     <div className="flex flex-col gap-8">
@@ -164,30 +175,36 @@ export default function StrategyPage() {
             </div>
 
             <div className="flex flex-col gap-3">
-              {todos.map((todo) => (
-                <button
-                  key={todo.id}
-                  onClick={() => toggleTodo(todo.id)}
-                  className="flex gap-3 text-left items-start p-3 bg-white/5 rounded-xl border border-glass transition-colors hover:bg-white/10"
-                >
-                  <div
-                    className={`w-4 h-4 rounded border mt-0.5 shrink-0 flex items-center justify-center transition-all ${
-                      todo.checked
-                        ? "bg-brand-secondary border-brand-secondary text-white"
-                        : "border-glass bg-black/35"
-                    }`}
+              {todos.length > 0 ? (
+                todos.map((todo) => (
+                  <button
+                    key={todo.id}
+                    onClick={() => toggleTodo(todo.id)}
+                    className="flex gap-3 text-left items-start p-3 bg-white/5 rounded-xl border border-glass transition-colors hover:bg-white/10"
                   >
-                    {todo.checked && <span className="text-[9px]">✔</span>}
-                  </div>
-                  <span
-                    className={`text-xs font-semibold leading-normal ${
-                      todo.checked ? "text-gray-500 line-through" : "text-gray-200"
-                    }`}
-                  >
-                    {todo.text}
-                  </span>
-                </button>
-              ))}
+                    <div
+                      className={`w-4 h-4 rounded border mt-0.5 shrink-0 flex items-center justify-center transition-all ${
+                        todo.checked
+                          ? "bg-brand-secondary border-brand-secondary text-white"
+                          : "border-glass bg-black/35"
+                      }`}
+                    >
+                      {todo.checked && <span className="text-[9px]">✔</span>}
+                    </div>
+                    <span
+                      className={`text-xs font-semibold leading-normal ${
+                        todo.checked ? "text-gray-500 line-through" : "text-gray-200"
+                      }`}
+                    >
+                      {todo.text}
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-4 select-none">
+                  {isLoading ? "Loading creator priorities..." : "No active priorities set."}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -228,9 +245,13 @@ export default function StrategyPage() {
                       day={item.day}
                       time={item.time}
                       topic={item.topic}
-                      contentType={item.format || "Reel"}
-                      hookSuggestion={item.hook || "Open with a visual pattern disrupt..."}
-                      estEngagement={`${item.engagementIndex || 82}%`}
+                      contentType={item.contentType || "Reel"}
+                      hookSuggestion={item.hookSuggestion || "Open with a visual pattern disrupt..."}
+                      estEngagement={
+                        typeof item.estEngagement === "string"
+                          ? item.estEngagement.charAt(0).toUpperCase() + item.estEngagement.slice(1)
+                          : "Medium"
+                      }
                       audio={item.audio || "Trending Developer Lo-Fi Beat"}
                     />
                   </div>

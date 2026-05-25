@@ -1612,10 +1612,28 @@ TASK: Create these files:
     - Validates output conformity across 9 dimensions, score range bounds, and schema correctness.
     - Runs multiple passes on a single post to calculate and verify low variance (consistency checking).
 
+12. FILE: lib/ai/prompts/trends.ts
+    Export TRENDS_ANALYSIS_PROMPT and Zod-enforceable TrendAnalysisOutputSchema.
+
+13. FILE: lib/ai/trend-generator.ts
+    Main trends analysis generation function (PURE function):
+    - generateTrendsAnalysis(params): Promise<TrendGeneratorResult>
+    - Wraps LLM call -> validate -> getHeuristicTrendFallback on failure.
+
+14. FILE: lib/services/trends.service.ts
+    Service layer that orchestrates AI trend analysis:
+    - runAnalysis(userId, accountId): aggregates metrics, checks usage budget, queries cached trends feed, calls generator, increments usage metrics, and caches output to Postgres database.
+    - getLatestAnalysis(userId, accountId): fetches the latest cached Trend Analysis.
+    - refreshGlobalTrendsFeed(): daily cron helper that queries cheap Gemini/OpenAI models to scout for trending topics/hashtags and updates `niche_trends_feed` table.
+
+15. FILE: scripts/test-trends.ts
+    Evaluation test harness that validates Zod boundary schema constraints, heuristic fallbacks, and pure generator execution.
+
 REGISTER QUEUE HANDLERS:
 Update lib/queue/handlers.ts to register real handlers:
 - SCORE_POST → calls scoringService.scorePost()
 - GENERATE_STRATEGY → calls strategyService.generateStrategy()
+- ANALYZE_TRENDS → calls TrendService.runAnalysis()
 
 AI OUTPUT VALIDATION RULES:
 - Every LLM response MUST be parsed as JSON
@@ -1630,14 +1648,17 @@ AI OUTPUT VALIDATION RULES:
 |---|---|
 | `lib/ai/prompts/scoring.ts` | Post scoring prompt (9 dimensions) |
 | `lib/ai/prompts/strategy.ts` | Strategy generation prompt |
+| `lib/ai/prompts/trends.ts` | Trend analysis prompt & Zod schema |
 | `lib/ai/output-parser.ts` | Zod schemas + parsers |
 | `lib/ai/cost-calculator.ts` | LLM cost tracking |
 | `lib/ai/fallback.ts` | Deterministic fallbacks |
 | `lib/ai/scoring-engine.ts` | Scoring engine |
 | `lib/ai/strategy-generator.ts` | Strategy generator |
+| `lib/ai/trend-generator.ts` | Trend generator pure adapter |
 | `lib/ai/llm-wrapper.ts` | Central LLM wrapper |
 | `lib/services/scoring.service.ts` | Scoring service (DB bridge) |
 | `lib/services/strategy.service.ts` | Strategy service (DB bridge) |
+| `lib/services/trends.service.ts` | Trend service (Daily Cache & DB bridge) |
 | `scripts/test-prompts.ts` | Prompt evaluation test suite |
 
 ## Checks & Tests

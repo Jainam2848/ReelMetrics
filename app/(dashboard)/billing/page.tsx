@@ -57,12 +57,12 @@ export default function BillingPage() {
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId }),
+        body: JSON.stringify({ planId, returnUrl: window.location.origin + "/billing" }),
       });
       const data = await res.json();
 
-      if (data?.success && data?.data?.url) {
-        window.location.assign(data.data.url);
+      if (data?.success && data?.data?.checkoutUrl) {
+        window.location.assign(data.data.checkoutUrl);
         return;
       }
 
@@ -92,47 +92,45 @@ export default function BillingPage() {
   // Pricing Plan Tiers definition
   const plans = [
     {
-      id: "free",
-      name: "Free Creator",
-      price: "$0",
-      desc: "Perfect for starting creators to audit basic hooks.",
+      id: "creator",
+      name: "Smart Creator",
+      price: "$19",
+      desc: "For full-time digital creators scaling content velocity.",
       features: [
-        "1 Connected Social Account",
-        "10 AI Video Evaluation Credits",
-        "Basic Week Strategy Planner",
-        "Heatmap Analytics (IG Only)",
+        "2 Connected Social Accounts",
+        "50 AI Video Evaluation Credits",
+        "4 Weekly Strategies Generated",
+        "150 AI Calls Monthly Limit",
       ],
-      cta: "Current Active Tier",
-      active: activePlanId === "free",
+      cta: activePlanId === "creator" ? "Current Active Tier" : "Upgrade to Creator",
+      active: activePlanId === "creator",
       premium: false,
     },
     {
-      id: "creator",
+      id: "pro",
       name: "Smart Creator Pro",
-      price: "$29",
-      desc: "For full-time digital creators scaling content velocity.",
+      price: "$49",
+      desc: "Advanced features and premium models for professional creators.",
       features: [
-        "3 Connected Social Accounts",
-        "100 AI Video Evaluation Credits",
-        "Proprietary Watch-Through Heatmaps",
-        "Full Weekly Strategy Calendar Matrix",
-        "Bulk Video Auditing Actions",
+        "5 Connected Social Accounts",
+        "200 AI Video Evaluation Credits",
+        "12 Custom Strategies Generated",
+        "600 AI Calls Monthly Limit (Advanced Models)",
       ],
-      cta: activePlanId === "creator" ? "Current Active Tier" : "Upgrade to Pro",
-      active: activePlanId === "creator",
+      cta: activePlanId === "pro" ? "Current Active Tier" : "Upgrade to Pro",
+      active: activePlanId === "pro",
       premium: true,
     },
     {
       id: "agency",
       name: "Production Studio",
-      price: "$99",
+      price: "$149",
       desc: "Optimized for management teams and marketing studios.",
       features: [
-        "10 Connected Social Accounts",
-        "500 AI Video Evaluation Credits",
-        "Dedicated API Endpoint Integration",
-        "Exportable PDF Creator Briefings",
-        "24/7 Priority Strategy Matrix Support",
+        "20 Connected Social Accounts",
+        "1000 AI Video Evaluation Credits",
+        "40 Client Strategies Generated",
+        "2500 AI Calls Monthly Limit (Premium Priority)",
       ],
       cta: activePlanId === "agency" ? "Current Active Tier" : "Scale to Agency",
       active: activePlanId === "agency",

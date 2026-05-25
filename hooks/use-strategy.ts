@@ -13,6 +13,9 @@ export interface CalendarItem {
   hookSuggestion: string;
   audio?: string;
   estEngagement: string;
+  captionDirection?: string;
+  hashtags?: string[];
+  reasoning?: string;
 }
 
 export interface StrategyData {
@@ -25,11 +28,12 @@ export interface StrategyData {
     postingCadence: string;
     tactics: string[];
     contentCalendar: CalendarItem[];
-    improvementPriorities: Array<{ name: string; score: number; target: string }>;
+    summary?: string;
+    source?: "ai" | "heuristic";
   };
   periodStart: string;
   periodEnd: string;
-  generatedAt: string;
+  generatedAt: string | null;
 }
 
 export function useStrategy() {
@@ -81,8 +85,9 @@ export function useStrategy() {
         
         // If generatedAt timestamp is newer than what we had before, it finished!
         const isNew =
-          !previousGeneratedAtRef.current ||
-          new Date(newStrategy.generatedAt).getTime() > new Date(previousGeneratedAtRef.current).getTime();
+          newStrategy.generatedAt !== null &&
+          (!previousGeneratedAtRef.current ||
+            new Date(newStrategy.generatedAt).getTime() > new Date(previousGeneratedAtRef.current).getTime());
 
         if (isNew) {
           setIsGenerating(false);

@@ -6,7 +6,8 @@ import {
   reelScores,
   strategies,
   plans,
-  jobQueue
+  jobQueue,
+  instagramApiHourly
 } from '../lib/db/schema';
 import { sql } from 'drizzle-orm';
 
@@ -94,6 +95,13 @@ async function runTests() {
         scores.length === 1
       );
 
+      // 5b. Instagram API Hourly Isolation Tests
+      const aliceHourly = await tx.select().from(instagramApiHourly);
+      assertCondition(
+        'Alice can view her own hourly API usage records only',
+        Array.isArray(aliceHourly)
+      );
+
       // 6. Internal System Table Lockdown (Alice trying to read job_queue)
       const jobs = await tx.select().from(jobQueue);
       assertCondition(
@@ -179,6 +187,13 @@ async function runTests() {
         'Bob can view his own strategies only',
         bobStrategies.length === 1 && bobStrategies[0]?.userId === bob.id
       );
+
+      // 5b. Instagram API Hourly Isolation Tests
+      const bobHourly = await tx.select().from(instagramApiHourly);
+      assertCondition(
+        'Bob can view his own hourly API usage records only',
+        Array.isArray(bobHourly)
+      );
     });
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -197,6 +212,10 @@ async function runTests() {
       // 3. Reels Access
       const guestReels = await tx.select().from(reels);
       assertCondition('Anonymous guest cannot view any user reels', guestReels.length === 0);
+
+      // 3b. Hourly API Access
+      const guestHourly = await tx.select().from(instagramApiHourly);
+      assertCondition('Anonymous guest cannot view any hourly API tracking records', guestHourly.length === 0);
 
       // 4. Public Billing Plans Access (Spec §4 requires plans to be read-accessible to all)
       const publicPlans = await tx.select().from(plans);

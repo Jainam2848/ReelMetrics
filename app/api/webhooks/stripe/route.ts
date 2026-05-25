@@ -6,6 +6,7 @@ import { processedEvents } from "@/lib/db/schema";
 import { BillingService } from "@/lib/services/billing.service";
 import { AuthService } from "@/lib/services/auth.service";
 import Stripe from "stripe";
+import { eq } from "drizzle-orm";
 
 // Max webhook payload size: 1 MiB bounds protection (§8.5)
 const MAX_WEBHOOK_BODY_BYTES = 1 * 1024 * 1024;
@@ -136,10 +137,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ipAddress,
     });
 
-    // CRITICAL: Return 200 to prevent Stripe retry storms, since event ID is already marked processed in DB
+    // Remove from processedEvents so Stripe can retry successfully
+    try {
+      await db
+        .delete(processedEvents)
+        .where(eq(processedEvents.eventId, event.id));
+    } catch (cleanupError) {
+      console.error(`[stripe-webhook] Failed to remove event ID ${event.id} from processedEvents:`, cleanupError);
+    }
+
+    // Return non-2xx status code to trigger Stripe retry
     return NextResponse.json(
-      { received: true, error: "Internal processing error. Handled in audit log." },
-      { status: 200 }
+      { error: `Internal processing error: ${errorDetails}. Retrying.` },
+      { status: 500 }
     );
   }
 }

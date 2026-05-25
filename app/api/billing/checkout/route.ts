@@ -3,10 +3,14 @@ import { PlanId } from "@/lib/billing/plans";
 import { withAuth, withValidation, AuthenticatedRequest, RouteHandler } from "@/lib/api/middleware";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { z } from "zod";
+import { env } from "@/lib/env";
 
 const checkoutSchema = z.object({
   planId: z.enum(["creator", "pro", "agency"]),
-  returnUrl: z.string().url(),
+  returnUrl: z.string().url().refine(
+    (url) => url.startsWith(env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+    { message: "returnUrl must belong to the application domain." }
+  ),
 });
 
 /**

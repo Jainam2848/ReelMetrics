@@ -30,6 +30,39 @@ import { LoadError } from "@/components/shared/load-error";
 import { SyncStatusChip } from "@/components/dashboard/sync-status-chip";
 import Link from "next/link";
 
+const NICHE_STRATEGY_TEMPLATES = {
+  tech: [
+    { day: "Monday", time: "08:15 AM", topic: "CSS Grid vs Flexbox", format: "Fast Reel" },
+    { day: "Wednesday", time: "05:30 PM", topic: "Setup Gear Unboxing", format: "Aesthetic B-Roll" },
+    { day: "Friday", time: "08:30 AM", topic: "10s Dev Tips", format: "Split screen tutorial" },
+  ],
+  comedy: [
+    { day: "Monday", time: "11:30 AM", topic: "When the server goes down mid-demo 🎭", format: "Aesthetic POV" },
+    { day: "Wednesday", time: "06:00 PM", topic: "Expectation vs Reality: AI pair programming 💻", format: "Fast Reel" },
+    { day: "Friday", time: "01:15 PM", topic: "The developer's typical coffee intake cycle ☕", format: "Fast Reel" },
+  ],
+  finance: [
+    { day: "Monday", time: "09:00 AM", topic: "3 Indicators I watch for market pivots 📈", format: "Fast Reel" },
+    { day: "Wednesday", time: "04:30 PM", topic: "How high-net-worth creators structure LLCs 🏢", format: "Aesthetic POV" },
+    { day: "Friday", time: "09:30 AM", topic: "My weekly compound interest tracking routine 💸", format: "Split screen" },
+  ],
+  education: [
+    { day: "Monday", time: "10:00 AM", topic: "How the Transformer Attention Mechanism works 🧠", format: "Visual sketch" },
+    { day: "Wednesday", time: "02:00 PM", topic: "Why standard database indexing drops writes 📊", format: "Screen share" },
+    { day: "Friday", time: "11:00 AM", topic: "5 concepts from Onboarding Psychology 🧪", format: "Aesthetic B-Roll" },
+  ],
+  lifestyle: [
+    { day: "Monday", time: "07:30 AM", topic: "My digital nomad morning setup in Kyoto ✈️", format: "Aesthetic POV" },
+    { day: "Wednesday", time: "05:00 PM", topic: "Co-working spaces that don't feel like cubicles ☕", format: "Fast Reel" },
+    { day: "Friday", time: "08:00 AM", topic: "Reflecting on 6 months of asynchronous traveling 🎒", format: "Aesthetic B-Roll" },
+  ],
+  fashion: [
+    { day: "Monday", time: "12:00 PM", topic: "Aesthetic palette matching for dark-mode desks ✨", format: "Aesthetic B-Roll" },
+    { day: "Wednesday", time: "05:30 PM", topic: "Summer office capsule wardrobe essentials 👗", format: "Fast Reel" },
+    { day: "Friday", time: "03:00 PM", topic: "Rebranding tech apparel: what actually works 👟", format: "Fast Reel" },
+  ],
+};
+
 export default function DashboardHome() {
   const {
     activeAccount,
@@ -97,6 +130,16 @@ export default function DashboardHome() {
       toast.error("An unexpected error occurred during demo setup.");
     }
   };
+
+  // Render a full-page loading loader while SWR is initially loading profiles to prevent flash of content
+  if (accountsLoading) {
+    return (
+      <div className="max-w-xl mx-auto py-20 flex flex-col items-center justify-center gap-4 select-none">
+        <div className="relative w-12 h-12 rounded-full border-4 border-white/5 border-t-brand-primary animate-spin" />
+        <p className="text-xs font-semibold text-gray-400">Loading workspace...</p>
+      </div>
+    );
+  }
 
   // Surface API failure distinctly from "no accounts connected" so users can
   // retry instead of being dropped into the onboarding wizard with no signal.
@@ -470,23 +513,25 @@ export default function DashboardHome() {
               label="Proprietary Hook Retention"
               value={isInstagram ? hookRetentionAvg : "—"}
               description="Scroll-stop percentage. Renamed from Instagram skip rate."
-              sourceBadge={activeAccount?.platform === "tiktok" ? "TikTok Watch-Through" : "Instagram Reels"}
+              sourceBadge={goal === "retention" ? "🎯 Goal Focus" : (activeAccount?.platform === "tiktok" ? "TikTok Watch-Through" : "Instagram Reels")}
             />
             <MetricCard
               label="Strategic Watch-Through"
               value={watchThroughAvg}
               description="Proprietary Watch-Through score signifying retention completion."
-              sourceBadge={activeAccount?.platform === "tiktok" ? "TikTok Complete" : "Instagram Average"}
+              sourceBadge={goal === "retention" ? "🎯 Goal Focus" : (activeAccount?.platform === "tiktok" ? "TikTok Complete" : "Instagram Average")}
             />
             <MetricCard
               label="Accumulated Impressions"
               value={totalViews > 0 ? totalViews.toLocaleString() : "—"}
               description="Total display views across your tracked short-form content."
+              sourceBadge={goal === "followers" ? "🎯 Goal Focus" : undefined}
             />
             <MetricCard
               label="Average Engagement Rate"
               value={averageEngagement}
               description="Average like + comment + share + save divided by views across your tracked posts."
+              sourceBadge={goal === "engagement" ? "🎯 Goal Focus" : undefined}
             />
           </>
         )}
@@ -542,19 +587,18 @@ export default function DashboardHome() {
                 Weekly Content Strategy
               </h3>
               <span className="px-2 py-0.5 border border-white/10 bg-white/5 text-[10px] font-bold text-gray-400 rounded-full uppercase tracking-wider">
-                Sample
+                {niche ? `${niche} focus` : "Sample"}
               </span>
             </div>
             <p className="text-xs text-muted-foreground mb-6">
-              Below is a sample plan. Open the Strategy page to generate one for your account.
+              Below is a sample plan personalized to your niche. Open Strategy to generate a full calendar.
             </p>
 
             <div className="flex flex-col gap-4">
-              {[
-                { day: "Monday", time: "08:15 AM", topic: "CSS Grid vs Flexbox", format: "Fast Reel" },
-                { day: "Wednesday", time: "05:30 PM", topic: "Setup Gear Unboxing", format: "Aesthetic B-Roll" },
-                { day: "Friday", time: "08:30 AM", topic: "10s Dev Tips", format: "Split screen tutorial" },
-              ].map((item, idx) => (
+              {(() => {
+                const key = (niche && niche in NICHE_STRATEGY_TEMPLATES ? niche : "tech") as keyof typeof NICHE_STRATEGY_TEMPLATES;
+                return NICHE_STRATEGY_TEMPLATES[key];
+              })().map((item, idx) => (
                 <div key={idx} className="flex gap-4 items-start">
                   <div className="w-2.5 h-2.5 rounded-full bg-brand-primary mt-1.5 shrink-0" />
                   <div>
