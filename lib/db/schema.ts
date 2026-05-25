@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, integer, boolean, decimal, customType, jsonb, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, integer, boolean, decimal, customType, jsonb, primaryKey, unique } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // ─── Custom Column Types ───────────────────────────────────────────────────
@@ -102,10 +102,64 @@ export const reels = pgTable('reels', {
   skipRate: decimal('skip_rate', { precision: 5, scale: 2 }),
   reach: integer('reach').notNull().default(0),
   engagementRate: decimal('engagement_rate', { precision: 10, scale: 4 }),
+  dataTrustLabel: text('data_trust_label').notNull().default('Verified Source'),
   fetchedAt: timestamp('fetched_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// 5b. stories
+export const stories = pgTable('stories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  accountId: uuid('account_id')
+    .notNull()
+    .references(() => instagramAccounts.id, { onDelete: 'cascade' }),
+  igMediaId: text('ig_media_id').notNull().unique(),
+  caption: text('caption'),
+  mediaUrl: text('media_url'),
+  permalink: text('permalink'),
+  timestamp: timestamp('timestamp', { withTimezone: true }).notNull(),
+  impressions: integer('impressions').notNull().default(0),
+  reach: integer('reach').notNull().default(0),
+  replies: integer('replies').notNull().default(0),
+  exits: integer('exits').notNull().default(0),
+  completionRate: decimal('completion_rate', { precision: 10, scale: 4 }),
+  dataTrustLabel: text('data_trust_label').notNull().default('Verified Source'),
+  fetchedAt: timestamp('fetched_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 5c. account_insights_daily
+export const accountInsightsDaily = pgTable('account_insights_daily', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  accountId: uuid('account_id')
+    .notNull()
+    .references(() => instagramAccounts.id, { onDelete: 'cascade' }),
+  date: timestamp('date', { withTimezone: true }).notNull(),
+  reach: integer('reach').notNull().default(0),
+  impressions: integer('impressions').notNull().default(0),
+  profileViews: integer('profile_views').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  unique('account_date_unique').on(table.accountId, table.date)
+]);
+
+// 5d. audience_history
+export const audienceHistory = pgTable('audience_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  accountId: uuid('account_id')
+    .notNull()
+    .references(() => instagramAccounts.id, { onDelete: 'cascade' }),
+  timestamp: timestamp('timestamp', { withTimezone: true }).notNull(),
+  totalFollowers: integer('total_followers').notNull(),
+  newFollowers: integer('new_followers').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  unique('account_timestamp_unique').on(table.accountId, table.timestamp)
+]);
 
 // 6. reel_scores
 export const reelScores = pgTable('reel_scores', {
@@ -302,6 +356,9 @@ export const instagramAccountsRelations = relations(instagramAccounts, ({ one, m
     references: [users.id],
   }),
   reels: many(reels),
+  stories: many(stories),
+  accountInsightsDaily: many(accountInsightsDaily),
+  audienceHistory: many(audienceHistory),
   strategies: many(strategies),
   trendAnalyses: many(trendAnalyses),
   apiHourlyUsage: many(instagramApiHourly),
@@ -323,6 +380,30 @@ export const reelsRelations = relations(reels, ({ one }) => ({
   scores: one(reelScores, {
     fields: [reels.id],
     references: [reelScores.reelId],
+  }),
+}));
+
+// stories relations
+export const storiesRelations = relations(stories, ({ one }) => ({
+  account: one(instagramAccounts, {
+    fields: [stories.accountId],
+    references: [instagramAccounts.id],
+  }),
+}));
+
+// account_insights_daily relations
+export const accountInsightsDailyRelations = relations(accountInsightsDaily, ({ one }) => ({
+  account: one(instagramAccounts, {
+    fields: [accountInsightsDaily.accountId],
+    references: [instagramAccounts.id],
+  }),
+}));
+
+// audience_history relations
+export const audienceHistoryRelations = relations(audienceHistory, ({ one }) => ({
+  account: one(instagramAccounts, {
+    fields: [audienceHistory.accountId],
+    references: [instagramAccounts.id],
   }),
 }));
 
