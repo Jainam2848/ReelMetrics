@@ -231,12 +231,45 @@ export const processedEvents = pgTable('processed_events', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// 13. niche_trends_feed
+export const nicheTrendsFeed = pgTable('niche_trends_feed', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  niche: text('niche').notNull().unique(),
+  trendSignals: text('trend_signals').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 14. trend_analyses
+export const trendAnalyses = pgTable('trend_analyses', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  accountId: uuid('account_id')
+    .notNull()
+    .references(() => instagramAccounts.id, { onDelete: 'cascade' }),
+  nicheTrendScore: integer('niche_trend_score').notNull(),
+  trendVerdict: text('trend_verdict').notNull(),
+  trendPillars: jsonb('trend_pillars').notNull().$type<any>(),
+  soundRecommendations: jsonb('sound_recommendations').notNull().$type<any>(),
+  hookMutations: jsonb('hook_mutations').notNull().$type<any>(),
+  actionableBlueprints: jsonb('actionable_blueprints').notNull().$type<any>(),
+  modelVersion: text('model_version'),
+  tokensUsed: integer('tokens_used'),
+  costUsd: decimal('cost_usd', { precision: 10, scale: 6 }),
+  source: text('source').notNull(),
+  generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ─── Relations ─────────────────────────────────────────────────────────────
 
 // users relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   instagramAccounts: many(instagramAccounts),
   strategies: many(strategies),
+  trendAnalyses: many(trendAnalyses),
   subscription: one(subscriptions, {
     fields: [users.id],
     references: [subscriptions.userId],
@@ -270,6 +303,7 @@ export const instagramAccountsRelations = relations(instagramAccounts, ({ one, m
   }),
   reels: many(reels),
   strategies: many(strategies),
+  trendAnalyses: many(trendAnalyses),
   apiHourlyUsage: many(instagramApiHourly),
 }));
 
@@ -308,6 +342,18 @@ export const strategiesRelations = relations(strategies, ({ one }) => ({
   }),
   account: one(instagramAccounts, {
     fields: [strategies.accountId],
+    references: [instagramAccounts.id],
+  }),
+}));
+
+// trend_analyses relations
+export const trendAnalysesRelations = relations(trendAnalyses, ({ one }) => ({
+  user: one(users, {
+    fields: [trendAnalyses.userId],
+    references: [users.id],
+  }),
+  account: one(instagramAccounts, {
+    fields: [trendAnalyses.accountId],
     references: [instagramAccounts.id],
   }),
 }));

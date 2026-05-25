@@ -3,3 +3,5 @@ export * from "./token-manager";
 export * from "./ingestion.service";
 export * from "./scoring.service";
 export * from "./strategy.service";
+export * from "./trends.service";
+

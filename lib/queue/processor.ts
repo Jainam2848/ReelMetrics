@@ -8,6 +8,7 @@ import { eq, sql } from "drizzle-orm";
 import { syncAccount, SyncError } from "../services/ingestion.service";
 import { scoreReelByMediaId } from "../services/scoring.service";
 import { generateStrategy } from "../services/strategy.service";
+import { TrendService } from "../services/trends.service";
 import { enqueueJob, JOB_TYPES } from "./index";
 import {
   isInstagramRateLimitFailure,
@@ -102,6 +103,11 @@ export async function executeJob(job: typeof jobQueue.$inferSelect) {
     } else if (job.jobType === "GENERATE_STRATEGY") {
       const { accountId, userId } = payload as { accountId: string; userId: string };
       await generateStrategy(userId, accountId);
+    } else if (job.jobType === "ANALYZE_TRENDS") {
+      const { accountId, userId } = payload as { accountId: string; userId: string };
+      await TrendService.runAnalysis(userId, accountId);
+    } else if (job.jobType === "REFRESH_TRENDS_FEED") {
+      await TrendService.refreshGlobalTrendsFeed();
     } else if (job.jobType === "PROCESS_WEBHOOK") {
       const { entryId } = payload as {
         entryId: string;

@@ -15,6 +15,20 @@
       "when": 1779262741833,
       "tag": "0001_instagram_api_hourly",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779262741834,
+      "tag": "0002_instagram_api_hourly_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779262741835,
+      "tag": "0003_trend_analyses",
+      "breakpoints": true
     }
   ]
 }

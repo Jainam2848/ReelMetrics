@@ -1,26 +1,61 @@
 /**
  * Trends API Endpoint — GET /api/accounts/[id]/trends
- * 
- * Computes daily historical averages of engagement rate and scroll-stop hook retention
- * over the past 7/30/90 days to feed the interactive line charts.
+ *
+ * Supports two modes via ?type query param:
+ *  - `?type=analysis` → returns the latest cached AI trend analysis from `trend_analyses` table
+ *  - (default / no type) → returns the time-series timeline array for the dashboard line chart
+ *
+ * POST to /api/accounts/[id]/trends/analyze to trigger a new analysis job.
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api/middleware";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { db } from "@/lib/db";
 import { instagramAccounts, reels } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { TrendService, TrendServiceError } from "@/lib/services/trends.service";
 
 export const GET = withRateLimit(
   withAuth(async (request, context) => {
     const { id: accountId } = (await context.params) as { id: string };
+    const url = new URL(request.url);
+    const queryType = url.searchParams.get("type");
 
-    // 1. Verify account ownership
+    // ── Mode A: AI Trend Analysis result ───────────────────────────────────
+    if (queryType === "analysis") {
+      try {
+        const analysis = await TrendService.getLatestAnalysis(request.user.id, accountId);
+
+        if (analysis) {
+          return apiSuccess(analysis);
+        }
+
+        // No analysis generated yet — return a prompt-to-generate stub
+        return apiSuccess({
+          id: null,
+          accountId,
+          status: "not_generated",
+          message: "No trend analysis has been generated yet. POST to /api/accounts/{id}/trends/analyze to run your first analysis.",
+          nicheTrendScore: null,
+          trendVerdict: null,
+          trendPillars: [],
+          soundRecommendations: [],
+          hookMutations: [],
+          actionableBlueprints: [],
+          generatedAt: null,
+        });
+      } catch (error) {
+        if (error instanceof TrendServiceError) {
+          return apiError(error.code, error.message);
+        }
+        throw error;
+      }
+    }
+
+    // ── Mode B: Timeline data for dashboard line chart (legacy / default) ──
     const [account] = await db
-      .select({
-        id: instagramAccounts.id,
-      })
+      .select({ id: instagramAccounts.id })
       .from(instagramAccounts)
       .where(
         and(
@@ -34,7 +69,7 @@ export const GET = withRateLimit(
       return apiError("RESOURCE_NOT_FOUND", "Account not found or access denied");
     }
 
-    // 2. Fetch post history to construct realistic trend lines
+    // Fetch post history to construct realistic trend lines
     const posts = await db
       .select({
         timestamp: reels.timestamp,
@@ -45,8 +80,7 @@ export const GET = withRateLimit(
       .where(eq(reels.accountId, accountId))
       .orderBy(desc(reels.timestamp));
 
-    // 3. Compile timeline data points over a 30-day range
-    // Generate dates backwards from today
+    // Compile 30-day timeline for the interactive line chart
     const timeline = [];
     const avgER = 4.8;
     const avgSkip = 28.0;
@@ -56,19 +90,23 @@ export const GET = withRateLimit(
       date.setDate(date.getDate() - i);
       const dateString = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
-      // Find if we have database posts on this day, or construct a realistic path
-      const dayPosts = posts.filter(p => {
+      const dayPosts = posts.filter((p) => {
         const pDate = new Date(p.timestamp);
         return pDate.toDateString() === date.toDateString();
       });
 
-      let er = avgER + (Math.sin(i / 2) * 1.5) + (Math.random() - 0.5);
-      let skip = avgSkip + (Math.cos(i / 3) * 8.0) + (Math.random() * 4 - 2);
+      let er = avgER + Math.sin(i / 2) * 1.5 + (Math.random() - 0.5);
+      let skip = avgSkip + Math.cos(i / 3) * 8.0 + (Math.random() * 4 - 2);
 
       if (dayPosts.length > 0) {
-        // Average the metrics for this day
-        const sumER = dayPosts.reduce((s, p) => s + parseFloat(p.engagementRate?.toString() || "0"), 0);
-        const sumSkip = dayPosts.reduce((s, p) => s + parseFloat(p.skipRate?.toString() || "28"), 0);
+        const sumER = dayPosts.reduce(
+          (s, p) => s + parseFloat(p.engagementRate?.toString() || "0"),
+          0
+        );
+        const sumSkip = dayPosts.reduce(
+          (s, p) => s + parseFloat(p.skipRate?.toString() || "28"),
+          0
+        );
         er = sumER / dayPosts.length;
         skip = sumSkip / dayPosts.length;
       }
@@ -77,7 +115,9 @@ export const GET = withRateLimit(
         date: dateString,
         engagementRate: parseFloat(Math.max(0.5, er).toFixed(2)),
         hookRetention: parseFloat(Math.max(10, 100 - skip).toFixed(1)),
-        watchThrough: parseFloat(Math.max(10, 68 + (Math.sin(i / 1.5) * 10) + Math.random() * 4).toFixed(1)),
+        watchThrough: parseFloat(
+          Math.max(10, 68 + Math.sin(i / 1.5) * 10 + Math.random() * 4).toFixed(1)
+        ),
       });
     }
 

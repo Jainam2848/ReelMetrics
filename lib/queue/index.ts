@@ -44,6 +44,10 @@ export const JOB_TYPES = {
   REFRESH_TOKEN: "REFRESH_TOKEN",
   /** Generate a weekly content strategy for an account. */
   GENERATE_STRATEGY: "GENERATE_STRATEGY",
+  /** Analyze niche-wide trends against creator performance. */
+  ANALYZE_TRENDS: "ANALYZE_TRENDS",
+  /** Refresh daily global trend signals cache per niche. */
+  REFRESH_TRENDS_FEED: "REFRESH_TRENDS_FEED",
 } as const;
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];
