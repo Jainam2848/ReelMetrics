@@ -69,36 +69,41 @@ export async function getCurrentPeriodMonth(userId: string): Promise<string> {
 export async function getCurrentPeriodUsage(userId: string): Promise<UsageRecord> {
   const periodMonth = await getCurrentPeriodMonth(userId);
 
-  let record = await db.query.usageTracking.findFirst({
-    where: and(
-      eq(usageTracking.userId, userId),
-      eq(usageTracking.periodMonth, periodMonth)
-    ),
-  });
+  // We acquire a transaction advisory lock per user to serialize initialization
+  // and prevent duplicate row creation or race conditions under high concurrency
+  return await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('usage_init:' || ${userId}))`);
 
-  if (!record) {
-    // Safely insert if it does not exist
-    const [newRecord] = await db
-      .insert(usageTracking)
-      .values({
-        userId,
-        periodMonth,
-        aiCallsCount: 0,
-        aiTokensUsed: 0,
-        aiCostUsd: "0",
-        reelsAnalyzed: 0,
-        strategiesGen: 0,
-        apiCallsCount: 0,
-      })
-      .returning();
+    let record = await tx.query.usageTracking.findFirst({
+      where: and(
+        eq(usageTracking.userId, userId),
+        eq(usageTracking.periodMonth, periodMonth)
+      ),
+    });
 
-    if (!newRecord) {
-      throw new Error(`Failed to initialize usage tracking record for period: ${periodMonth}`);
+    if (!record) {
+      const [newRecord] = await tx
+        .insert(usageTracking)
+        .values({
+          userId,
+          periodMonth,
+          aiCallsCount: 0,
+          aiTokensUsed: 0,
+          aiCostUsd: "0",
+          reelsAnalyzed: 0,
+          strategiesGen: 0,
+          apiCallsCount: 0,
+        })
+        .returning();
+
+      if (!newRecord) {
+        throw new Error(`Failed to initialize usage tracking record for period: ${periodMonth}`);
+      }
+      record = newRecord;
     }
-    record = newRecord;
-  }
 
-  return record as unknown as UsageRecord;
+    return record as unknown as UsageRecord;
+  });
 }
 
 /**

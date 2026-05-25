@@ -90,7 +90,7 @@ export async function callLLMWithFallback<T>(
 
     console.log(`[llm-fallback] Attempting execution on candidate: ${modelId}`);
 
-    let result = await callLLMImpl({
+    const result = await callLLMImpl({
       prompt,
       outputSchema,
       model: config,

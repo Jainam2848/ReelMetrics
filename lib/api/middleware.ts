@@ -156,7 +156,10 @@ export function withRateLimit(
 
     // Periodic memory safety pruning of global store
     if (rateLimitStore.size > 5000) {
-      for (const [k, times] of rateLimitStore.entries()) {
+      // Amortized cleanup: only prune a small slice (e.g., 100 keys) per request to prevent CPU exhaustion DoS
+      const keys = Array.from(rateLimitStore.keys()).slice(0, 100);
+      for (const k of keys) {
+        const times = rateLimitStore.get(k) || [];
         const validTimes = times.filter((time) => now - time < windowMs);
         if (validTimes.length === 0) {
           rateLimitStore.delete(k);

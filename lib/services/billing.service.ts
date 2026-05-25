@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { subscriptions } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { stripe } from "@/lib/billing/stripe-helpers";
 import { PlanId } from "@/lib/billing/plans";
 import { AuthService } from "./auth.service";
@@ -107,6 +107,9 @@ export class BillingService {
     }
 
     await db.transaction(async (tx) => {
+      // Lock the user's subscription record during billing webhook transactions to prevent concurrency race conditions
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('sub_lock:' || ${resolvedUserId}))`);
+
       const existing = await tx.query.subscriptions.findFirst({
         where: eq(subscriptions.userId, resolvedUserId),
       });
@@ -186,6 +189,9 @@ export class BillingService {
     }
 
     await db.transaction(async (tx) => {
+      // Lock the user's subscription record during billing webhook transactions to prevent concurrency race conditions
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('sub_lock:' || ${targetUserId}))`);
+
       const existing = await tx.query.subscriptions.findFirst({
         where: eq(subscriptions.userId, targetUserId),
       });
@@ -244,6 +250,9 @@ export class BillingService {
     const targetUserId = subRecord.userId;
 
     await db.transaction(async (tx) => {
+      // Lock the user's subscription record during billing webhook transactions to prevent concurrency race conditions
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('sub_lock:' || ${targetUserId}))`);
+
       await tx
         .update(subscriptions)
         .set({

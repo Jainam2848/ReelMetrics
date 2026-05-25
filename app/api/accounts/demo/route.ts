@@ -17,6 +17,10 @@ export const POST = withRateLimit(
   withAuth(async (request) => {
     const userId = request.user.id;
 
+    if (process.env.NODE_ENV === "production") {
+      return apiError("FORBIDDEN", "Sandbox demo is disabled in production environments.");
+    }
+
     try {
       // 1. Check if the user already has their own sandbox demo account
       const existingDemo = await db
