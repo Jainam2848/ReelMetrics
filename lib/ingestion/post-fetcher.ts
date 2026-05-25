@@ -39,6 +39,33 @@ export interface RawInstagramPostWithInsights {
   insights: RawInstagramInsights;
 }
 
+export interface RawInstagramStory {
+  id: string;
+  caption?: string;
+  media_url?: string;
+  permalink?: string;
+  timestamp: string;
+}
+
+export interface RawInstagramStoryInsights {
+  impressions?: number;
+  reach?: number;
+  replies?: number;
+  exits?: number;
+}
+
+export interface RawInstagramStoryWithInsights {
+  story: RawInstagramStory;
+  insights: RawInstagramStoryInsights;
+}
+
+export interface RawAccountDailyInsight {
+  date: string;
+  reach: number;
+  impressions: number;
+  profileViews: number;
+}
+
 /** Shape of the Instagram insights response per metric entry. */
 interface InsightMetricEntry {
   name: string;
@@ -254,6 +281,167 @@ export async function fetchInstagramPosts(
   }
 
   return results;
+}
+
+/**
+ * Fetches Instagram stories and their insights for a given user from v22.0+.
+ */
+export async function fetchInstagramStories(
+  accessToken: string,
+  platformUserId: string
+): Promise<RawInstagramStoryWithInsights[]> {
+  const storiesUrl = `${GRAPH_API_BASE}/${platformUserId}/stories?fields=${MEDIA_FIELDS}&access_token=${accessToken}`;
+  
+  try {
+    const response = await fetchWithBackoff(storiesUrl);
+
+    if (!response.ok) {
+      // 400 or other errors on stories endpoint typically means no active stories or stories disabled
+      if (response.status === 400 || response.status === 404) {
+        console.warn(`[post-fetcher] Stories list unavailable or empty for user ${platformUserId}`);
+        return [];
+      }
+      await handleApiError(response, "fetch stories list");
+    }
+
+    const storiesData = (await response.json()) as { data?: RawInstagramStory[] };
+    const stories = storiesData.data ?? [];
+
+    if (stories.length === 0) {
+      return [];
+    }
+
+    const results: RawInstagramStoryWithInsights[] = [];
+
+    for (const story of stories) {
+      const insights = await fetchStoryInsights(accessToken, story.id);
+      results.push({ story, insights });
+    }
+
+    return results;
+  } catch (error) {
+    if (error instanceof InstagramRateLimitError) {
+      throw error;
+    }
+    console.warn(`[post-fetcher] Failed to fetch stories list:`, error);
+    return [];
+  }
+}
+
+/**
+ * Fetches story-specific metrics (impressions, reach, replies, exits).
+ */
+async function fetchStoryInsights(
+  accessToken: string,
+  storyId: string
+): Promise<RawInstagramStoryInsights> {
+  const storyInsightsUrl = `${GRAPH_API_BASE}/${storyId}/insights?metric=impressions,reach,replies,exits&access_token=${accessToken}`;
+
+  try {
+    const response = await fetchWithBackoff(storyInsightsUrl);
+
+    if (!response.ok) {
+      if (response.status === 400) {
+        console.warn(`[post-fetcher] Story insights unavailable for story ${storyId}`);
+        return {};
+      }
+      await handleApiError(response, `fetch insights for story ${storyId}`);
+    }
+
+    const data = (await response.json()) as InsightsResponse;
+    const insights: Record<string, number> = {};
+
+    for (const metric of data.data ?? []) {
+      const value = metric.values?.[0]?.value;
+      if (typeof value === "number") {
+        insights[metric.name] = value;
+      }
+    }
+
+    return {
+      impressions: insights["impressions"],
+      reach: insights["reach"],
+      replies: insights["replies"],
+      exits: insights["exits"],
+    };
+  } catch (error) {
+    if (error instanceof InstagramRateLimitError) {
+      throw error;
+    }
+    console.warn(`[post-fetcher] Failed to fetch insights for story ${storyId}:`, error);
+    return {};
+  }
+}
+
+/**
+ * Fetches daily account-level reach, impressions, and profile views over a given timeframe (daysAgo).
+ */
+export async function fetchInstagramAccountInsights(
+  accessToken: string,
+  platformUserId: string,
+  daysAgo: number = 30
+): Promise<RawAccountDailyInsight[]> {
+  const until = Math.floor(Date.now() / 1000);
+  const since = until - daysAgo * 24 * 60 * 60;
+
+  const url = `${GRAPH_API_BASE}/${platformUserId}/insights?metric=impressions,reach,profile_views&period=day&since=${since}&until=${until}&access_token=${accessToken}`;
+
+  try {
+    const response = await fetchWithBackoff(url);
+
+    if (!response.ok) {
+      if (response.status === 400) {
+        console.warn(`[post-fetcher] Account daily insights are unavailable for user ${platformUserId}`);
+        return [];
+      }
+      await handleApiError(response, `fetch account insights for ${platformUserId}`);
+    }
+
+    const data = (await response.json()) as {
+      data: Array<{
+        name: string;
+        period: string;
+        values: Array<{ value: number; end_time: string }>;
+      }>;
+    };
+
+    const dailyMap = new Map<string, RawAccountDailyInsight>();
+
+    for (const metric of data.data ?? []) {
+      for (const entry of metric.values ?? []) {
+        const rawDate = entry.end_time.split("T")[0];
+        if (!rawDate) continue;
+
+        if (!dailyMap.has(rawDate)) {
+          dailyMap.set(rawDate, {
+            date: rawDate,
+            reach: 0,
+            impressions: 0,
+            profileViews: 0,
+          });
+        }
+
+        const daily = dailyMap.get(rawDate)!;
+        if (metric.name === "reach") {
+          daily.reach = entry.value;
+        } else if (metric.name === "impressions") {
+          daily.impressions = entry.value;
+        } else if (metric.name === "profile_views") {
+          daily.profileViews = entry.value;
+        }
+      }
+    }
+
+    return Array.from(dailyMap.values()).sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+  } catch (error) {
+    if (error instanceof InstagramRateLimitError) {
+      throw error;
+    }
+    console.warn(`[post-fetcher] Failed to fetch account daily insights:`, error);
+    return [];
+  }
 }
 
 /**

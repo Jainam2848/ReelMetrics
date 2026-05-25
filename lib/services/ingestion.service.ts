@@ -16,6 +16,9 @@ import { db } from "@/lib/db";
 import {
   instagramAccounts,
   reels,
+  stories,
+  accountInsightsDaily,
+  audienceHistory,
   usageTracking,
   auditLog,
 } from "@/lib/db/schema";
@@ -27,8 +30,10 @@ import {
   handleInvalidToken,
 } from "./token-manager";
 import type { SocialAccount } from "./token-manager";
-import { fetchInstagramPosts } from "@/lib/ingestion/post-fetcher";
 import {
+  fetchInstagramPosts,
+  fetchInstagramStories,
+  fetchInstagramAccountInsights,
   InstagramTokenInvalidError,
   InstagramRateLimitError,
 } from "@/lib/ingestion/post-fetcher";
@@ -198,7 +203,7 @@ export async function syncAccount(
   let syncResult: SyncResult;
 
   try {
-    // 4. Decrypt token and fetch posts
+    // 4. Decrypt token and fetch posts, stories, and daily insights
     const accessToken = decryptToken(
       socialAccount.accessTokenEnc!.toString("utf8")
     );
@@ -208,10 +213,21 @@ export async function syncAccount(
       socialAccount.igUserId
     );
 
-    // 5. Normalize
+    const rawStories = await fetchInstagramStories(
+      accessToken,
+      socialAccount.igUserId
+    );
+
+    const dailyInsights = await fetchInstagramAccountInsights(
+      accessToken,
+      socialAccount.igUserId,
+      30
+    );
+
+    // 5. Normalize Posts
     const normalizedPosts = normalizeInstagramPosts(rawPosts);
 
-    // 6. Upsert into database with deduplication
+    // 6. Upsert Reels into database with deduplication
     let postsCreated = 0;
     let postsUpdated = 0;
     const newMediaIds = new Set<string>();
@@ -238,6 +254,7 @@ export async function syncAccount(
           skipRate: post.skipRate,
           reach: post.reach,
           engagementRate: post.engagementRate,
+          dataTrustLabel: "Verified Source",
           fetchedAt: post.fetchedAt,
         })
         .onConflictDoUpdate({
@@ -254,6 +271,7 @@ export async function syncAccount(
             skipRate: sql`EXCLUDED.skip_rate`,
             reach: sql`EXCLUDED.reach`,
             engagementRate: sql`EXCLUDED.engagement_rate`,
+            dataTrustLabel: sql`EXCLUDED.data_trust_label`,
             fetchedAt: sql`EXCLUDED.fetched_at`,
             updatedAt: sql`NOW()`,
           },
@@ -278,6 +296,106 @@ export async function syncAccount(
         }
       }
     }
+
+    // 6b. Upsert Stories into database
+    let storiesProcessed = 0;
+    for (const storyItem of rawStories) {
+      // Calculate story completion rate inline
+      const completionRate = storyItem.insights.impressions && storyItem.insights.impressions > 0
+        ? ((1 - (storyItem.insights.exits ?? 0) / storyItem.insights.impressions) * 100).toFixed(4)
+        : "0.0000";
+
+      await db
+        .insert(stories)
+        .values({
+          accountId,
+          igMediaId: storyItem.story.id,
+          caption: storyItem.story.caption || null,
+          mediaUrl: storyItem.story.media_url || null,
+          permalink: storyItem.story.permalink || null,
+          timestamp: new Date(storyItem.story.timestamp),
+          impressions: storyItem.insights.impressions ?? 0,
+          reach: storyItem.insights.reach ?? 0,
+          replies: storyItem.insights.replies ?? 0,
+          exits: storyItem.insights.exits ?? 0,
+          completionRate: completionRate,
+          dataTrustLabel: "Verified Source",
+          fetchedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: stories.igMediaId,
+          set: {
+            caption: sql`EXCLUDED.caption`,
+            mediaUrl: sql`EXCLUDED.media_url`,
+            permalink: sql`EXCLUDED.permalink`,
+            impressions: sql`EXCLUDED.impressions`,
+            reach: sql`EXCLUDED.reach`,
+            replies: sql`EXCLUDED.replies`,
+            exits: sql`EXCLUDED.exits`,
+            completionRate: sql`EXCLUDED.completion_rate`,
+            dataTrustLabel: sql`EXCLUDED.data_trust_label`,
+            fetchedAt: sql`EXCLUDED.fetched_at`,
+            updatedAt: sql`NOW()`,
+          },
+        });
+      storiesProcessed++;
+    }
+
+    // 6c. Upsert Daily Insights into database
+    for (const daily of dailyInsights) {
+      const dateVal = new Date(daily.date);
+      dateVal.setUTCHours(0, 0, 0, 0);
+
+      await db
+        .insert(accountInsightsDaily)
+        .values({
+          accountId,
+          date: dateVal,
+          reach: daily.reach,
+          impressions: daily.impressions,
+          profileViews: daily.profileViews,
+        })
+        .onConflictDoUpdate({
+          target: [accountInsightsDaily.accountId, accountInsightsDaily.date],
+          set: {
+            reach: sql`EXCLUDED.reach`,
+            impressions: sql`EXCLUDED.impressions`,
+            profileViews: sql`EXCLUDED.profile_views`,
+            updatedAt: sql`NOW()`,
+          },
+        });
+    }
+
+    // 6d. Daily Snapshot of Followers Count
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+
+    const lastSnapshot = await db.query.audienceHistory.findFirst({
+      where: eq(audienceHistory.accountId, accountId),
+      orderBy: (ah, { desc }) => [desc(ah.timestamp)],
+    });
+
+    let newFollowers = 0;
+    if (lastSnapshot) {
+      newFollowers = Math.max(0, account.followersCount - lastSnapshot.totalFollowers);
+    }
+
+    await db
+      .insert(audienceHistory)
+      .values({
+        accountId,
+        timestamp: todayStart,
+        totalFollowers: account.followersCount,
+        newFollowers,
+      })
+      .onConflictDoUpdate({
+        target: [audienceHistory.accountId, audienceHistory.timestamp],
+        set: {
+          totalFollowers: sql`EXCLUDED.total_followers`,
+          newFollowers: sql`EXCLUDED.new_followers`,
+          updatedAt: sql`NOW()`,
+        },
+      });
 
     // 7. Enqueue AI scoring jobs for newly created reels only (avoid queue floods)
     let scoringJobsEnqueued = 0;
@@ -311,7 +429,7 @@ export async function syncAccount(
       })
       .where(eq(instagramAccounts.id, accountId));
 
-    const apiCallsUsed = rawPosts.length + 1;
+    const apiCallsUsed = rawPosts.length + rawStories.length + 2;
     await recordAccountApiCalls(accountId, apiCallsUsed);
     await trackApiUsage(userId, apiCallsUsed);
 
