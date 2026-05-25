@@ -1,19 +1,19 @@
 "use client";
 
-import React, { use } from "react";
+import React, { use, useState, useEffect, useRef } from "react";
 import { usePostDetail } from "@/hooks/use-post-detail";
 import { ScoreGauge } from "@/components/dashboard/score-gauge";
 import { DimensionBar } from "@/components/dashboard/dimension-bar";
 import { LoadingSkeleton } from "@/components/dashboard/loading-skeleton";
 import { useToast } from "@/components/shared/toast";
-import { m } from "framer-motion";
+import { GrowthMatrix } from "@/components/dashboard/growth-matrix";
+import { SweepTransition } from "@/components/shared/sweep-transition";
 import { 
   ArrowLeft, 
   Sparkles, 
   ExternalLink, 
   ThumbsUp, 
   MessageSquare, 
-  Share2, 
   Bookmark, 
   TrendingUp,
   AlertCircle,
@@ -40,6 +40,19 @@ export default function PostDetailPage({ params }: PageProps) {
     triggerScoring,
     isScoring,
   } = usePostDetail(postId);
+
+  const isUnrated = !scores || scores.overallScore === null;
+
+  const [revealedScoredState, setRevealedScoredState] = useState(!isUnrated);
+  const [isSweepActive, setIsSweepActive] = useState(false);
+  const prevIsUnrated = useRef(isUnrated);
+
+  useEffect(() => {
+    if (prevIsUnrated.current && !isUnrated) {
+      setIsSweepActive(true);
+    }
+    prevIsUnrated.current = isUnrated;
+  }, [isUnrated]);
 
   const analysis = scores?.aiAnalysis;
 
@@ -94,7 +107,6 @@ export default function PostDetailPage({ params }: PageProps) {
   }
 
   const isInstagram = post.platform === "instagram";
-  const isUnrated = !scores || scores.overallScore === null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -195,32 +207,33 @@ export default function PostDetailPage({ params }: PageProps) {
 
         {/* ── RIGHT PANEL: Evaluation Gauge, Dimensions, Advice ── */}
         <div className="lg:col-span-2 flex flex-col gap-6">
-          {isUnrated ? (
-            /* Unrated state overlay */
-            <div className="border border-glass bg-glass rounded-2xl p-8 shadow-glow flex flex-col items-center justify-center text-center py-20 relative">
-              <Sparkles className="w-14 h-14 text-brand-primary mb-4 animate-pulse" />
-              <h3 className="text-xl font-display font-extrabold text-white mb-2">
-                Evaluate Engagement Moat
-              </h3>
-              <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-8">
-                This short-form video has not been processed by the Trendoraa AI engine yet. Click below to analyze hook density and cta structures.
-              </p>
-
+          {!revealedScoredState ? (
+            /* Unrated / Active scoring state overlay */
+            <div className="border border-glass bg-glass rounded-2xl p-6 shadow-glow flex flex-col items-center justify-center text-center relative overflow-hidden">
               {isScoring ? (
-                <div className="flex flex-col items-center gap-3 select-none">
-                  <div className="w-10 h-10 rounded-full border-4 border-white/5 border-t-brand-primary animate-spin" />
-                  <p className="text-xs text-muted-foreground font-mono">
-                    Enqueuing scoring job and polling state...
+                <div className="flex flex-col gap-6 w-full items-center p-2">
+                  <GrowthMatrix mode="scoring" />
+                  <p className="text-xs text-muted-foreground font-mono animate-pulse">
+                    Enqueuing scoring job and parsing video skip-resistance matrices...
                   </p>
                 </div>
               ) : (
-                <button
-                  onClick={handleTriggerScoring}
-                  className="min-h-[44px] px-8 bg-brand-primary hover:opacity-90 text-white rounded-xl font-bold text-sm flex items-center gap-2 active:scale-95 shadow-glow cursor-pointer"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Execute AI Evaluation</span>
-                </button>
+                <div className="py-12 flex flex-col items-center">
+                  <Sparkles className="w-14 h-14 text-brand-primary mb-4 animate-pulse" />
+                  <h3 className="text-xl font-display font-extrabold text-white mb-2">
+                    Evaluate Engagement Moat
+                  </h3>
+                  <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-8">
+                    This short-form video has not been processed by the Trendoraa AI engine yet. Click below to analyze hook density and cta structures.
+                  </p>
+                  <button
+                    onClick={handleTriggerScoring}
+                    className="min-h-[44px] px-8 bg-brand-primary hover:opacity-90 text-white rounded-xl font-bold text-sm flex items-center gap-2 active:scale-95 shadow-glow cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Execute AI Evaluation</span>
+                  </button>
+                </div>
               )}
             </div>
           ) : (
@@ -229,7 +242,7 @@ export default function PostDetailPage({ params }: PageProps) {
               {/* Score summary with circle gauge */}
               <div className="border border-glass bg-glass rounded-2xl p-6 shadow-glow grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
                 <div className="flex justify-center md:border-r md:border-white/5 md:pr-6">
-                  <ScoreGauge score={scores.overallScore || 0} />
+                  <ScoreGauge score={scores?.overallScore || 0} />
                 </div>
                 
                 <div className="md:col-span-2 select-none">
@@ -240,9 +253,27 @@ export default function PostDetailPage({ params }: PageProps) {
                     AI Evaluation Complete
                   </h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    This post achieves an overall Engagement Moat rating of <strong>{scores.overallScore}/100</strong>. Analysis of visual pace and commuter interest indicates robust scroll-stopping potential.
+                    This post achieves an overall Engagement Moat rating of <strong>{scores?.overallScore}/100</strong>. Analysis of visual pace and commuter interest indicates robust scroll-stopping potential.
                   </p>
                 </div>
+              </div>
+
+              {/* Algorithmic Growth Matrix & Retention Curve */}
+              <div className="border border-glass bg-glass rounded-2xl p-6 shadow-glow">
+                <GrowthMatrix
+                  mode="interactive"
+                  scores={{
+                    hook: hookScore * 10,
+                    retention: skipRateScore * 10,
+                    completion: retentionScore * 10,
+                    cta: ctaScore * 10,
+                    visual: visualScore * 10,
+                    audio: audioScore * 10,
+                    trend: trendScore * 10,
+                    caption: captionScore * 10,
+                    timing: timingScore * 10,
+                  }}
+                />
               </div>
 
               {/* 9 Dimensions Bar */}
@@ -357,6 +388,12 @@ export default function PostDetailPage({ params }: PageProps) {
           )}
         </div>
       </div>
+
+      <SweepTransition
+        isActive={isSweepActive}
+        onHalfway={() => setRevealedScoredState(true)}
+        onComplete={() => setIsSweepActive(false)}
+      />
     </div>
   );
 }
