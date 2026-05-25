@@ -27,7 +27,7 @@ flowchart TB
 
     subgraph External["External"]
         Meta["Meta Graph API"]
-        LLM["LLM Router"]
+        LLM["LLM stack<br/>callLLMWithFallback · Gemini · DeepSeek"]
         Stripe["Stripe"]
     end
 
@@ -38,6 +38,10 @@ flowchart TB
     API <--> Stripe
     Meta -.->|webhooks| API
 ```
+
+> **Legend:** solid arrows = required data path · dashed arrows = optional or async ingress
+
+*Source of truth: `app/(dashboard)/*`, `app/api/*`, `lib/queue/processor.ts`, `lib/db/schema.ts`.*
 
 ---
 
@@ -83,24 +87,30 @@ The platform operates under a strict **Zero-Extra-Infrastructure** constraint to
 The architecture establishes rigid structural walls around core logical modules. Cross-module imports are blocked at compile-time to maintain absolute service separation.
 
 ```mermaid
-flowchart LR
-    subgraph ServiceLayer["Service Layer (mediator)"]
-        SM["ingestion.service<br/>scoring.service<br/>strategy.service"]
+flowchart TB
+    subgraph ServiceLayer["Service layer (mediator)"]
+        SM["ingestion.service · scoring.service<br/>strategy.service · trends.service"]
     end
 
-    subgraph Modules["Isolated Modules"]
-        BILL["Billing<br/>Stripe webhooks<br/>usage-tracker"]
-        AI["AI Engine<br/>llm-client · prompts<br/>PURE — no DB writes"]
-        Q["job_queue table<br/>SKIP LOCKED processor"]
+    subgraph Modules["Isolated modules"]
+        BILL["Billing · Stripe webhooks · usage-tracker"]
+        AI["AI engine · llm-with-fallback · llm-client · prompts<br/>no DB writes"]
+        HEUR["Heuristic engines · scoring-engine · trend fallbacks"]
+        Q["job_queue · SKIP LOCKED processor"]
     end
 
     BILL -->|"checkUsageLimit"| SM
     SM -->|"enqueueJob"| Q
-    SM -->|"callLLMPure"| AI
+    SM -->|"callLLMWithFallback"| AI
+    SM -->|"on LLM exhaust or budget"| HEUR
     Q -->|"executeJob"| SM
     BILL -.->|"NEVER imports"| AI
     AI -.->|"NEVER writes"| Q
 ```
+
+> **Legend:** solid arrows = allowed calls · dashed arrows = forbidden cross-module imports
+
+*Source of truth: `lib/services/*`, `lib/ai/llm-with-fallback.ts`, `lib/ai/scoring-engine.ts`, `eslint.config.mjs` boundary rules.*
 
 ### 4.1 Boundary Rules & Import Guard Policies
 1. **Billing Isolation:** The `Billing` module operates purely on Stripe webhook parsing and subscription table modifications. It never imports functions from the `AI` engine or enqueues items into the `Queue` directly.
@@ -167,18 +177,22 @@ The application adopts a defensive engineering mindset, treating all external in
   * **Manual Sync Protection:** Cooldown logic blocks frontend-triggered manual synchronization requests for 5 minutes per account.
 
 ```mermaid
-flowchart TD
-    START([syncAccount called]) --> COOL{Manual sync<br/>within 5 min?}
-    COOL -->|yes| ERR1[429 SYNC_COOLDOWN]
-    COOL -->|no| RL{rate_limited<br/>cooldown active?}
-    RL -->|yes| ERR2[429 IG_RATE_LIMITED]
-    RL -->|no| Q{Hourly quota<br/>≥ estimated + 10?}
-    Q -->|no| ERR3[429 IG_QUOTA_EXHAUSTED]
-    Q -->|yes| LOCK{Acquire sync lock?}
-    LOCK -->|no| ERR4[409 SYNC_IN_PROGRESS]
-    LOCK -->|yes| FETCH[Graph API fetch<br/>429 → 1–15 min backoff]
-    FETCH --> OK[Upsert reels · record quota]
+flowchart TB
+    subgraph Sync["lib/ingestion/sync — syncAccount"]
+        START([syncAccount called]) --> COOL{Manual sync within 5 min?}
+        COOL -->|yes| ERR1[429 SYNC_COOLDOWN]
+        COOL -->|no| RL{rate_limited cooldown active?}
+        RL -->|yes| ERR2[429 IG_RATE_LIMITED]
+        RL -->|no| Q{Hourly quota headroom?}
+        Q -->|no| ERR3[429 IG_QUOTA_EXHAUSTED]
+        Q -->|yes| LOCK{Acquire sync lock?}
+        LOCK -->|no| ERR4[409 SYNC_IN_PROGRESS]
+        LOCK -->|yes| FETCH[Graph API fetch · post-fetcher 429 backoff]
+        FETCH --> OK[Upsert reels · record quota]
+    end
 ```
+
+*Source of truth: `lib/ingestion/sync.ts`, `lib/ingestion/post-fetcher.ts`, `lib/ingestion/instagram-quota.ts`.*
 
 ### 6.2 TikTok Display API (v2+)
 * **Dependencies:** Video Ingestion, engagement metrics, tiktok_completion_rate, tiktok_saves_count.
@@ -193,7 +207,7 @@ flowchart TD
 * **Failure Vectors:** LLM API server outages, connection timeouts, monthly user LLM budget or count overruns, Gemini free-tier rate limits (15 RPM).
 * **Fallback Strategy:**
   * **Intelligent Routing Layer:** Routes real-time standard tier analyses to DeepSeek V4-Flash, premium strategy generation to DeepSeek Reasoner (Thinking), and background batch processing of older posts (>48 hours) to Gemini 2.0 Flash (saving ~45% cost).
-  * **Rate-Limit & Circuit Breakers:** Monitors Gemini's 15 RPM free tier; automatically bypasses to the next-cheapest provider (DeepSeek V4-Flash) on quota exhaustion.
+  * **Rate-Limit & Circuit Breakers:** Monitors Gemini's 15 RPM free tier in-memory; skips saturated Gemini candidates and slides to DeepSeek. Gemini RPM is recorded only after a successful `callLLMPure` response. API `isRateLimit` failures skip schema repair and slide immediately.
   * **Monthly LLM Budget & Analysis Caps:** Before invoking any LLM, the system validates that the user is under their monthly count and budget caps. If exceeded, operations fall back to heuristics.
   * **Heuristic Fallback Engine:** If all configured API candidates fail or trip circuit breakers, the Heuristic Fallback Engine calculates exact mathematical scoring using native metrics (skip rate, completion rate, engagement velocity) to preserve dashboard rendering under `source: "heuristic"`. The upgraded heuristic includes follower tier skip-rate threshold scaling, video duration retention modifiers, log10 CTA magnitude scaling, views momentum classifications, peak active hour timing score calculations, and stretch normalization to map raw scores into a true 1-100 range.
   * **NaN Prevention Default:** If a new account lacks historical posts to calculate baseline averages, engagement defaults to `2.0%`, skip rate to `50.0%`, and completion rate to `30.0%` within calculations.
@@ -291,6 +305,8 @@ erDiagram
         int call_count
     }
 ```
+
+*Source of truth: `lib/db/schema.ts` (MVP tables shown; Phase 11 target uses unified `social_accounts` / `posts`).*
 
 > **MVP today:** `instagram_accounts` → `reels` → `reel_scores`. **Target (Phase 11):** unified `social_accounts` → `posts` → `post_scores` with a `platform` column.
 

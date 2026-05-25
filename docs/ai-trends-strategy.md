@@ -6,21 +6,40 @@ This document outlines the architecture, data structures, and prompt schemas for
 
 ## 🗺️ Ingestion & Strategy Generation Pipeline
 
-To maintain near-$0 overhead and absolute uptime, Trendoraa separates external trend crawling from individual creator requests by utilizing a **Cached Niche Trends Feed Indexer**. A single daily cron job fetches and aggregates platform-wide viral trends per niche, caching them in the database. When a creator triggers a trend analysis, the system instantly fetches the cached niche trends, avoiding redundant scraper calls.
+To maintain near-$0 overhead and absolute uptime, Trendoraa separates external trend crawling from individual creator requests by utilizing a **Cached Niche Trends Feed Indexer**. A single daily cron job fetches and aggregates platform-wide viral trends per niche, caching them in the database. When a creator triggers a trend analysis, the system instantly fetches the cached niche trends, avoiding redundant LLM calls per user for raw platform signals.
+
+> **Legend:** solid arrows = required path · heuristic paths run when LLM returns `success: false` or cache is empty
+
+### Daily niche trends indexer (cron)
 
 ```mermaid
-flowchart TD
-    CRON[Daily Cron System] -->|Trigger Refresh| J[REFRESH_TRENDS_FEED Job]
-    J -->|Query Cheap LLM / Web Search| K[Scout Latest Niche Signals]
-    K -->|UPSERT| NTF[Database: niche_trends_feed]
-    
-    A[Raw Platform Data] -->|Sync| B[Database: Reels / Video Stats]
-    B & NTF -->|Niche & Performance Data| E[AI Strategy Prompt Builder]
-    E -->|Structured Prompt| F[callLLMWithFallback Routing Interface]
-    F -->|JSON Output| G[Zod Schema Validator]
-    G -->|Success| H[Save to Database: strategies / trend_analysis]
-    G -->|Failure / Outage| I[Heuristic Fallback Strategy Engine]
+flowchart TB
+    subgraph Cron["lib/services/trends.service.ts — refreshGlobalTrendsFeed"]
+        CRON[Scheduled job] --> LLM1[callLLMWithFallback · operation analysis]
+        LLM1 -->|success| UPS[UPSERT niche_trends_feed]
+        LLM1 -->|fail| HF1[getHeuristicTrendFallback · stringify pillars]
+        HF1 --> UPS
+    end
 ```
+
+*Source of truth: `lib/services/trends.service.ts`, `lib/ai/llm-with-fallback.ts`, `lib/ai/trend-generator.ts`.*
+
+### Per-creator trend analysis (on demand)
+
+```mermaid
+flowchart TB
+    subgraph UserRun["trends.service.runAnalysis + generateTrendsAnalysis"]
+        SYNC[Reels in DB] --> CACHE[Read niche_trends_feed by niche]
+        CACHE -->|empty signals| HF2[getHeuristicTrendFallback ingested signals]
+        CACHE --> BUILD[Build TRENDS_ANALYSIS_PROMPT]
+        HF2 --> BUILD
+        BUILD --> FB[callLLMWithFallback · TrendAnalysisOutputSchema]
+        FB -->|success| SAVE[Persist analysis · increment usage]
+        FB -->|fail| HF3[getHeuristicTrendFallback · source heuristic]
+    end
+```
+
+*Source of truth: `lib/ai/trend-generator.ts`, `lib/ai/prompts/trends.ts`, `lib/services/trends.service.ts`.*
 
 ---
 

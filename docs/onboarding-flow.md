@@ -10,22 +10,48 @@ The onboarding flow is built on two core pillars:
 
 ## 🗺️ Architectural Workflow Overview
 
-Below is the state machine representation of the user onboarding state resolution on the home dashboard:
+The home dashboard resolves onboarding vs. workspace from SWR account state. **Overview** (shell routing) and **detail** (connect, OAuth errors, sandbox) are split for clarity.
+
+> **Legend:** solid arrows = required UI path · dashed arrows = optional or recovery paths
+
+### Dashboard shell routing
 
 ```mermaid
-graph TD
-    A[User visits /] --> B{SWR loading connected accounts?}
-    B -- Yes --> C[Render Full-Page Loading Spinner]
-    B -- No --> D{accountsError?}
-    
-    D -- Yes --> E{accounts.length == 0?}
-    E -- Yes --> F[Render Retryable LoadError Banner]
-    E -- No --> G[Render Dashboard Shell + Sync Status Alert Warning]
-    
-    D -- No --> H{accounts.length == 0?}
-    H -- Yes --> I[Render 3-Step Onboarding Stepper]
-    H -- No --> J[Render Normal Dashboard Shell]
+flowchart TB
+    subgraph Client["app/(dashboard)/page.tsx"]
+        A[User visits /] --> B{useAccounts loading?}
+        B -->|yes| C[Full-page spinner]
+        B -->|no| D{accounts fetch error?}
+        D -->|yes, zero accounts| F[LoadError retry banner]
+        D -->|yes, has accounts| G[Dashboard shell + sync alert]
+        D -->|no| H{accounts.length === 0?}
+        H -->|yes| I[3-step onboarding stepper]
+        H -->|no| J[Normal dashboard shell]
+    end
 ```
+
+*Source of truth: `app/(dashboard)/page.tsx`, `components/shared/active-account-context.tsx`.*
+
+### Connect, OAuth callback, and sandbox paths
+
+```mermaid
+flowchart TB
+    subgraph Step3["Onboarding step 3 — connect or first win"]
+        S[User on stepper] --> CH{User action}
+        CH -->|Connect Instagram| PF[Pre-flight checklist modal]
+        PF --> POST[POST /api/auth/social/instagram]
+        POST --> META[Meta OAuth consent]
+        META --> CB[Redirect back to app]
+        CB -->|URL ?error=| OEB[OAuthErrorBanner strips query]
+        CB -->|success| MUT[mutateAccounts]
+        CH -->|Explore sandbox demo| DEMO[POST /api/accounts/demo]
+        DEMO --> MUT
+        OEB -.->|retry connect or use demo| S
+    end
+    MUT --> J[Exit stepper → populated dashboard]
+```
+
+*Source of truth: `components/dashboard/oauth-error-banner.tsx`, `app/api/auth/social/instagram/route.ts`, `app/api/accounts/demo/route.ts`.*
 
 ---
 
@@ -63,7 +89,7 @@ To provide immediate value without requiring live production authorization, the 
 
 1. **Wow-Effect Visual Simulation:**
    * Before executing the request, the client runs a simulated progress spinner highlighting core technical steps (e.g., *"Connecting to Trendoraa AI ingestion pipeline..."*, *"Calculating AI Engagement Moat Index..."*). This builds anticipation, reinforcing the Endowment Effect.
-2. **API Call (`POST /api/api/accounts/demo`):**
+2. **API Call (`POST /api/accounts/demo`):**
    * The API first searches the database for the pre-seeded account `alice_reels`.
    * **Success Path:** Links the `alice_reels` Instagram account, strategies, and post data to the currently authenticated `userId`.
    * **Fallback Path:** If the seed was never run, the endpoint dynamically instantiates a mock account `alice_reels` and seeds two high-fidelity mock reels directly to the current user's profile to prevent a blank state.

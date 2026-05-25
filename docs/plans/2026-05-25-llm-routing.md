@@ -30,7 +30,7 @@ Official model specifications and price mappings configured in `lib/ai/model-rou
 
 ## 3. Dynamic Workload Routing Tables
 
-Dynamic selection of candidates resolves using `getModelCandidates(operation, tier)`:
+The wrapper resolves `effectiveOperation = resolveEffectiveOperation(operation, postedAt)` (maps old scoring posts to `batch_scoring`), then loads candidates via `getModelCandidates(effectiveOperation, tier)`:
 
 ### 3.1 `scoring` (Real-time single post scoring, age ≤ 48h)
 * **Primary**: `deepseek-chat`
@@ -64,35 +64,74 @@ Dynamic selection of candidates resolves using `getModelCandidates(operation, ti
 
 ## 4. Fallback Workflow & Auto-Repair Lifecycle
 
-When a service invokes `callLLMWithFallback<T>()`, the execution flow follows a structured candidate traversal:
+When a service invokes `callLLMWithFallback<T>()`, execution is a bounded candidate loop (max 3 models). **Heuristic fallbacks live in the calling service**, not inside the wrapper.
+
+> **Legend:** solid arrows = required control flow · service-layer dashed path = only after `success: false`
+
+### 4.0 Overview — service to wrapper to heuristics
 
 ```mermaid
-graph TD
-    A[Start: callLLMWithFallback] --> B[Resolve Candidate Chain max 3]
-    B --> C[Fetch First Available Candidate]
-    C --> D{Is Model API Key Configured?}
-    D -- No --> E[Slide to Next Candidate]
-    D -- Yes --> F{Is Gemini and Rate-Limited locally?}
-    F -- Yes --> E
-    F -- No --> G[Execute callLLMPure]
-    G --> H{Execution Success?}
-    H -- Yes [JSON Parsed & Zod Match] --> I[Return Output, Cost, and Latency Metrics]
-    H -- No [API/Rate Limit Error] --> J[Slide to Next Candidate]
-    H -- No [Schema Validation Error] --> K[Run Inline Repair Prompt]
-    K --> L{Repair Success?}
-    L -- Yes --> I
-    L -- No --> J
-    E --> C
-    J --> C
-    C -- Candidates Saturated --> M[Execute Heuristic Fallback]
+flowchart TB
+    subgraph Services["Callers"]
+        SC[scoring.service]
+        ST[strategy.service]
+        TR[trend-generator / trends.service]
+    end
+    subgraph Wrapper["lib/ai/llm-with-fallback.ts"]
+        START[callLLMWithFallback] --> RES[resolveEffectiveOperation + slice 3 candidates]
+        RES --> LOOP[Candidate loop]
+        LOOP -->|success| OK[Return typed data + modelId + cost]
+        LOOP -->|exhausted| FAIL[success false + attempts]
+    end
+    subgraph Heuristics["Service-layer zero-downtime"]
+        H1[calculateHeuristicScore]
+        H2[buildHeuristicStrategy]
+        H3[getHeuristicTrendFallback]
+    end
+    SC --> START
+    ST --> START
+    TR --> START
+    FAIL -.-> H1
+    FAIL -.-> H2
+    FAIL -.-> H3
 ```
 
-### 4.1 In-Memory Rate Limiter for Gemini Free Tier
-To prevent hitting Google's strict **15 RPM** (Requests Per Minute) free quota in production, an in-memory sliding window rate limiter runs inside `model-router.ts`.
-* Requests are logged in a 60-second window.
-* When active requests exceed `15`, the candidate loop instantly shifts to the next fallback candidate (e.g. `deepseek-chat`), shielding users from raw rate-limit failures.
+*Source of truth: `lib/ai/llm-with-fallback.ts`, `lib/services/scoring.service.ts`, `lib/services/strategy.service.ts`, `lib/ai/trend-generator.ts`.*
 
-### 4.2 Auto-Repair Specification
+### 4.1 Detail — per-candidate loop
+
+```mermaid
+flowchart TB
+    NEXT([Next candidate]) --> KEY{API key configured?}
+    KEY -->|no| SLIDE[Slide]
+    KEY -->|yes| GEMCHK{Gemini + local 15 RPM full?}
+    GEMCHK -->|yes| SLIDE
+    GEMCHK -->|no| CALL[callLLMPure via callLLMImpl]
+    CALL --> SUCC{success?}
+    SUCC -->|yes| REC[Record Gemini RPM · return metrics]
+    SUCC -->|no| RL{isRateLimit?}
+    RL -->|yes| SLIDE
+    RL -->|no| SCH{schema validation error?}
+    SCH -->|yes| REP[One repair prompt · same model]
+    REP --> ROK{repair success?}
+    ROK -->|yes| REC
+    ROK -->|no| SLIDE
+    SCH -->|no| SLIDE
+    SLIDE --> MORE{More candidates?}
+    MORE -->|yes| NEXT
+    MORE -->|no| EXH[Return success false]
+```
+
+*Source of truth: `lib/ai/llm-with-fallback.ts`, `lib/ai/llm-client.ts`, `lib/ai/model-router.ts` (`resolveEffectiveOperation`, `geminiRateLimiter`).*
+
+**Age routing:** `operation: "scoring"` with `postedAt` older than 48h resolves to `batch_scoring` candidates (Gemini 2.0 Flash first) via `resolveEffectiveOperation()`.
+
+### 4.2 In-Memory Rate Limiter for Gemini Free Tier
+To prevent hitting Google's strict **15 RPM** (Requests Per Minute) free quota in production, an in-memory sliding window rate limiter runs inside `model-router.ts`.
+* Timestamps are pruned on a 60-second window; when 15 slots are full, Gemini candidates are **skipped** (not called).
+* **RPM is recorded only after** a successful `callLLMPure` (or successful schema repair), so failed calls do not consume free-tier slots.
+
+### 4.3 Auto-Repair Specification
 If a candidate model returns malformed JSON or JSON that fails Zod validation:
 1. The client intercepts the error.
 2. It compiles a **system repair note**:

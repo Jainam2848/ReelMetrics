@@ -204,9 +204,18 @@ sequenceDiagram
     Cron->>Process: Every 5 min POST
     Process->>Worker: processQueueBatch(14s)
     Worker->>Queue: SKIP LOCKED claim
-    Worker->>IG: syncAccount (guarded)
-    Worker->>Queue: Mark completed / retry
+    Worker->>IG: syncAccount (quota · mutex · cooldown)
+
+    alt Graph HTTP 429 or rate_limited account
+        Worker->>Queue: Mark rate_limited · minute-scale retry
+    else success
+        Worker->>Queue: Mark completed
+    else other failure
+        Worker->>Queue: Retry with backoff policy
+    end
 ```
+
+*Source of truth: `app/api/cron/ingest/route.ts`, `app/api/queue/process/route.ts`, `lib/queue/processor.ts`, `lib/ingestion/rate-limit-policy.ts`.*
 
 > [!NOTE]
 > The sandbox demo is intended for development and onboarding. Once a user successfully connects a real Instagram Professional account, treat the demo account as throwaway data and avoid mixing demo metrics with real ingestion.

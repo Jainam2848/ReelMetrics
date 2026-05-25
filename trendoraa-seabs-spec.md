@@ -179,7 +179,7 @@ flowchart TB
     subgraph External["External Integrations"]
         Meta["Meta Graph API v22<br/>Reels media + insights<br/>reels_skip_rate · total_views"]
         TikTok["TikTok Display API<br/><i>Post-MVP Phase 11</i>"]
-        LLM["LLM Router<br/>OpenAI · Gemini · DeepSeek"]
+        LLM["LLM stack<br/>callLLMWithFallback<br/>Gemini · DeepSeek"]
         Stripe["Stripe Billing"]
         Resend["Resend Email"]
     end
@@ -190,11 +190,15 @@ flowchart TB
     Worker --> DB
     Worker -->|"Ingestion + AI scoring"| Meta
     Worker -.->|"Deferred"| TikTok
-    Worker --> LLM
+    Worker -->|"callLLMWithFallback"| LLM
     API <--> Stripe
     Worker -.-> Resend
     Meta -->|"Webhooks → fast 200 ack"| API
 ```
+
+> **Legend:** solid arrows = required path · dashed arrows = optional or async
+
+*Source of truth: `app/(dashboard)/*`, `app/api/*`, `lib/queue/processor.ts`, `lib/ai/llm-with-fallback.ts`.*
 
 ## 2.2 Technology Stack (Locked — No Substitutions)
 
@@ -207,7 +211,7 @@ flowchart TB
 | **ORM** | Drizzle ORM | Type-safe, SQL-first, lightweight |
 | **Auth** | Supabase Auth (GoTrue) | OAuth2 for Instagram (Meta Pages API) & TikTok Display API (v2), session management |
 | **Queue** | PostgreSQL SKIP LOCKED (custom) | No Redis/Kafka dependency, single-DB simplicity |
-| **AI/LLM** | OpenAI GPT-4o-mini (primary), GPT-4o (premium) | Best cost-performance ratio |
+| **AI/LLM** | Google Gemini 2.0/2.5 Flash + DeepSeek V4 Chat/Reasoner via `callLLMWithFallback` | Multi-provider routing, schema repair, heuristic fallbacks; OpenAI removed from routing |
 | **Payments** | Stripe (Subscriptions + Checkout) | Industry standard, webhook-driven |
 | **Email** | Resend | Developer-first transactional email |
 | **Hosting** | Vercel (frontend) + Supabase (backend) | Zero-ops, auto-scaling |
@@ -1133,6 +1137,8 @@ flowchart TB
     BACKOFF -.->|"queue retry"| G3
 ```
 
+*Source of truth: `lib/ingestion/sync.ts`, `lib/ingestion/post-fetcher.ts`, `lib/queue/processor.ts`.*
+
 ### Scheduled Ingestion Cron Endpoint (`POST /api/cron/ingest` + `POST /api/queue/process`)
 
 **Split responsibility (MVP):** `/api/cron/ingest` only enqueues `SYNC_ACCOUNT` with staggered `scheduled_at`. `/api/queue/process` (or the CLI worker) executes jobs. This avoids Vercel timeout bursts against the Graph API.
@@ -1443,32 +1449,41 @@ If a sync operation encounters a rate limit block:
 > The AI module is a **pure function**: it takes data in, returns structured analysis out. It NEVER writes to the database directly. It NEVER makes API calls to external services. All side effects are handled by the calling service.
 
 ```mermaid
-flowchart LR
-    subgraph Input["INPUT (from services)"]
-        I1["Reel metrics + caption"]
-        I2["Account baselines"]
-        I3["Trend context"]
-        I4["User plan / model tier"]
+flowchart TB
+    subgraph Services["Service layer — side effects here"]
+        SC["scoring.service"]
+        ST["strategy.service"]
+        TR["trends.service · trend-generator"]
+        HEUR["scoring-engine · getHeuristicTrendFallback"]
     end
 
-    subgraph AI["AI ENGINE — Pure Functions"]
-        direction TB
-        P["prompt-builder.ts"]
-        L["callLLMPure · model-router"]
-        Z["Zod schemas · heuristic fallback"]
+    subgraph AI["AI module — lib/ai/*"]
+        P["prompts · buildScoringPrompt / buildStrategyPrompt"]
+        FB["callLLMWithFallback"]
+        LP["callLLMPure · llm-client"]
+        MR["model-router · resolveEffectiveOperation"]
     end
 
-    subgraph Output["OUTPUT (to services)"]
-        O1["9-dimension scores"]
-        O2["Strategy + calendar JSON"]
-    end
-
-    I1 & I2 & I3 & I4 --> P --> L --> Z --> O1 & O2
-
-    style AI fill:#f0f7ff,stroke:#2563eb
+    SC --> P
+    ST --> P
+    TR --> P
+    P --> FB
+    FB --> MR
+    FB --> LP
+    FB -->|success| SC
+    FB -->|success| ST
+    FB -->|success| TR
+    FB -.->|exhausted or budget block| HEUR
+    HEUR -.-> SC
+    HEUR -.-> ST
+    HEUR -.-> TR
 ```
 
-**Hard rules:** No DB writes · No direct external calls except LLM · No queue mutations — all side effects live in `scoring.service` / `strategy.service`.
+> **Legend:** solid arrows = LLM path · dashed arrows = heuristic fallback after wrapper failure or usage cap
+
+*Source of truth: `lib/ai/llm-with-fallback.ts`, `lib/ai/llm-client.ts`, `lib/ai/model-router.ts`, `lib/services/scoring.service.ts`.*
+
+**Hard rules:** No DB writes inside `lib/ai/*` · Services call `callLLMWithFallback` (not `callLLMPure` directly) · Heuristic engines run in services when the wrapper returns `success: false` or usage caps block LLM · No queue mutations from AI module.
 
 ## 7.2 Cross-Platform Post Scoring System
 
@@ -1657,7 +1672,40 @@ Generate a strategy with ONLY valid JSON matching this schema:
 
 ## 7.4 LLM Call Wrapper (Pure Function Boundary)
 
-Every LLM call goes through this pure wrapper. It has **zero database dependencies** and **zero side effects**. It is completely side-effect-free: all user budget checks, token usage tracking, and database commits MUST be performed by the calling service (e.g. `ingestion.service.ts` or custom route handlers) *before* and *after* invoking this wrapper.
+**Production layout (two layers):**
+
+| Layer | Module | Responsibility |
+|---|---|---|
+| **Resilient wrapper** | `lib/ai/llm-with-fallback.ts` | `resolveEffectiveOperation` (scoring → `batch_scoring` when `postedAt` > 48h), up to 3 model candidates, skip Gemini when local 15 RPM full, `isRateLimit` → slide without repair, one schema repair per model, record Gemini RPM **after** success |
+| **Pure client** | `lib/ai/llm-client.ts` | Single-model `callLLMPure` — Gemini REST + DeepSeek OpenAI-compatible API, Zod validation, timeouts |
+
+```mermaid
+flowchart TB
+    NEXT([Next candidate]) --> KEY{API key configured?}
+    KEY -->|no| SLIDE[Slide]
+    KEY -->|yes| GEM{Gemini RPM full?}
+    GEM -->|yes| SLIDE
+    GEM -->|no| CALL[callLLMPure]
+    CALL --> OK{success?}
+    OK -->|yes| DONE[Return + record Gemini RPM]
+    OK -->|no| RL{isRateLimit?}
+    RL -->|yes| SLIDE
+    RL -->|no| SCH{schema error?}
+    SCH -->|yes| REP[One repair · same model]
+    REP --> ROK{repair OK?}
+    ROK -->|yes| DONE
+    ROK -->|no| SLIDE
+    SCH -->|no| SLIDE
+    SLIDE --> MORE{More candidates?}
+    MORE -->|yes| NEXT
+    MORE -->|no| FAIL[success false]
+```
+
+*Source of truth: `lib/ai/llm-with-fallback.ts`. Detailed diagrams: `docs/plans/2026-05-25-llm-routing.md`.*
+
+Services invoke **`callLLMWithFallback`**, not `callLLMPure` directly. The pure client has **zero database dependencies** and **zero side effects**; budget checks, token usage tracking, and database commits MUST be performed by the calling service *before* and *after* invoking the wrapper.
+
+**Verification (CI-safe):** `npm run eval:llm:fallback` · `npm run eval:llm` (optional live: `EVAL_LLM_LIVE=1`) · `npm run test:service:branching`
 
 ```typescript
 // Pure LLM interface wrapper - zero database side-effects
@@ -1721,7 +1769,9 @@ async function callLLMPure<T>(params: {
 
 ## 7.5 Heuristic Fallback & Outage Engine
 
-If `callLLMPure` fails (OpenAI outage, network failure) or user monthly budget checks fail, the system MUST return a **lightweight data-driven heuristic fallback score** rather than rendering empty dashboards. The result MUST be explicitly labeled as `source: "heuristic"` to preserve trust.
+If **`callLLMWithFallback` exhausts all candidates** (provider outage, rate limits, schema repair failure), or user monthly budget checks fail **before** any LLM call, services MUST return a **lightweight data-driven heuristic result** rather than rendering empty dashboards. The result MUST be explicitly labeled as `source: "heuristic"` (scoring/strategy) or `modelId: "heuristic"` (trends) to preserve trust.
+
+*Source of truth: `lib/ai/scoring-engine.ts` (`calculateHeuristicScore`), `lib/services/strategy.service.ts` (`buildHeuristicStrategy`), `lib/ai/trend-generator.ts` (`getHeuristicTrendFallback`).*
 
 ```typescript
 interface HeuristicScoreResult {
@@ -4245,23 +4295,29 @@ Every code artifact MUST include:
 flowchart TB
     subgraph Forbidden["⛔ Direct cross-imports forbidden"]
         BILL["Billing Module<br/>Stripe · usage-tracker"]
-        AI["AI Module<br/>llm-client · prompts<br/><i>pure functions</i>"]
+        AI["AI Module<br/>llm-with-fallback · llm-client · prompts"]
+        HEUR["Heuristic engines<br/>scoring-engine · trend fallbacks"]
         QUEUE["Queue<br/>job_queue table"]
     end
 
     subgraph Mediator["✅ Service Layer (only orchestrator)"]
-        SVC["ingestion.service<br/>scoring.service<br/>strategy.service"]
+        SVC["ingestion.service · scoring.service<br/>strategy.service · trends.service"]
     end
 
     BILL -->|"checkUsageLimit"| SVC
     SVC -->|"enqueueJob"| QUEUE
-    SVC -->|"callLLMPure"| AI
+    SVC -->|"callLLMWithFallback"| AI
+    SVC -->|"on LLM exhaust"| HEUR
     QUEUE -->|"executeJob →"| SVC
 
-    BILL -.->|"NEVER"| AI
+    BILL -.->|"NEVER imports"| AI
     AI -.->|"NEVER writes"| QUEUE
     API["API / Webhook routes"] -->|"enqueue only"| QUEUE
 ```
+
+> **Legend:** solid arrows = allowed orchestration · dashed arrows = forbidden imports
+
+*Source of truth: `eslint.config.mjs`, `lib/services/*`, `lib/ai/*`.*
 
 ## RULE 4 — FAIL SAFE OVER FAIL FAST
 

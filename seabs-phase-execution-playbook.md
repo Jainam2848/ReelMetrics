@@ -6,6 +6,8 @@
 >
 > **Companion:** [trendoraa-seabs-spec.md](./trendoraa-seabs-spec.md) (canonical spec)
 >
+> **Diagrams & runbooks (keep in sync with spec/playbook):** `docs/architecture-decision-record.md`, `docs/plans/2026-05-25-llm-routing.md`, `docs/onboarding-flow.md`, `docs/ai-trends-strategy.md`, `docs/instagram-setup.md`, `docs/prd.md`
+>
 > **Instagram MVP (implemented):** Production code uses `instagram_accounts` / `reels` / `reel_scores` and API routes `/api/accounts/:id/reels`, `/api/reels/:id/score`. Agent prompts below still reference the cross-platform target names where noted — map via `docs/prd.md` when verifying gates.
 >
 > **Rule:** No phase may begin until the previous phase passes ALL gate checks.
@@ -953,22 +955,26 @@ Build the Instagram social data ingestion pipeline for the MVP rollout: OAuth2 a
 ### Ingestion pipeline (reference diagram)
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph Connect["Connect"]
-        O1["POST /auth/social/instagram"]
+        O1["POST /api/auth/social/instagram"]
         O2["Meta OAuth callback"]
         O3["Encrypt token → instagram_accounts"]
     end
 
-    subgraph Sync["Sync paths"]
-        S1["Manual sync<br/>5 min cooldown"]
-        S2["Cron ingest<br/>6h stale · enqueue"]
-        S3["Webhook<br/>debounced 10 min"]
+    subgraph Sync["Sync triggers"]
+        S1["Manual sync · 5 min cooldown"]
+        S2["Cron ingest · enqueue only"]
+        S3["Webhook · debounced 10 min"]
+    end
+
+    subgraph Guards["Pre-flight"]
+        G1["Quota · mutex · rate_limited skip"]
     end
 
     subgraph Graph["Graph API"]
-        G1["List media"]
-        G2["Per-reel insights<br/>skip_rate · views"]
+        G2["List media + per-reel insights"]
+        G3["429 → backoff 1–15 min"]
     end
 
     subgraph Store["Database"]
@@ -976,9 +982,17 @@ flowchart LR
         D2["instagram_api_hourly"]
     end
 
-    O1 --> O2 --> O3 --> S1 & S2 & S3
-    S1 & S2 & S3 --> G1 --> G2 --> D1 --> D2
+    O1 --> O2 --> O3
+    S1 --> G1
+    S2 --> G1
+    S3 --> G1
+    G1 --> G2
+    G2 --> G3
+    G3 -.->|retry| G1
+    G2 --> D1 --> D2
 ```
+
+*Source of truth: `docs/instagram-setup.md`, `lib/ingestion/sync.ts`, `lib/services/ingestion.service.ts`.*
 
 
 ## 🔧 Activate Skills
@@ -1484,9 +1498,40 @@ grep -r "interface IQueueEngine" lib/queue/types.ts
 
 # PHASE 7 — AI/LLM ENGINE
 
+> **Implemented stack (verify in repo):** `lib/ai/model-router.ts`, `lib/ai/llm-client.ts` (`callLLMPure`), `lib/ai/llm-with-fallback.ts` (`callLLMWithFallback`), `lib/ai/scoring-engine.ts`, service orchestration in `lib/services/scoring.service.ts`, `strategy.service.ts`, `trends.service.ts`. **Providers: Gemini + DeepSeek only** (OpenAI removed). **Eval:** `npm run eval:llm:fallback`, `npm run eval:llm`, `npm run test:service:branching`, `npx tsx scripts/test-scoring.ts`, `npx tsx scripts/test-trends.ts`. **Diagrams:** `docs/plans/2026-05-25-llm-routing.md`.
+
 ## Goal
 
 Build the AI scoring engine, strategy generator, prompt templates, output parsing, fallback system, and cost tracking. After this phase, posts (Instagram Reels and TikTok Videos) can be scored across 9 dimensions and personalized strategies can be generated.
+
+### LLM resilient routing (reference diagrams)
+
+```mermaid
+flowchart TB
+    subgraph Services["Services"]
+        SC[scoring.service]
+        ST[strategy.service]
+        TR[trend-generator]
+    end
+    subgraph Wrapper["callLLMWithFallback"]
+        RES[resolveEffectiveOperation + max 3 candidates]
+        LOOP[Per-candidate loop]
+    end
+    subgraph Heuristics["On exhaust"]
+        H1[calculateHeuristicScore]
+        H2[buildHeuristicStrategy]
+        H3[getHeuristicTrendFallback]
+    end
+    SC --> RES
+    ST --> RES
+    TR --> RES
+    LOOP -->|success| SC
+    LOOP -.->|fail| H1
+    LOOP -.->|fail| H2
+    LOOP -.->|fail| H3
+```
+
+*Source of truth: `lib/ai/llm-with-fallback.ts` — full detail in `docs/plans/2026-05-25-llm-routing.md`.*
 
 ## 🔧 Activate Skills
 
@@ -1495,7 +1540,7 @@ Build the AI scoring engine, strategy generator, prompt templates, output parsin
 | `ai-product` | **PRIMARY SKILL.** Structured output with Zod validation, circuit breaker for LLM failures, cost tracking per request, prompt versioning. Every pattern in this skill applies directly. |
 | `ai-engineer` | Production-ready LLM applications — advanced prompt engineering, multi-model routing, token budget management |
 | `llm-evaluation` | LLM output quality evaluation — scoring rubrics, automated metrics, A/B testing prompts |
-| `gemini-api-dev` | Alternative LLM provider patterns — useful if adding Gemini as a fallback model alongside OpenAI |
+| `gemini-api-dev` | Gemini REST patterns — primary budget path for batch scoring and fallback candidates |
 
 > **Critical `ai-product` patterns to enforce:**
 > 1. **Structured output with validation** — Every LLM response parsed as JSON → validated with Zod schema → fallback if invalid
@@ -1516,13 +1561,13 @@ Build the AI scoring engine, strategy generator, prompt templates, output parsin
 Complete **all** of these before running the agent prompt:
 
 1. **Confirm Phase 6 gate passed** — SKIP LOCKED with zombie-recovery works, idempotency keys prevent duplicates, dead letter queue functional, serverless batch processing loop implemented, `IQueueEngine` interface defined.
-2. **Get an OpenAI API key** — Go to [platform.openai.com](https://platform.openai.com) → API Keys → Create new secret key. Copy the `sk-...` key.
-3. **Add billing to OpenAI** — Ensure your OpenAI account has a payment method and sufficient credits. The prompt evaluation test script will make real API calls.
-4. **Set OpenAI env vars in `.env.local`** — Add `OPENAI_API_KEY=sk-...` to your `.env.local` file.
+2. **Configure LLM provider keys** — Set `GEMINI_API_KEY` and/or `DEEPSEEK_API_KEY` in `.env.local` (at least one required for live AI; eval scripts pass without keys).
+3. **Optional live smoke** — `EVAL_LLM_LIVE=1 npm run eval:llm` (network + keys required).
+4. **Review routing docs** — Read `docs/plans/2026-05-25-llm-routing.md` and spec §7.4–7.5 before changing fallback behavior.
 5. **Verify queue handler skeleton exists** — Confirm `lib/queue/handlers.ts` exists and has skeleton handler registrations from Phase 6.
 6. **Read the SEABS spec §7** — Open the spec and read the entire §7 section (AI/LLM Engine) including §7.2 (Scoring Dimensions — all 9 including skip_rate and completion_rate), §7.3 (Strategy Generation), §7.4 (LLM Wrapper), §7.5 (Fallback System), §7.6 (SWR Caching). Also read §12.3 (Cost Tracking) and §18 RULE 3 / §19 (Module Boundaries).
 7. **Read the skill SKILL.md files** — Open and read the SKILL.md for `ai-product`, `ai-engineer`, `llm-evaluation`, `gemini-api-dev`. The `ai-product` skill is the primary skill for this phase.
-8. **Estimate API costs** — The test script will score 10 mock posts with multiple passes. Estimated cost: ~$0.50–$2.00 depending on model and token usage. Confirm you're comfortable with this spend on your OpenAI account.
+8. **Estimate API costs** — Live eval and manual scoring use Gemini/DeepSeek per `model-router.ts` pricing. Heuristic paths (`test-scoring.ts`, `eval:llm:fallback`) do not call providers.
 9. **Keep dev server running** — Ensure `npm run dev` is active in a separate terminal.
 
 ## Agent Prompt
@@ -1531,14 +1576,15 @@ Complete **all** of these before running the agent prompt:
 You are a senior AI engineer building the LLM-powered scoring and strategy engine for Trendoraa.
 
 CONTEXT:
-- OpenAI GPT-4o-mini (primary, cost-effective) and GPT-4o (premium tier)
-- 9 scoring dimensions including skip_rate_score (IG Reels) and completion_rate_score (TikTok Videos) (spec §7.2, updated for April 2025)
-- Strategy generation produces structured content calendars (spec §7.3)
-- Every LLM call goes through a wrapper (spec §7.4)
-- AI module is a PURE FUNCTION: no DB writes, no external API calls (spec §7.1)
-- Deterministic fallback when LLM fails or budget exceeded (spec §7.5) with `source: "heuristic"`
-- Cost tracking and user monthly budget-checking executed strictly in the calling services (spec §7.4, §12.3)
-- Stale-While-Revalidate (SWR) caching model for scores (24hr validity, async background revalidation, 1hr force-refresh cooldown) implemented at the service layer (spec §7.6)
+- Multi-provider routing: Gemini 2.0/2.5 Flash + DeepSeek V4 Chat/Reasoner (OpenAI removed)
+- Services call callLLMWithFallback; wrapper calls callLLMPure per candidate (spec §7.4, docs/plans/2026-05-25-llm-routing.md)
+- resolveEffectiveOperation: scoring + postedAt > 48h → batch_scoring (Gemini-first candidates)
+- isRateLimit failures slide to next model without schema repair; one repair attempt per model on Zod failure
+- Gemini 15 RPM tracked in-memory; RPM recorded only after successful responses
+- 9 scoring dimensions including skip_rate (IG) and completion_rate (TikTok) (spec §7.2)
+- Strategy + trends via same fallback wrapper; heuristic engines when wrapper exhausts or budget blocks (spec §7.5)
+- AI module under lib/ai/: no DB writes; services own budget checks, usage increments, persistence (spec §7.1, §18 RULE 3)
+- Stale-While-Revalidate (SWR) for scores in scoring.service (spec §7.6)
 
 PREREQUISITE: Phases 0-6 complete.
 
@@ -1588,14 +1634,10 @@ TASK: Create these files:
    - generateStrategy(params: { accountData, performanceData, strategyConfig, model? }): Promise<StrategyOutput | StrategyFallback>
    - Same pattern as scoring: Pure function without DB dependencies. Wraps LLM call -> validate -> fallback on failure.
 
-8. FILE: lib/ai/llm-wrapper.ts
-   Central LLM call wrapper (PURE function) from spec §7.4:
-   - callLLMPure<T>(params): Promise<{ success: true, data: T, tokensUsed: number, costUsd: number, latencyMs: number } | { success: false, error: string }>
-   - Timeout (30 seconds)
-   - JSON mode enforced (response_format: { type: "json_object" })
-   - Temperature: 0.3 (low for consistency)
-   - Output validation with provided Zod schema
-   - Fallback on any failure (parse error, timeout, API error)
+8. FILE: lib/ai/llm-client.ts + lib/ai/llm-with-fallback.ts + lib/ai/model-router.ts
+   - callLLMPure<T> in llm-client.ts: single-model Gemini/DeepSeek adapters, Zod validation, isRateLimit detection
+   - callLLMWithFallback<T> in llm-with-fallback.ts: candidate loop (max 3), schema repair, postedAt age routing
+   - model-router.ts: ROUTING_TABLE, geminiRateLimiter, resolveEffectiveOperation, calculateCost
 
 9. FILE: lib/services/scoring.service.ts
    Service layer that orchestrates AI scoring with DB reads/writes and caching:
@@ -1655,7 +1697,9 @@ AI OUTPUT VALIDATION RULES:
 | `lib/ai/scoring-engine.ts` | Scoring engine |
 | `lib/ai/strategy-generator.ts` | Strategy generator |
 | `lib/ai/trend-generator.ts` | Trend generator pure adapter |
-| `lib/ai/llm-wrapper.ts` | Central LLM wrapper |
+| `lib/ai/llm-client.ts` | Pure single-model client (`callLLMPure`) |
+| `lib/ai/llm-with-fallback.ts` | Resilient multi-model wrapper |
+| `lib/ai/model-router.ts` | Routing table + Gemini RPM limiter |
 | `lib/services/scoring.service.ts` | Scoring service (DB bridge) |
 | `lib/services/strategy.service.ts` | Strategy service (DB bridge) |
 | `lib/services/trends.service.ts` | Trend service (Daily Cache & DB bridge) |
@@ -1691,21 +1735,37 @@ grep -r "\.parse\|\.safeParse" lib/ai/output-parser.ts
 grep -r "skip_rate\|completion_rate" lib/ai/prompts/scoring.ts lib/ai/output-parser.ts
 # Expected: At least 2 matches
 
-# CHECK 7: JSON mode enforced
-grep -r "json_object" lib/ai/llm-wrapper.ts
+# CHECK 7: JSON mode / Gemini responseMimeType
+grep -r "json_object\|application/json" lib/ai/llm-client.ts
 # Expected: At least 1 match
 
-# CHECK 8: Temperature is 0.3 (not higher)
-grep -r "temperature.*0.3" lib/ai/llm-wrapper.ts
+# CHECK 8: Temperature is 0.3 (not higher) where supported
+grep -r "temperature.*0.3" lib/ai/llm-client.ts lib/ai/llm-with-fallback.ts
 # Expected: At least 1 match
+
+# CHECK 8b: LLM fallback eval (no network required)
+npm run eval:llm:fallback
+# Expected: all deterministic tests pass
+
+# CHECK 8c: Routing + limiter eval
+npm run eval:llm
+# Expected: sections 1–4 pass (live section optional)
+
+# CHECK 8d: Service branching + heuristic schema
+npm run test:service:branching
+# Expected: pass
+
+# CHECK 8e: Heuristic scoring harness
+npx tsx scripts/test-scoring.ts
+# Expected: pass
 
 # CHECK 9: SWR Caching & Force-Refresh Cooldown
 grep -r "scored_at\|forceRefresh\|cooldown" lib/services/scoring.service.ts
 # Expected: Stale-While-Revalidate caching and 1-hour force-refresh cooldown logic present
 
-# CHECK 10: Cost calculation uses correct pricing
-grep -r "0.00015\|0.0006\|0.005\|0.015" lib/ai/cost-calculator.ts
-# Expected: GPT-4o-mini and GPT-4o pricing present
+# CHECK 10: Cost calculation uses Gemini/DeepSeek pricing
+grep -r "deepseek-chat\|gemini-2.0-flash\|inputPer1KTokens" lib/ai/model-router.ts
+# Expected: model configs present
 
 # CHECK 11: Prompt evaluation test suite runs
 npx tsx scripts/test-prompts.ts
@@ -1725,11 +1785,17 @@ npx tsx scripts/test-prompts.ts
 - [ ] Queue handlers registered for SCORE_POST and GENERATE_STRATEGY
 - [ ] Stale-While-Revalidate (SWR) cache read/refresh logic (24hr expiry, async revalidation, 1hr force-refresh cooldown) enforced in services
 - [ ] Cost calculation uses correct model pricing
-- [ ] Prompt evaluation script (`scripts/test-prompts.ts`) runs successfully and passes all validations
+- [ ] `npm run eval:llm:fallback` passes (deterministic)
+- [ ] `npm run eval:llm` passes routing sections (live optional)
+- [ ] `npm run test:service:branching` passes
+- [ ] `npx tsx scripts/test-scoring.ts` passes
+- [ ] Services call `callLLMWithFallback` (not `callLLMPure` directly)
 
 ---
 
 # PHASE 8 — FRONTEND
+
+> **Onboarding / OAuth diagrams:** `docs/onboarding-flow.md` (dashboard shell routing + connect/sandbox paths).
 
 ## Goal
 

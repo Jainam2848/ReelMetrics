@@ -101,13 +101,17 @@ flowchart TB
     API -->|"Enqueue jobs only"| DB
 
     Worker -->|"~26 calls/sync<br/>429 backoff 1–15 min"| Meta
-    Worker -->|"Scoring & strategy<br/>usage caps enforced"| LLM
+    Worker -->|"callLLMWithFallback<br/>usage caps enforced"| LLM
     API <-->|"Checkout + webhooks"| Stripe
     Worker -.->|"SEND_EMAIL jobs"| Resend
 
     Meta -->|"Webhooks fast-ack"| API
     API -->|"CRON_SECRET<br/>/cron/ingest enqueue<br/>/queue/process run"| Worker
 ```
+
+> **Legend:** solid arrows = synchronous request/response · dashed arrows = optional or async jobs
+
+*Source of truth: `app/(dashboard)/*`, `app/api/*`, `lib/queue/processor.ts`, `lib/db/schema.ts`.*
 
 ---
 
@@ -127,20 +131,25 @@ Integration with external social platforms is subject to structural limits. All 
 * **Manual Cooldown:** User-initiated `POST /api/accounts/:id/sync` keeps the 5-minute cooldown; cron/webhook jobs pass `skipCooldown: true`.
 
 ```mermaid
-flowchart LR
-    subgraph Triggers
-        M[Manual sync]
-        C[Cron enqueue]
-        W[Webhook debounce]
+flowchart TB
+    subgraph Triggers["Sync triggers"]
+        M[Manual POST /api/accounts/:id/sync]
+        C[Cron POST /api/cron/ingest]
+        W[Webhook debounced SYNC_ACCOUNT]
     end
-    subgraph Guards
+    subgraph Guards["Pre-flight guards"]
         G[Quota · mutex · cooldown]
     end
-    subgraph API
-        IG[Graph API ~26 calls]
+    subgraph Fetch["Meta Graph API"]
+        IG[~26 calls per sync · 429 backoff in post-fetcher]
     end
-    M & C & W --> G --> IG
+    M --> G
+    C --> G
+    W --> G
+    G --> IG
 ```
+
+*Source of truth: `lib/ingestion/sync.ts`, `lib/ingestion/post-fetcher.ts`, `lib/ingestion/rate-limit-policy.ts`, `lib/queue/processor.ts`.*
 
 ### 4.2 TikTok Display API v2+
 * **Quota & Rate Limits:** 10,000 requests per day per client key.
