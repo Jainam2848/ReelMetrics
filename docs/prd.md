@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD) — Trendoraa
 
-**Document Version:** 1.2.0  
-**Status:** Validated & Approved (Instagram MVP annotations)  
+**Document Version:** 1.3.0  
+**Status:** Validated & Approved (Instagram MVP annotations — Stories + Analytics overhaul)  
 **Author:** Senior Product Manager  
 
 > **Instagram MVP implementation map** — verify acceptance criteria against `lib/db/schema.ts` and `app/api/**`:
@@ -84,11 +84,11 @@ flowchart TB
         FE["Dashboard UI<br/><code>app/(dashboard)</code><br/>Reels · Scores · Strategy · Billing"]
         API["API Layer<br/><code>app/api/*</code><br/>OAuth · Sync · Webhooks · Cron"]
         Worker["Queue Processor<br/><code>lib/queue/processor.ts</code><br/>SKIP LOCKED · 14s batches"]
-        DB[("PostgreSQL / Supabase<br/><b>MVP tables:</b> instagram_accounts<br/>reels · reel_scores · job_queue<br/>instagram_api_hourly · strategies")]
+        DB[("PostgreSQL / Supabase<br/><b>MVP tables:</b> instagram_accounts<br/>reels · reel_scores · job_queue<br/>stories · account_insights_daily<br/>audience_history · strategies")]
     end
 
     subgraph External["External Services"]
-        Meta["Meta Graph API v22<br/>Reels · insights · skip_rate"]
+        Meta["Meta Graph API v22<br/>Reels · Stories · insights · skip_rate"]
         LLM["LLM Providers<br/>Gemini · DeepSeek"]
         Stripe["Stripe<br/>Checkout · Subscriptions"]
         Resend["Resend<br/>Transactional email"]
@@ -209,7 +209,9 @@ As a Creator, I want the system to automatically sync my connected account posts
 
 #### Story 4: Deep Insights Harvesting
 As a Creator, I want the system to harvest deep insights specific to each platform so that I can understand metric-level performance.
-* **Acceptance Criterion 1 (Instagram — implemented):** The Instagram pipeline queries `/{media-id}/insights`, mapping `views`, `total_views`, `reels_skip_rate` (stored as `skip_rate`), and `public_reposts` to the **`reels`** table via `REEL_INSIGHT_METRICS`.
+* **Acceptance Criterion 1 (Instagram Reels — implemented):** The Instagram pipeline queries `/{media-id}/insights`, mapping `views`, `total_views`, `reels_skip_rate` (stored as `skip_rate`), and `public_reposts` to the **`reels`** table via `REEL_INSIGHT_METRICS`.
+* **Acceptance Criterion 1b (Instagram Stories — implemented):** The pipeline calls `fetchInstagramStories()` (`lib/ingestion/post-fetcher.ts`) to fetch active Story media plus per-story insights (`impressions`, `reach`, `replies`, `exits`), upserting into the **`stories`** table (conflict key: `ig_media_id`). Completion rate is computed and stored as `stories.completion_rate`.
+* **Acceptance Criterion 1c (Account Daily Insights — implemented):** `fetchAccountDailyInsights()` pulls account-level `reach`, `impressions`, and `profile_views` for a configurable lookback window, upserting into **`account_insights_daily`** (conflict key: `account_id + date`). Audience follower snapshots are stored in **`audience_history`** for trend charting.
 * **Acceptance Criterion 2:** The TikTok pipeline queries `/v2/video/list/` fields, mapping views, likes, shares, comments, `tiktok_completion_rate`, and `tiktok_saves_count`. Null values write literal `null` without crashing the ingestion process.
 
 #### Story 5: Manual Sync with Cross-Platform Cooldown
@@ -267,12 +269,12 @@ As a System, I want to process Stripe payment webhooks asynchronously so that th
 #### Story 12: GDPR Data Export Portability
 As a Creator, I want to export all my personal data and cross-platform social metrics in a structured JSON file so that I can control my data portability.
 * **Acceptance Criterion 1:** Sending a GET request to `/api/auth/me/data-export` returns a `200 OK` status and triggers the download of a structured JSON file containing all user data, connected accounts, and ingested metric logs.
-* **Acceptance Criterion 2:** The export process retrieves and compiles data from `users`, `subscriptions`, **`instagram_accounts`**, **`reels`**, **`reel_scores`**, and `strategies` within 5 seconds of the initial request (MVP table names; spec target uses `social_accounts` / `posts` / `post_scores`).
+* **Acceptance Criterion 2:** The export process retrieves and compiles data from `users`, `subscriptions`, **`instagram_accounts`**, **`reels`**, **`reel_scores`**, **`stories`**, **`account_insights_daily`**, and `strategies` within 5 seconds of the initial request (MVP table names; spec target uses `social_accounts` / `posts` / `post_scores`).
 * **Status (Instagram MVP):** **Implemented.** Settings → "Export Data" calls `GET /api/auth/me/data-export` and downloads JSON. Tokens and credentials are omitted from the export payload.
 
 #### Story 13: Cascade Account Purge
 As a Creator, I want to delete my account and purge all my personal and social data from the system so that my privacy is respected.
-* **Acceptance Criterion 1:** Triggering account deletion executes a cascading database delete that permanently deletes the user's records from **`instagram_accounts`**, **`reels`**, **`reel_scores`**, `strategies`, and `usage_tracking` (MVP table names; spec target: `social_accounts`, `posts`, `post_scores`). Cascade is enforced via FK `ON DELETE CASCADE` on `instagram_accounts`.
+* **Acceptance Criterion 1:** Triggering account deletion executes a cascading database delete that permanently deletes the user's records from **`instagram_accounts`**, **`reels`**, **`reel_scores`**, **`stories`**, **`account_insights_daily`**, **`audience_history`**, `strategies`, and `usage_tracking` (MVP table names; spec target: `social_accounts`, `posts`, `post_scores`). Cascade is enforced via FK `ON DELETE CASCADE` on `instagram_accounts`.
 * **Acceptance Criterion 2:** The deletion process updates all matching `user_id` values inside the security `audit_log` table to `NULL`, retaining anonymous historical action lines for compliance.
 * **Status (Instagram MVP):** **Implemented.** Settings → "Delete account" calls `DELETE /api/auth/me` and signs the user out on success.
 

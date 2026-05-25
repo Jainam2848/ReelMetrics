@@ -132,7 +132,12 @@ Production OAuth is highly prone to failures (e.g., user declines permissions, u
 
 ## 📂 Key Code Components
 
-* **`app/(dashboard)/page.tsx`:** Primary client dashboard controller. Coordinates the onboarding stepper state machine, simulated progress syncing, loading state blocks, and personalized strategical widgets.
+* **`app/(dashboard)/page.tsx`:** Primary client dashboard controller. Coordinates the onboarding stepper state machine, simulated progress syncing, loading state blocks, and personalized strategy widgets. Renders `ReelPreviewPlayer` for best-reel spotlight and `OnboardingCore3D` for the 3D perspective card onboarding overlay.
 * **`components/dashboard/oauth-error-banner.tsx`:** Handles translation and self-cleaning dismissal of callback parameters.
 * **`app/api/accounts/demo/route.ts`:** Seeding database handler for mock profiles.
 * **`components/shared/active-account-context.tsx`:** Coordinates active account state across the entire panel.
+* **`components/dashboard/growth-matrix.tsx`:** Physics-based 9-dimension scoring matrix with staggered AnimeJS entry animations, spring-physics cell reveals, and an SVG retention chart with morphing path transitions. Instance-scoped `<linearGradient>` IDs (via `React.useId()`) prevent gradient bleed when multiple instances are mounted concurrently.
+* **`components/shared/sweep-transition.tsx`:** Cinematic liquid SVG screen-wipe overlay for page/state transitions. Uses a two-phase path morph (sweep-in → hold → sweep-out) with an `onHalfway` callback for mid-transition content swaps, eliminating flash-of-content.
+* **`components/dashboard/onboarding-core-3d.tsx`:** 3D perspective card stack for the onboarding wizard with depth-sorted layering and GPU-accelerated `transform: perspective()` animations.
+* **`components/dashboard/reel-preview-player.tsx`:** Inline reel preview card with animated progress bar and engagement stat overlays.
+* **`components/dashboard/strategy-matrix-3d.tsx`:** 3D-perspective strategy scoring matrix with animated dimension bars used on the Strategy page.

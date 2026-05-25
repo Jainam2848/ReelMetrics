@@ -1,7 +1,7 @@
 # Architecture Decision Record (ADR) — Trendoraa
 
-**Document Version:** 1.1.0  
-**Status:** Approved (Instagram MVP annotations)  
+**Document Version:** 1.2.0  
+**Status:** Approved (Instagram MVP — Stories, analytics tables, animation layer)  
 **Author:** Software Architect & Principal Engineer  
 
 > **Instagram MVP vs. target architecture:** The **implemented** Instagram MVP uses platform-specific tables (`instagram_accounts`, `reels`, `reel_scores`) and routes (`/api/accounts/:id/reels`, `/api/reels/:id/score`). §8 below describes the **cross-platform target** (`social_accounts`, `posts`, `post_scores`) planned for Phase 11 TikTok expansion — not the current production schema.
@@ -22,7 +22,7 @@ flowchart TB
         FE["Frontend SPA<br/>Next.js · shadcn/ui"]
         API["API Routes<br/>OAuth · Sync · Webhooks · Cron"]
         Worker["Queue Processor<br/>lib/queue/processor.ts"]
-        DB[("PostgreSQL<br/>instagram_accounts · reels<br/>reel_scores · job_queue")]
+        DB[("PostgreSQL<br/>instagram_accounts · reels<br/>stories · account_insights_daily<br/>audience_history · reel_scores · job_queue")]
     end
 
     subgraph External["External"]
@@ -51,6 +51,7 @@ The core technology stack is strictly locked. No substitutions or additions are 
 
 | Layer | Technology | Architectural Rationale |
 |:---|:---|:---|
+| **Animation Engine** | AnimeJS v4 (dynamic import) | Physics-based, GPU-accelerated micro-animations (spring stagger, SVG morphing, liquid wipe transitions) loaded client-side only via dynamic `import()` inside `useEffect` to satisfy SSR/hydration boundaries. |
 | **Frontend Framework** | Next.js 14+ (App Router) | Enables React Server Components (RSC) to minimize client-side bundle sizes and leverages Server-Side Rendering (SSR) for instantaneous page loading. |
 | **UI Styling** | shadcn/ui + Tailwind CSS v4 | Provides premium, custom-tailored CSS styling based on modern design standards with full accessibility out of the box. |
 | **Backend API** | Next.js API Routes + Server Actions | Establishes a collocated, type-safe API routing framework without the overhead of deploying and configuring a separate server application. |
@@ -271,6 +272,9 @@ Instead of maintaining separate platform tables long-term, the **target** system
 ```mermaid
 erDiagram
     INSTAGRAM_ACCOUNTS ||--o{ REELS : owns
+    INSTAGRAM_ACCOUNTS ||--o{ STORIES : owns
+    INSTAGRAM_ACCOUNTS ||--o{ ACCOUNT_INSIGHTS_DAILY : tracks
+    INSTAGRAM_ACCOUNTS ||--o{ AUDIENCE_HISTORY : records
     REELS ||--o| REEL_SCORES : has_score
     INSTAGRAM_ACCOUNTS ||--o{ INSTAGRAM_API_HOURLY : tracks_quota
 
@@ -290,7 +294,34 @@ erDiagram
         int views_count
         decimal skip_rate
         int public_reposts
+        text data_trust_label
         timestamp timestamp
+    }
+    STORIES {
+        uuid id PK
+        uuid account_id FK
+        text ig_media_id UK
+        int impressions
+        int reach
+        int replies
+        int exits
+        decimal completion_rate
+        text data_trust_label
+    }
+    ACCOUNT_INSIGHTS_DAILY {
+        uuid id PK
+        uuid account_id FK
+        timestamp date
+        int reach
+        int impressions
+        int profile_views
+    }
+    AUDIENCE_HISTORY {
+        uuid id PK
+        uuid account_id FK
+        timestamp timestamp
+        int total_followers
+        int new_followers
     }
     REEL_SCORES {
         uuid id PK
