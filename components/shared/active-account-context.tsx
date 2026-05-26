@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import useSWR from "swr";
+import useSWR, { KeyedMutator } from "swr";
 import { apiFetcher } from "@/lib/api/client-fetcher";
 
 export interface SocialAccountDetails {
@@ -29,8 +29,8 @@ interface ActiveAccountContextType {
   setActiveAccount: (account: SocialAccountDetails) => void;
   accounts: SocialAccountDetails[];
   isLoading: boolean;
-  error: any;
-  mutate: () => Promise<any>;
+  error: Error | null;
+  mutate: KeyedMutator<SocialAccountDetails[]>;
 }
 
 const ActiveAccountContext = createContext<ActiveAccountContextType | undefined>(undefined);
@@ -50,7 +50,7 @@ const fetcher = async (url: string): Promise<SocialAccountDetails[]> => {
 };
 
 export function ActiveAccountProvider({ children }: { children: React.ReactNode }) {
-  const { data: accounts = [], error, isLoading, mutate } = useSWR<SocialAccountDetails[]>("/api/accounts", fetcher, {
+  const { data: accounts = [], error, isLoading, mutate } = useSWR<SocialAccountDetails[], Error>("/api/accounts", fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: true,
   });
@@ -59,21 +59,23 @@ export function ActiveAccountProvider({ children }: { children: React.ReactNode 
 
   // Sync state when accounts list finishes loading
   useEffect(() => {
-    if (accounts.length > 0) {
-      // Keep the current active account if it still exists in the newly fetched list
-      const matches = activeAccount ? accounts.find((a) => a.id === activeAccount.id) : null;
-      if (matches) {
-        setActiveAccountState(matches);
-      } else {
-        // Automatically default to the first connected account
-        const firstAccount = accounts[0];
-        if (firstAccount) {
-          setActiveAccountState(firstAccount);
+    requestAnimationFrame(() => {
+      if (accounts.length > 0) {
+        // Keep the current active account if it still exists in the newly fetched list
+        const matches = activeAccount ? accounts.find((a) => a.id === activeAccount.id) : null;
+        if (matches) {
+          setActiveAccountState(matches);
+        } else {
+          // Automatically default to the first connected account
+          const firstAccount = accounts[0];
+          if (firstAccount) {
+            setActiveAccountState(firstAccount);
+          }
         }
+      } else {
+        setActiveAccountState(null);
       }
-    } else {
-      setActiveAccountState(null);
-    }
+    });
   }, [accounts, activeAccount]);
 
   const setActiveAccount = useCallback((account: SocialAccountDetails) => {
@@ -87,7 +89,7 @@ export function ActiveAccountProvider({ children }: { children: React.ReactNode 
         setActiveAccount,
         accounts,
         isLoading,
-        error,
+        error: error || null,
         mutate,
       }}
     >

@@ -95,16 +95,24 @@ export default function DashboardHome() {
   useEffect(() => {
     const savedOrder = localStorage.getItem("trendoraa_layout_order");
     const savedHidden = localStorage.getItem("trendoraa_hidden_blocks");
-    if (savedOrder) {
-      try {
-        setLayoutOrder(JSON.parse(savedOrder));
-      } catch (e) {}
-    }
-    if (savedHidden) {
-      try {
-        setHiddenBlocks(JSON.parse(savedHidden));
-      } catch (e) {}
-    }
+    
+    // Defer the state restoration to the next frame to prevent hydration re-render cascades
+    requestAnimationFrame(() => {
+      if (savedOrder) {
+        try {
+          setLayoutOrder(JSON.parse(savedOrder));
+        } catch {
+          // Keep default
+        }
+      }
+      if (savedHidden) {
+        try {
+          setHiddenBlocks(JSON.parse(savedHidden));
+        } catch {
+          // Keep default
+        }
+      }
+    });
   }, []);
 
   const moveBlock = (index: number, direction: "up" | "down") => {
@@ -446,7 +454,7 @@ export default function DashboardHome() {
                         We connected your test credentials and imported mock data. Press continue to view your dashboard!
                       </p>
                       <button
-                        onClick={mutateAccounts}
+                        onClick={() => mutateAccounts()}
                         className="mt-4 px-6 min-h-[40px] bg-white text-black font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-gray-100 flex items-center gap-2 mx-auto active:scale-95"
                       >
                         <span>Go to Dashboard</span>
