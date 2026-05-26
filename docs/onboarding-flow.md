@@ -62,7 +62,7 @@ When a user has no connected accounts (`accounts.length === 0`), `app/(dashboard
 ### 1. Step 1: Content Niche Selection
 * **UI Action:** A responsive grid presenting six key content niches: Tech & Gadgets, Comedy & Skits, Business & Finance, Education & How-to, Lifestyle & Vlogs, and Fashion & Beauty.
 * **Goal:** Lowers entry friction and establishes the user's creative identity inside the system. 
-* **State Persisted:** `niche` state variable.
+* **State Persisted:** `niche` parameter is stored in the database (`instagram_accounts.niche`). During live OAuth redirect loops, the parameter is preserved via secure, temporary HTTP-only cookies (`ig_oauth_niche`).
 
 ### 2. Step 2: Growth Goal Selection
 * **UI Action:** Creator chooses their primary operational growth metric focus:
@@ -70,7 +70,7 @@ When a user has no connected accounts (`accounts.length === 0`), `app/(dashboard
   * **Engagement Rate** (Optimize shares/saves)
   * **Active Followers** (Posting schedule velocity)
 * **Goal:** Establishes user intent and sets expectations for customized metrics feedback.
-* **State Persisted:** `goal` state variable.
+* **State Persisted:** `goal` parameter is stored in the database (`instagram_accounts.goal`). During live OAuth redirect loops, the parameter is preserved via secure, temporary HTTP-only cookies (`ig_oauth_goal`).
 
 ### 3. Step 3: Social Connection, Pre-Flight Validation, and Sandbox Fallback
 This step offers a highly resilient and supportive social linking portal:
@@ -100,7 +100,7 @@ To provide immediate value without requiring live production authorization, the 
 
 ## 🎨 Personalized Workspace Matching
 
-To prevent an immersion break after onboarding, the home dashboard personalized strategy cards dynamically read the user's selected niche and goal states:
+To prevent an immersion break after onboarding, the home dashboard personalized strategy cards dynamically read the user's persisted niche and goal parameters directly from the loaded database account record, falling back to local React wizard states during active onboarding:
 
 ### 1. Topic Strategy Customization
 The sample weekly content strategy lists custom topics corresponding directly to the selected niche in Step 1 using a defined constant map:
