@@ -7,7 +7,8 @@ import {
   reelScores,
   strategies,
   usageTracking,
-  auditLog
+  auditLog,
+  plans
 } from './schema';
 
 async function seed() {
@@ -24,7 +25,50 @@ async function seed() {
     await db.delete(instagramAccounts);
     await db.delete(subscriptions);
     await db.delete(users);
+    await db.delete(plans);
     console.log('✨ Database cleared.');
+
+    // 1.5. Seed Default Plans
+    console.log('📦 Seeding default plans...');
+    await db.insert(plans).values([
+      {
+        id: 'free',
+        name: 'Free',
+        priceMonthly: 0,
+        maxAccounts: 1,
+        maxReels: 10,
+        aiTier: 'gpt-4o-mini',
+        features: { trendDetection: false, contentCalendar: false }
+      },
+      {
+        id: 'creator',
+        name: 'Creator',
+        priceMonthly: 39,
+        maxAccounts: 2,
+        maxReels: 50,
+        aiTier: 'gpt-4o-mini',
+        features: { trendDetection: false, contentCalendar: true }
+      },
+      {
+        id: 'pro',
+        name: 'Pro',
+        priceMonthly: 89,
+        maxAccounts: 5,
+        maxReels: 200,
+        aiTier: 'gpt-4o',
+        features: { trendDetection: true, contentCalendar: true }
+      },
+      {
+        id: 'agency',
+        name: 'Agency',
+        priceMonthly: 249,
+        maxAccounts: 20,
+        maxReels: 1000,
+        aiTier: 'gpt-4o',
+        features: { trendDetection: true, contentCalendar: true, teamAccess: true, whiteLabel: true, priorityAi: true }
+      }
+    ]);
+    console.log('✅ Seeded default plans.');
 
     // 2. Insert Test Users
     console.log('👤 Seeding test users...');
