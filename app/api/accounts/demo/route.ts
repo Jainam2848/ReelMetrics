@@ -6,7 +6,6 @@
  * for each user, preventing any cross-user account hijacking or state interference.
  */
 
-import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api/middleware";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { db } from "@/lib/db";
@@ -20,6 +19,16 @@ export const POST = withRateLimit(
     if (process.env.NODE_ENV === "production") {
       return apiError("FORBIDDEN", "Sandbox demo is disabled in production environments.");
     }
+
+    // Parse niche and goal parameters from request body for custom database personalization
+    let body: { niche?: string; goal?: string } = {};
+    try {
+      body = await request.json().catch(() => ({}));
+    } catch {
+      // Gracefully handle empty or malformed requests
+    }
+    const niche = body.niche || null;
+    const goal = body.goal || null;
 
     try {
       // 1. Check if the user already has their own sandbox demo account
@@ -63,6 +72,8 @@ export const POST = withRateLimit(
             followersCount: 1250,
             syncStatus: "completed",
             lastSyncedAt: new Date(),
+            niche,
+            goal,
           })
           .returning();
 
@@ -72,7 +83,7 @@ export const POST = withRateLimit(
         }
 
         // Seed 2 mock reels for this private demo account to ensure exploratory data is loaded
-        const [reel1] = await db
+        await db
           .insert(reels)
           .values({
             accountId: newDemoAccount.id,
@@ -111,6 +122,8 @@ export const POST = withRateLimit(
           followersCount: masterAccount.followersCount,
           syncStatus: "completed",
           lastSyncedAt: new Date(),
+          niche,
+          goal,
         })
         .returning();
 

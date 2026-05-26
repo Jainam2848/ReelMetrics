@@ -51,6 +51,8 @@ export interface StrategyPromptContext {
   strategyType: string;
   periodStart: string;
   periodEnd: string;
+  niche?: string | null;
+  goalFocus?: string | null;
 }
 
 function fillTemplate(template: string, vars: Record<string, string | number>): string {
@@ -96,6 +98,8 @@ export function buildScoringPrompt(ctx: ScoringPromptContext): string {
 export function buildStrategyPrompt(ctx: StrategyPromptContext): string {
   return fillTemplate(STRATEGY_PROMPT, {
     platform: ctx.platform,
+    niche: ctx.niche ?? "General",
+    goal_focus: ctx.goalFocus ?? "General Growth",
     posts_count: ctx.postsCount,
     avg_engagement: ctx.avgEngagement.toFixed(2),
     best_post_caption: truncateCaption(ctx.bestPostCaption),

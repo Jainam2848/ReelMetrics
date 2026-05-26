@@ -254,6 +254,9 @@ export async function GET(
     const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
 
     // 7. Upsert instagram_accounts record
+    const niche = request.cookies.get("ig_oauth_niche")?.value || null;
+    const goal = request.cookies.get("ig_oauth_goal")?.value || null;
+
     const existingAccount = await db.query.instagramAccounts.findFirst({
       where: eq(instagramAccounts.igUserId, igUserId),
     });
@@ -278,6 +281,8 @@ export async function GET(
           tokenVersion: existingAccount.tokenVersion + 1,
           followersCount,
           syncStatus: "active",
+          niche: niche ?? existingAccount.niche,
+          goal: goal ?? existingAccount.goal,
           updatedAt: new Date(),
         })
         .where(eq(instagramAccounts.id, existingAccount.id))
@@ -327,6 +332,8 @@ export async function GET(
           tokenVersion: 1,
           followersCount,
           syncStatus: "pending_sync",
+          niche,
+          goal,
         })
         .returning({ id: instagramAccounts.id });
 
@@ -372,6 +379,8 @@ export async function GET(
       new URL(`/dashboard?connected=instagram&account=${accountId}`, APP_URL)
     );
     redirectResponse.cookies.delete("ig_oauth_state");
+    redirectResponse.cookies.delete("ig_oauth_niche");
+    redirectResponse.cookies.delete("ig_oauth_goal");
 
     return redirectResponse;
   } catch (error) {

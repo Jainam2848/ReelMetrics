@@ -20,6 +20,8 @@ export interface SocialAccountDetails {
     | "rate_limited"
     | null;
   platform: "instagram" | "tiktok";
+  niche?: string | null;
+  goal?: string | null;
 }
 
 interface ActiveAccountContextType {

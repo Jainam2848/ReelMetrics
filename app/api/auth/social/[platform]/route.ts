@@ -54,6 +54,10 @@ export const POST = withRateLimit(
       );
     }
 
+    // Extract niche and goal choices if present in the onboarding connect payload
+    const body = await request.json().catch(() => ({}));
+    const { niche, goal } = body;
+
     // Generate CSRF state token
     const state = randomBytes(32).toString("hex");
 
@@ -81,6 +85,26 @@ export const POST = withRateLimit(
       maxAge: 600, // 10 minutes — generous window for OAuth flow
       path: "/",
     });
+
+    if (niche) {
+      response.cookies.set("ig_oauth_niche", String(niche), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 600,
+        path: "/",
+      });
+    }
+
+    if (goal) {
+      response.cookies.set("ig_oauth_goal", String(goal), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 600,
+        path: "/",
+      });
+    }
 
     return response;
   })

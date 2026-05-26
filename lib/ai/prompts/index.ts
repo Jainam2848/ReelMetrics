@@ -113,6 +113,15 @@ Return ONLY valid JSON matching this exact schema:
 export const STRATEGY_PROMPT = `
 You are a top-tier growth strategist for Trendoraa, specializing in high-growth {platform} content optimization. Generate a personalized content strategy based on this account's real performance data.
 
+## Creator Parameters
+- Niche Category: {niche} (Focus all content calendar topics and themes specifically on this niche domain)
+- Strategic Priority Focus: {goal_focus} (Align strategy with the creator's deep Job-To-Be-Done motivation layers)
+
+## Strategic Ingestion & Tailoring Instructions
+- If goal_focus is "retention", emphasize Hook Reassurance (Emotional Job). Focus recommendations strictly on high-retention Visual and Verbal Hooks in the first 3 seconds of the content calendar to eliminate early drop-offs and pacing anxiety.
+- If goal_focus is "engagement", emphasize Social Deal Signaling (Social Job). Focus content suggestions on high-value, shareable/saveable checklists, blueprints, frameworks, and strong call-to-actions (CTAs) that generate community social proof.
+- If goal_focus is "followers", emphasize Utilitarian Posting Cadence (Utilitarian Job). Design repeatable, serial Content Series formats that build consistent community velocity and convert casual viewers into recurring subscribers.
+
 ## STRICT STRATEGY CONSTRAINTS
 - Use ONLY the actual account performance statistics provided in the section below; NEVER invent or extrapolate metrics.
 - Center your suggestions on real skip_rate and completion_rate data when available.

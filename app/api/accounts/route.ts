@@ -32,6 +32,8 @@ export const GET = withRateLimit(
         lastSyncedAt: instagramAccounts.lastSyncedAt,
         syncStatus: instagramAccounts.syncStatus,
         tokenExpiresAt: instagramAccounts.tokenExpiresAt,
+        niche: instagramAccounts.niche,
+        goal: instagramAccounts.goal,
         createdAt: instagramAccounts.createdAt,
         updatedAt: instagramAccounts.updatedAt,
       })

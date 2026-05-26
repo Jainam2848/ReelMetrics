@@ -300,7 +300,9 @@ export async function generateStrategy(userId: string, accountId: string) {
       worstEr: agg.worst?.engagementRate ? parseFloat(agg.worst.engagementRate) : 0,
       avgViews: agg.avgViews,
       avgSkipRate: agg.avgSkipRate,
-      topThemes: "Educational, how-to, niche tips",
+      topThemes: account.niche
+        ? `Niche-specific content themed around ${account.niche}`
+        : "Educational, how-to, niche tips",
       strongestDim: agg.strongest.key,
       strongestAvg: agg.strongest.avg,
       weakestDim: agg.weakest.key,
@@ -310,6 +312,8 @@ export async function generateStrategy(userId: string, accountId: string) {
       strategyType: "weekly",
       periodStart: periodStart.toISOString().slice(0, 10),
       periodEnd: periodEnd.toISOString().slice(0, 10),
+      niche: account.niche,
+      goalFocus: account.goal,
     });
 
     // Premium strategy only: deepseek-reasoner can take longer.

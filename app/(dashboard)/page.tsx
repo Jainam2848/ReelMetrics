@@ -148,6 +148,10 @@ export default function DashboardHome() {
   const [syncStatus, setSyncStatus] = useState<"idle" | "sandbox_syncing" | "success" | "error">("idle");
   const [syncProgress, setSyncProgress] = useState("");
 
+  // Derive active parameters from database if connected, falling back to onboarding stepper states
+  const activeNiche = activeAccount?.niche || niche;
+  const activeGoal = activeAccount?.goal || goal;
+
   const handleNicheSelect = (val: string) => {
     setNiche(val);
     setOnboardingStep(2);
@@ -179,7 +183,11 @@ export default function DashboardHome() {
     }
 
     try {
-      const res = await fetch("/api/accounts/demo", { method: "POST" });
+      const res = await fetch("/api/accounts/demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ niche, goal }),
+      });
       const data = await res.json();
       
       if (data.success) {
@@ -683,25 +691,25 @@ export default function DashboardHome() {
                     label="Proprietary Hook Retention"
                     value={isInstagram ? hookRetentionAvg : "—"}
                     description="Scroll-stop percentage. Renamed from Instagram skip rate."
-                    sourceBadge={goal === "retention" ? "🎯 Goal Focus" : (activeAccount?.platform === "tiktok" ? "TikTok Watch-Through" : "Instagram Reels")}
+                    sourceBadge={activeGoal === "retention" ? "🎯 Goal Focus" : (activeAccount?.platform === "tiktok" ? "TikTok Watch-Through" : "Instagram Reels")}
                   />
                   <MetricCard
                     label="Strategic Watch-Through"
                     value={watchThroughAvg}
                     description="Proprietary Watch-Through score signifying retention completion."
-                    sourceBadge={goal === "retention" ? "🎯 Goal Focus" : (activeAccount?.platform === "tiktok" ? "TikTok Complete" : "Instagram Average")}
+                    sourceBadge={activeGoal === "retention" ? "🎯 Goal Focus" : (activeAccount?.platform === "tiktok" ? "TikTok Complete" : "Instagram Average")}
                   />
                   <MetricCard
                     label="Accumulated Impressions"
                     value={totalViews > 0 ? totalViews.toLocaleString() : "—"}
                     description="Total display views across your tracked short-form content."
-                    sourceBadge={goal === "followers" ? "🎯 Goal Focus" : undefined}
+                    sourceBadge={activeGoal === "followers" ? "🎯 Goal Focus" : undefined}
                   />
                   <MetricCard
                     label="Average Engagement Rate"
                     value={averageEngagement}
                     description="Average like + comment + share + save divided by views across your tracked posts."
-                    sourceBadge={goal === "engagement" ? "🎯 Goal Focus" : undefined}
+                    sourceBadge={activeGoal === "engagement" ? "🎯 Goal Focus" : undefined}
                   />
                 </>
               )}
@@ -756,7 +764,7 @@ export default function DashboardHome() {
                           Weekly Content Strategy
                         </h3>
                         <span className="px-2 py-0.5 border border-white/10 bg-white/5 text-[10px] font-bold text-gray-400 rounded-full uppercase tracking-wider">
-                          {niche ? `${niche} focus` : "Sample"}
+                          {activeNiche ? `${activeNiche} focus` : "Sample"}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mb-6">
@@ -765,7 +773,7 @@ export default function DashboardHome() {
 
                       <div className="flex flex-col gap-4">
                         {(() => {
-                          const key = (niche && niche in NICHE_STRATEGY_TEMPLATES ? niche : "tech") as keyof typeof NICHE_STRATEGY_TEMPLATES;
+                          const key = (activeNiche && activeNiche in NICHE_STRATEGY_TEMPLATES ? activeNiche : "tech") as keyof typeof NICHE_STRATEGY_TEMPLATES;
                           return NICHE_STRATEGY_TEMPLATES[key];
                         })().map((item, idx) => (
                           <div key={idx} className="flex gap-4 items-start">
@@ -844,7 +852,7 @@ export default function DashboardHome() {
                           Weekly Content Strategy
                         </h3>
                         <span className="px-2 py-0.5 border border-white/10 bg-white/5 text-[10px] font-bold text-gray-400 rounded-full uppercase tracking-wider">
-                          {niche ? `${niche} focus` : "Sample"}
+                          {activeNiche ? `${activeNiche} focus` : "Sample"}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mb-6">
@@ -853,7 +861,7 @@ export default function DashboardHome() {
 
                       <div className="flex flex-col gap-4">
                         {(() => {
-                          const key = (niche && niche in NICHE_STRATEGY_TEMPLATES ? niche : "tech") as keyof typeof NICHE_STRATEGY_TEMPLATES;
+                          const key = (activeNiche && activeNiche in NICHE_STRATEGY_TEMPLATES ? activeNiche : "tech") as keyof typeof NICHE_STRATEGY_TEMPLATES;
                           return NICHE_STRATEGY_TEMPLATES[key];
                         })().map((item, idx) => (
                           <div key={idx} className="flex gap-4 items-start">
@@ -922,7 +930,7 @@ export default function DashboardHome() {
                   Weekly Content Strategy
                 </h3>
                 <span className="px-2 py-0.5 border border-white/10 bg-white/5 text-[10px] font-bold text-gray-400 rounded-full uppercase tracking-wider">
-                  {niche ? `${niche} focus` : "Sample"}
+                  {activeNiche ? `${activeNiche} focus` : "Sample"}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mb-6">
@@ -931,7 +939,7 @@ export default function DashboardHome() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {(() => {
-                  const key = (niche && niche in NICHE_STRATEGY_TEMPLATES ? niche : "tech") as keyof typeof NICHE_STRATEGY_TEMPLATES;
+                  const key = (activeNiche && activeNiche in NICHE_STRATEGY_TEMPLATES ? activeNiche : "tech") as keyof typeof NICHE_STRATEGY_TEMPLATES;
                   return NICHE_STRATEGY_TEMPLATES[key];
                 })().map((item, idx) => (
                   <div key={idx} className="flex gap-4 items-start p-4 rounded-xl bg-white/5 border border-white/5">

@@ -75,6 +75,8 @@ export const instagramAccounts = pgTable('instagram_accounts', {
   followersCount: integer('followers_count').notNull().default(0),
   lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
   syncStatus: text('sync_status'),
+  niche: text('niche'),
+  goal: text('goal'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
