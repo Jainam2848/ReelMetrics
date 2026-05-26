@@ -18,10 +18,10 @@
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
   
-  /* Brand colors */
-  --color-brand-primary: #6C5CE7;     /* Purple */
-  --color-brand-secondary: #00B894;   /* Green */
-  --color-brand-accent: #FD79A8;      /* Pink */
+  /* Brand colors - Elite Tailored Harmony */
+  --color-brand-primary: hsl(251, 88%, 62%);     /* Premium Electric Cobalt */
+  --color-brand-secondary: hsl(158, 85%, 46%);   /* Neon Jade */
+  --color-brand-accent: hsl(328, 92%, 60%);      /* Sunset Rose Pink */
 
   /* Neutral overrides */
   --color-card: var(--card);
@@ -46,61 +46,61 @@
   --card-foreground: #0F0F14;
   --popover: #FFFFFF;
   --popover-foreground: #0F0F14;
-  --primary: #6C5CE7;
+  --primary: hsl(251, 88%, 62%);
   --primary-foreground: #FFFFFF;
   --secondary: #EAF9F5;
-  --secondary-foreground: #00B894;
+  --secondary-foreground: hsl(158, 85%, 46%);
   --muted: #F0F0F5;
   --muted-foreground: #6B6B80;
   --accent: #FFF0F5;
-  --accent-foreground: #FD79A8;
+  --accent-foreground: hsl(328, 92%, 60%);
   --destructive: #E17055;
   --border: rgba(15, 15, 20, 0.08);
   --input: rgba(15, 15, 20, 0.05);
-  --ring: #6C5CE7;
+  --ring: hsl(251, 88%, 62%);
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-heading: 'Outfit', 'Inter', sans-serif;
   --radius: 12px;
   
   --sidebar: #FFFFFF;
   --sidebar-foreground: #0F0F14;
-  --sidebar-primary: #6C5CE7;
+  --sidebar-primary: hsl(251, 88%, 62%);
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: #F0F0F5;
-  --sidebar-accent-foreground: #6C5CE7;
+  --sidebar-accent-foreground: hsl(251, 88%, 62%);
   --sidebar-border: rgba(15, 15, 20, 0.08);
-  --sidebar-ring: #6C5CE7;
+  --sidebar-ring: hsl(251, 88%, 62%);
 }
 
 /* Dark Mode First Custom Palette */
 .dark {
-  --background: #0F0F14;          /* bg-primary */
+  --background: #06060A;          /* Space Obsidian bg-primary */
   --foreground: #F8F8FC;          /* text-primary */
-  --card: #1E1E2A;                /* bg-card */
+  --card: #111119;                /* Premium Matte bg-card */
   --card-foreground: #F8F8FC;
-  --popover: #1A1A24;             /* bg-secondary */
+  --popover: #0E0E14;             /* bg-secondary */
   --popover-foreground: #F8F8FC;
-  --primary: #6C5CE7;             /* Purple */
+  --primary: hsl(251, 88%, 62%);  /* Premium Electric Cobalt */
   --primary-foreground: #F8F8FC;
-  --secondary: #252530;           /* bg-tertiary */
-  --secondary-foreground: #00B894; /* Green */
-  --muted: #252530;               /* bg-tertiary */
+  --secondary: #181822;           /* bg-tertiary */
+  --secondary-foreground: hsl(158, 85%, 46%); /* Neon Jade */
+  --muted: #181822;               /* bg-tertiary */
   --muted-foreground: #A0A0B8;    /* text-secondary */
-  --accent: #1A1A24;              /* bg-secondary */
-  --accent-foreground: #FD79A8;   /* Pink */
+  --accent: #0E0E14;              /* bg-secondary */
+  --accent-foreground: hsl(328, 92%, 60%);   /* Sunset Rose */
   --destructive: #E17055;
-  --border: rgba(255, 255, 255, 0.08); /* glass border */
-  --input: rgba(255, 255, 255, 0.05);
-  --ring: #6C5CE7;
+  --border: rgba(255, 255, 255, 0.06); /* ultra subtle glass border */
+  --input: rgba(255, 255, 255, 0.04);
+  --ring: hsl(251, 88%, 62%);
   
-  --sidebar: #1A1A24;             /* bg-secondary */
+  --sidebar: #0E0E14;             /* bg-secondary */
   --sidebar-foreground: #F8F8FC;
-  --sidebar-primary: #6C5CE7;
+  --sidebar-primary: hsl(251, 88%, 62%);
   --sidebar-primary-foreground: #F8F8FC;
-  --sidebar-accent: #252530;
+  --sidebar-accent: #181822;
   --sidebar-accent-foreground: #F8F8FC;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: #6C5CE7;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-ring: hsl(251, 88%, 62%);
 }
 
 @layer base {
@@ -121,25 +121,25 @@
 
 /* Glassmorphism Premium Utilities */
 .bg-glass {
-  background: rgba(30, 30, 42, 0.65) !important;
+  background: rgba(14, 14, 22, 0.7) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
 }
 
 .border-glass {
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
 }
 
 .shadow-glow {
-  box-shadow: 0 0 30px rgba(108, 92, 231, 0.15);
+  box-shadow: 0 0 35px rgba(83, 82, 237, 0.12);
 }
 
 .shadow-glow-green {
-  box-shadow: 0 0 30px rgba(0, 184, 148, 0.15);
+  box-shadow: 0 0 35px rgba(0, 210, 211, 0.12);
 }
 
 .shadow-glow-pink {
-  box-shadow: 0 0 30px rgba(253, 121, 168, 0.15);
+  box-shadow: 0 0 35px rgba(255, 118, 117, 0.12);
 }
 
 /* Scrollbars */

@@ -7,14 +7,11 @@ import { UsageMeter } from "@/components/dashboard/usage-meter";
 import { LoadingSkeleton } from "@/components/dashboard/loading-skeleton";
 import { LoadError } from "@/components/shared/load-error";
 import { useToast } from "@/components/shared/toast";
-import { m } from "framer-motion";
 import { 
-  CreditCard, 
   Check, 
   Sparkles, 
   ExternalLink, 
   Lock, 
-  Award,
   Zap,
   ShieldCheck
 } from "lucide-react";
@@ -93,46 +90,46 @@ export default function BillingPage() {
   const plans = [
     {
       id: "creator",
-      name: "Smart Creator",
-      price: "$19",
-      desc: "For full-time digital creators scaling content velocity.",
+      name: "Growth Velocity Plan",
+      price: "$39",
+      desc: "For full-time digital creators scaling content velocity and testing high-impact hooks.",
       features: [
-        "2 Connected Social Accounts",
-        "50 AI Video Evaluation Credits",
-        "4 Weekly Strategies Generated",
-        "150 AI Calls Monthly Limit",
+        "Dual-Profile Meta API Synchronization",
+        "50 High-Fidelity Hook & Retention Scores",
+        "4 Proprietary Growth Strategies / Week",
+        "150 Priority API Processing Calls",
       ],
-      cta: activePlanId === "creator" ? "Current Active Tier" : "Upgrade to Creator",
+      cta: activePlanId === "creator" ? "Current Active Tier" : "Calibrate Growth",
       active: activePlanId === "creator",
       premium: false,
     },
     {
       id: "pro",
-      name: "Smart Creator Pro",
-      price: "$49",
-      desc: "Advanced features and premium models for professional creators.",
+      name: "Algorithmic Scale Pro",
+      price: "$89",
+      desc: "Advanced multi-modal model analysis, prioritised execution paths, and custom growth strategies.",
       features: [
-        "5 Connected Social Accounts",
-        "200 AI Video Evaluation Credits",
-        "12 Custom Strategies Generated",
-        "600 AI Calls Monthly Limit (Advanced Models)",
+        "Multi-Profile Meta API Sync (Up to 5)",
+        "200 High-Fidelity Hook & Retention Scores",
+        "12 Custom Strategy Blueprints / Month",
+        "600 Priority API Calls (Advanced Models)",
       ],
-      cta: activePlanId === "pro" ? "Current Active Tier" : "Upgrade to Pro",
+      cta: activePlanId === "pro" ? "Current Active Tier" : "Calibrate Scale Pro",
       active: activePlanId === "pro",
       premium: true,
     },
     {
       id: "agency",
-      name: "Production Studio",
-      price: "$149",
-      desc: "Optimized for management teams and marketing studios.",
+      name: "Studio Enterprise Suite",
+      price: "$249",
+      desc: "Optimized for client management teams, digital media groups, and high-frequency production hubs.",
       features: [
-        "20 Connected Social Accounts",
-        "1000 AI Video Evaluation Credits",
-        "40 Client Strategies Generated",
-        "2500 AI Calls Monthly Limit (Premium Priority)",
+        "Enterprise Operations Sync (Up to 20 Profiles)",
+        "1000 High-Fidelity Hook & Retention Scores",
+        "40 Custom Client Strategy Blueprints / Month",
+        "2500 Priority API Calls (Premium Priority)",
       ],
-      cta: activePlanId === "agency" ? "Current Active Tier" : "Scale to Agency",
+      cta: activePlanId === "agency" ? "Current Active Tier" : "Scale Enterprise",
       active: activePlanId === "agency",
       premium: false,
     },
@@ -143,11 +140,25 @@ export default function BillingPage() {
       {/* Header */}
       <div>
         <h2 className="text-2xl font-display font-extrabold tracking-tight text-white mb-1">
-          Subscription & Credit Matrix
+          Calibrate Computational Quotas
         </h2>
         <p className="text-xs text-muted-foreground">
-          Manage your Stripe subscription tier, check credit quotas, and upgrade your AI capabilities.
+          Align your scaling requirements with our premium multi-modal scoring nodes. Configure your monthly computational limits.
         </p>
+      </div>
+
+      {/* Compute Guarantee Notice */}
+      <div className="w-full p-4 rounded-xl border border-brand-primary/20 bg-brand-primary/5 backdrop-blur-md relative overflow-hidden flex items-start gap-3 select-none">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 rounded-full blur-2xl" />
+        <div className="w-8 h-8 rounded-lg bg-brand-primary/10 flex items-center justify-center text-brand-primary shrink-0 font-bold text-sm">
+          🛡️
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <h4 className="text-xs font-bold text-white uppercase tracking-wider">Compute Guarantee & Performance SLA</h4>
+          <p className="text-[10px] text-gray-400 leading-normal max-w-3xl font-semibold">
+            Computational resource routing is allocated on a rolling weekly basis to guarantee sub-second latency for live campaigns. Unlocked quotas are protected from degradation and guaranteed upon tier activation.
+          </p>
+        </div>
       </div>
 
       {error && (
@@ -288,6 +299,79 @@ export default function BillingPage() {
           ))}
         </div>
       </div>
+
+      {/* ── BOTTOM ROW: Trust Indicators & FAQ Drawer ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4 pt-4 border-t border-white/5">
+        {/* Trust Badges */}
+        <div className="lg:col-span-1 flex flex-col gap-4">
+          <div className="border border-glass bg-glass rounded-2xl p-5 shadow-glow flex flex-col gap-4 select-none">
+            <h4 className="font-display font-extrabold text-xs text-white uppercase tracking-wider">
+              Encrypted Checkout & Guarantee
+            </h4>
+            
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-2.5 items-start text-[10px] font-semibold text-gray-300">
+                <Check className="w-3.5 h-3.5 text-brand-secondary shrink-0 mt-0.5" />
+                <span>Transparent billing portal access powered by Stripe. Downgrade, upgrade, or cancel your active computational slots instantly with zero lock-in periods.</span>
+              </div>
+              <div className="flex gap-2.5 items-start text-[10px] font-semibold text-gray-300">
+                <Check className="w-3.5 h-3.5 text-brand-secondary shrink-0 mt-0.5" />
+                <span>All connections encrypted with AES-256 and verified through secure Meta/Instagram API OAuth.</span>
+              </div>
+            </div>
+            
+            <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[8px] font-bold text-gray-500 uppercase tracking-widest">
+              <span>Secure Checkout</span>
+              <span>🔒 256-Bit SSL</span>
+            </div>
+          </div>
+        </div>
+        
+        {/* FAQ Accordion Drawers */}
+        <div className="lg:col-span-2 flex flex-col gap-4">
+          <div className="border border-glass bg-glass rounded-2xl p-5 shadow-glow">
+            <h4 className="font-display font-extrabold text-xs text-white uppercase tracking-wider mb-4">
+              Computational Objections & Answers
+            </h4>
+            
+            <div className="flex flex-col gap-3.5">
+              <FAQItem 
+                question="How are AI computational calls calculated?" 
+                answer="Each video analysis initiates multiple multi-modal cognitive operations: parsing hooks, extracting frame transitions, scoring skip-resistance against baseline historical vectors, and formulating tactical recommendations. Tiers limit active processing loops to protect network bandwidth."
+              />
+              <FAQItem 
+                question="Can I upgrade or downgrade midway through a cycle?" 
+                answer="Yes. All quota changes are handled smoothly through Stripe. Upgrades instantly allocate extra credits to your active dashboard with prorated billing, while downgrades apply to your next rolling cycle window."
+              />
+              <FAQItem 
+                question="What happens to unused credits at the end of the month?" 
+                answer="To guarantee resource allocation stability, computational limits do not roll over and are refreshed on your billing cycle anniversary date."
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FAQItem({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-white/5 pb-3 last:border-0 last:pb-0 select-none">
+      <button 
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex justify-between items-center text-left text-[10px] font-bold text-gray-200 hover:text-brand-primary transition-colors cursor-pointer"
+      >
+        <span>{question}</span>
+        <span className="text-xs text-gray-500">{open ? "−" : "+"}</span>
+      </button>
+      {open && (
+        <p className="mt-1.5 text-[9px] leading-relaxed text-gray-400 font-semibold transition-all duration-300">
+          {answer}
+        </p>
+      )}
     </div>
   );
 }

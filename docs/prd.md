@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD) — Trendoraa
 
-**Document Version:** 1.3.0  
-**Status:** Validated & Approved (Instagram MVP annotations — Stories + Analytics overhaul)  
+**Document Version:** 1.4.0  
+**Status:** Validated & Approved (Elite visual & verbal schema, optimized creator conversion calibration)  
 **Author:** Senior Product Manager  
 
 > **Instagram MVP implementation map** — verify acceptance criteria against `lib/db/schema.ts` and `app/api/**`:
@@ -112,6 +112,30 @@ flowchart TB
 > **Legend:** solid arrows = synchronous request/response · dashed arrows = optional or async jobs
 
 *Source of truth: `app/(dashboard)/*`, `app/api/*`, `lib/queue/processor.ts`, `lib/db/schema.ts`.*
+
+---
+
+## 3.6 Elite Visual & Verbal Schema (Strategic Conversion Optimizations)
+
+To support premium brand positioning and maximize creator/agency conversion rates, Trendoraa rejects standard SaaS tropes in favor of an **Elite Clinical Retention Engine** brand schema. Every verbal, visual, and behavioral signal is designed to bypass cynicism and convey scientific computational authority.
+
+### 3.6.1 Modernized HSL Color Harmony
+To construct a highly unified, premium visual identity, standard generic hex codes have been calibrated to highly refined, glowing HSL colors optimized for modern OLED screens and deep space obsidian interfaces:
+* **Primary (Electric Cobalt):** `hsl(251, 88%, 62%)` — replacing standard purple `#6C5CE7` with a deep, energetic, glowing indigo.
+* **Secondary (Neon Jade):** `hsl(158, 85%, 46%)` — replacing standard green `#00B894` with a crisp, precise glowing mint.
+* **Accent (Sunset Rose):** `hsl(328, 92%, 60%)` — replacing standard hot pink `#FD79A8` with a luxurious, warm sunset pink.
+* **Space Obsidian Background:** `hsl(240, 25%, 3%)` (`#06060A`) — a deep, velvety black that reduces visual fatigue and makes code scoring matrices stand out.
+
+### 3.6.2 High-Status Copywriting Guidelines
+Avoid soft or generic SaaS phrasing. All interface text speaks with absolute authority, precision, and mathematical rigor:
+* **Signup/Login:** Replaced simple triggers with high-status vocabulary. Instead of *"Sign up free"* or *"Create account"*, use **"Establish Creator Vector"** or **"Secure Computational Quota"**. Signin is rebranded as **"Access Computational Node / Establish Connection"**.
+* **Objection Resolution:** Under the signup button, surface opportunity cost warnings transparently: *"Every daily posting cycle without algorithmic calibration represents a lost distribution window. Securing credentials locks in evaluation prioritization."*
+* **Social Proof:** Highlight qualitative and quantitative performance shifts from studios rather than superficial stars (e.g., *“The hook pacing scoring alone increased our average watch time by 34%.” — Production Lead, MediaGroup Studio*).
+
+### 3.6.3 High-Credibility Behavioral Scarcity (Compute Guotas & FAQ)
+* **Real-time Status Bar:** The signup form displays a simulated real-time server indicator (e.g. *Computational Node Status: Active | Active Slots: 88% | Latency: 92ms*). This aligns with technical realism (AI computation is expensive) and drives honest capacity awareness.
+* **Compute Performance SLA:** The billing dashboard features a prominent, high-credibility compute routing guarantee: *"Computational resource routing is allocated on a rolling weekly basis to guarantee sub-second latency for live campaigns. Unlocked quotas are protected from degradation and guaranteed upon tier activation."*
+* **Objection Accordion FAQ Drawers:** Add a transparent FAQ addressing computational resource costs, prorated upgrades, and credit refreshes directly beside Stripe's AES-256 secure checkout verification shields.
 
 ---
 

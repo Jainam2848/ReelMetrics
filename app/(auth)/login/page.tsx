@@ -112,17 +112,19 @@ function LoginForm() {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: "spring", duration: 0.8 }}
-        className="w-full max-w-md border border-glass bg-glass backdrop-blur-2xl rounded-2xl p-8 shadow-glow relative"
+        className="w-full max-w-md border border-glass bg-glass backdrop-blur-2xl rounded-2xl p-8 shadow-glow relative overflow-hidden"
       >
-        <div className="flex flex-col items-center mb-8 text-center select-none">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-primary via-brand-accent to-brand-secondary" />
+
+        <div className="flex flex-col items-center mb-6 text-center select-none">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-brand-primary to-brand-accent flex items-center justify-center font-display font-black text-white text-xl shadow-glow mb-4">
             T
           </div>
           <h2 className="text-2xl font-display font-extrabold tracking-tight text-white">
-            Sign in to Trendoraa
+            Access Computational Node
           </h2>
-          <p className="text-xs text-muted-foreground mt-1 max-w-xs">
-            Unlock AI-powered short-form video analytics and weekly strategies.
+          <p className="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
+            Initialize your strategic content matrices and retrieve prioritized hook analyses.
           </p>
         </div>
 
@@ -224,7 +226,7 @@ function LoginForm() {
             disabled={loading}
             className="w-full mt-4 min-h-[44px] bg-brand-primary hover:opacity-90 text-white rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 shadow-glow cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <span>{loading ? "Signing in…" : "Sign in"}</span>
+            <span>{loading ? "Initializing connection…" : "Establish Connection"}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
@@ -233,7 +235,7 @@ function LoginForm() {
           <p className="text-xs text-muted-foreground">
             Don&apos;t have an account?{" "}
             <Link href="/signup" className="text-brand-primary hover:underline font-bold">
-              Sign Up Free
+              Secure Compute Slot
             </Link>
           </p>
         </div>

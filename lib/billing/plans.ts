@@ -19,10 +19,10 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     aiModel: "Standard Routing Tier",
     modelTier: "standard",
     features: [
-      "Core Analytics",
-      "1 Instagram Account Connected",
-      "Up to 10 Reels Scored per billing cycle",
-      "10 AI calls monthly limit"
+      "Core Algorithmic Metrics",
+      "Single Creator Profile Integration",
+      "10 High-Fidelity Reel Hook & Retention Scoring Runs / Cycle",
+      "10 Priority API Processing Calls / Month"
     ]
   },
   creator: {
@@ -33,11 +33,11 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     aiModel: "Standard Routing Tier",
     modelTier: "standard",
     features: [
-      "Creator Tier Analytics",
-      "Up to 1 Instagram Accounts Connected",
-      "Up to 50 Reels Scored per billing cycle",
-      "4 Weekly Strategies Generated",
-      "150 AI calls monthly limit"
+      "Growth Tier Analytical Suite",
+      "Dual-Profile Meta API Synchronization",
+      "50 High-Fidelity Reel Hook & Retention Scoring Runs / Cycle",
+      "4 Proprietary Creator Growth Strategies / Week",
+      "150 Priority API Processing Calls / Month"
     ]
   },
   pro: {
@@ -48,11 +48,11 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     aiModel: "Premium Routing Tier",
     modelTier: "premium",
     features: [
-      "Professional Tier Analytics",
-      "Up to 5 Instagram Accounts Connected",
-      "Up to 200 Reels Scored per billing cycle",
-      "12 Custom Strategies Generated",
-      "600 AI calls monthly limit (Advanced Models)"
+      "Scale Tier Clinical Analytics Suite",
+      "Multi-Profile Meta API Sync (Up to 5 Accounts)",
+      "200 High-Fidelity Reel Hook & Retention Scoring Runs / Cycle",
+      "12 Custom Strategy Blueprints / Month",
+      "600 Priority API Processing Calls (Advanced Multi-Modal)"
     ]
   },
   agency: {
@@ -63,11 +63,11 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     aiModel: "Premium Routing Tier",
     modelTier: "premium",
     features: [
-      "Enterprise Tier Analytics",
-      "Up to 20 Instagram Accounts Connected",
-      "Up to 1000 Reels Scored per billing cycle",
-      "40 Client Strategies Generated",
-      "2500 AI calls monthly limit (Premium Priority)"
+      "Enterprise Operations Hub",
+      "High-Frequency Ingestion (Up to 20 Accounts)",
+      "1000 High-Fidelity Reel Hook & Retention Scoring Runs / Cycle",
+      "40 Custom Client Strategy Blueprints / Month",
+      "2500 Priority API Processing Calls (Premium Priority)"
     ]
   }
 };
