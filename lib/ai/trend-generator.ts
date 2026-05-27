@@ -113,8 +113,9 @@ export async function generateTrendsAnalysis(
         error: response.error,
       };
     }
-  } catch (err: any) {
-    console.error("[trend-generator] Unexpected exception during generation:", err.message);
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error("[trend-generator] Unexpected exception during generation:", errorMsg);
     return {
       success: true,
       data: getHeuristicTrendFallback(niche),
@@ -123,7 +124,7 @@ export async function generateTrendsAnalysis(
       latencyMs: Date.now() - startTime,
       modelId: "heuristic",
       source: "heuristic",
-      error: err.message,
+      error: errorMsg,
     };
   }
 }

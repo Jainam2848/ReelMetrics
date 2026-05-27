@@ -10,17 +10,18 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
-  experimental: {
-    typedRoutes: true,
+  turbopack: {
+    root: path.resolve(__dirname),
   },
-  webpack(config) {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      "react$": require.resolve("react"),
-      "react-dom$": require.resolve("react-dom"),
-    };
-    return config;
-  },
+  typedRoutes: true,
+  // webpack(config) {
+  //   config.resolve.alias = {
+  //     ...config.resolve.alias,
+  //     "react$": require.resolve("react"),
+  //     "react-dom$": require.resolve("react-dom"),
+  //   };
+  //   return config;
+  // },
   // Baseline security headers (defense-in-depth — see spec §11.9).
   // Granular per-route CSP and additional headers are layered on by
   // `middleware.ts` once it is introduced in a later phase.

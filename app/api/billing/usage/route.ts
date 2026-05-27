@@ -1,6 +1,7 @@
 import { getCurrentPeriodUsage, checkUsageLimit } from "@/lib/billing/usage-tracker";
 import { withAuth, AuthenticatedRequest } from "@/lib/api/middleware";
 import { apiSuccess, apiError } from "@/lib/api/response";
+import { PlanId } from "@/lib/billing/plans";
 
 /**
  * GET /api/billing/usage
@@ -11,11 +12,13 @@ async function handleGetUsage(request: AuthenticatedRequest) {
 
   try {
     const usage = await getCurrentPeriodUsage(userId);
+    const planId = (request.user.subscription?.planId || "free") as PlanId;
+    const prefetched = { usage, planId };
 
     // Evaluate allowance, limits and remaining counts for the three core operations
-    const reelAnalysisCheck = await checkUsageLimit(userId, "reel_analysis");
-    const strategyCheck = await checkUsageLimit(userId, "strategy_generation");
-    const aiCallCheck = await checkUsageLimit(userId, "ai_call");
+    const reelAnalysisCheck = await checkUsageLimit(userId, "reel_analysis", prefetched);
+    const strategyCheck = await checkUsageLimit(userId, "strategy_generation", prefetched);
+    const aiCallCheck = await checkUsageLimit(userId, "ai_call", prefetched);
 
     return apiSuccess({
       periodMonth: usage.periodMonth,

@@ -69,7 +69,20 @@ export async function getCurrentPeriodMonth(userId: string): Promise<string> {
 export async function getCurrentPeriodUsage(userId: string): Promise<UsageRecord> {
   const periodMonth = await getCurrentPeriodMonth(userId);
 
-  // We acquire a transaction advisory lock per user to serialize initialization
+  // Fast read path: Try to find the record first outside a transaction/lock.
+  // In >99.9% of requests, the row already exists and can be read instantly.
+  const existingRecord = await db.query.usageTracking.findFirst({
+    where: and(
+      eq(usageTracking.userId, userId),
+      eq(usageTracking.periodMonth, periodMonth)
+    ),
+  });
+
+  if (existingRecord) {
+    return existingRecord as unknown as UsageRecord;
+  }
+
+  // Fallback: If not found, acquire the transaction advisory lock to safely initialize the record
   // and prevent duplicate row creation or race conditions under high concurrency
   return await db.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('usage_init:' || ${userId}))`);
@@ -156,18 +169,31 @@ export async function incrementUsage(
  */
 export async function checkUsageLimit(
   userId: string,
-  operation: "reel_analysis" | "strategy_generation" | "ai_call"
+  operation: "reel_analysis" | "strategy_generation" | "ai_call",
+  prefetchedContext?: {
+    usage?: UsageRecord;
+    planId?: PlanId;
+  }
 ): Promise<{ allowed: boolean; remaining: number; limit: number }> {
-  // Fetch active subscription
-  const sub = await db.query.subscriptions.findFirst({
-    where: eq(subscriptions.userId, userId),
-  });
-
-  const planId = (sub?.planId || "free") as PlanId;
+  // Fetch active subscription if not pre-fetched
+  let planId: PlanId;
+  if (prefetchedContext?.planId) {
+    planId = prefetchedContext.planId;
+  } else {
+    const sub = await db.query.subscriptions.findFirst({
+      where: eq(subscriptions.userId, userId),
+    });
+    planId = (sub?.planId || "free") as PlanId;
+  }
   const limits = getPlanLimits(planId);
 
-  // Fetch usage stats
-  const usage = await getCurrentPeriodUsage(userId);
+  // Fetch usage stats if not pre-fetched
+  let usage: UsageRecord;
+  if (prefetchedContext?.usage) {
+    usage = prefetchedContext.usage;
+  } else {
+    usage = await getCurrentPeriodUsage(userId);
+  }
 
   let currentUsageValue = 0;
   let limit = 0;

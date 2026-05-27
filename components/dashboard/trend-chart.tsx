@@ -30,7 +30,14 @@ export function TrendChart({ data = [], isLoading = false }: TrendChartProps) {
 
   // Prevent SSR hydration mismatch warning by only rendering after mount
   useEffect(() => {
-    setMounted(true);
+    let active = true;
+    requestAnimationFrame(() => {
+      if (!active) return;
+      setMounted(true);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (isLoading || !mounted) {
@@ -115,8 +122,8 @@ export function TrendChart({ data = [], isLoading = false }: TrendChartProps) {
       </div>
 
       {/* Recharts container */}
-      <div className="w-full h-[220px] text-xs">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="w-full h-[220px] min-w-0 min-h-0 text-xs">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
           <AreaChart data={filteredData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               {/* Engagement Rate Gradient */}

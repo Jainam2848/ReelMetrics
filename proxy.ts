@@ -3,11 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 
 /**
- * Global Next.js middleware.
+ * Global Next.js proxy.
  * Refreshes Supabase session tokens, gates access to /dashboard/* routes,
  * and sets all security-related HTTP headers to conform with spec §11.9.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,

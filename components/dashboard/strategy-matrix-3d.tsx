@@ -2,13 +2,21 @@
 
 import React, { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { usePathname } from "next/navigation";
 
 export default function StrategyMatrix3D() {
   const containerRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number | null>(null);
+  // Track whether the RAF loop should be running
+  const isRunningRef = useRef(false);
+  const pathname = usePathname();
+
+  // Only render on the home dashboard — other pages don't need it
+  const isHomePage = pathname === "/";
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    // If not on home page, ensure any running loop is stopped and bail early
+    if (!isHomePage || !containerRef.current) return;
 
     const container = containerRef.current;
     const width = container.clientWidth;
@@ -142,10 +150,23 @@ export default function StrategyMatrix3D() {
 
     // 8. Animation Loop
     let elapsed = 0;
-    const clock = new THREE.Clock();
+    let lastTime = performance.now();
+    isRunningRef.current = true;
 
     const animate = () => {
-      const delta = clock.getDelta();
+      // ── Tab Visibility Guard ──────────────────────────────────────────────
+      // Pause the loop entirely when the user switches to another browser tab.
+      // This prevents burning CPU/GPU cycles for invisible pixels, which would
+      // otherwise throttle other tabs and drain laptop battery.
+      if (document.hidden) {
+        // Re-schedule to check again on next frame (browser throttles hidden tabs)
+        requestRef.current = requestAnimationFrame(animate);
+        return;
+      }
+
+      const currentTime = performance.now();
+      const delta = Math.min(0.1, (currentTime - lastTime) / 1000);
+      lastTime = currentTime;
       elapsed += delta;
 
       // Smooth lerp mouse tracking to ease camera rotations
@@ -160,7 +181,6 @@ export default function StrategyMatrix3D() {
       // Animate node positions programmatically
       const positionsAttribute = pointsGeometry.getAttribute("position") as THREE.BufferAttribute;
       const positions = positionsAttribute.array as Float32Array;
-      let lineIdx = 0;
 
       for (let i = 0; i < nodeCount; i++) {
         const node = nodes[i]!;
@@ -259,6 +279,7 @@ export default function StrategyMatrix3D() {
 
     // 10. Cleanup on Unmount
     return () => {
+      isRunningRef.current = false;
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("resize", handleResize);
@@ -276,7 +297,10 @@ export default function StrategyMatrix3D() {
       lineMaterial.dispose();
       renderer.dispose();
     };
-  }, []);
+  }, [isHomePage]);
+
+  // Don't mount the canvas at all on non-home pages — saves WebGL context
+  if (!isHomePage) return null;
 
   return (
     <div 

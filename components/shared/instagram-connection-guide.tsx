@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useActiveAccount } from "@/components/shared/active-account-context";
 import { useToast } from "@/components/shared/toast";
 import { m, AnimatePresence } from "framer-motion";
@@ -8,15 +9,11 @@ import {
   Check, 
   HelpCircle, 
   ChevronDown, 
-  ChevronUp, 
-  ExternalLink, 
+  ChevronUp,
   Sparkles, 
   AlertCircle,
   X,
-  BookOpen,
-  ArrowRight,
   Info,
-  Tv
 } from "lucide-react";
 import { Instagram } from "@/components/shared/icons";
 
@@ -35,6 +32,18 @@ export function InstagramConnectionGuide({
 }: InstagramConnectionGuideProps) {
   const { mutate: mutateAccounts } = useActiveAccount();
   const toast = useToast();
+
+  // SSR safety: only render portal after mount
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    let active = true;
+    requestAnimationFrame(() => {
+      if (active) setMounted(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Pre-flight Checklist states
   const [isProfessional, setIsProfessional] = useState(false);
@@ -103,10 +112,12 @@ export function InstagramConnectionGuide({
     }
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           {/* Backdrop Blur Overlay */}
           <m.div
             initial={{ opacity: 0 }}
@@ -123,7 +134,7 @@ export function InstagramConnectionGuide({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ type: "spring", duration: 0.5 }}
-            className="relative w-full max-w-lg bg-glass border border-glass rounded-2xl overflow-hidden shadow-glow z-10 my-8 flex flex-col max-h-[85vh]"
+            className="relative w-full max-w-xl bg-glass border border-glass rounded-2xl overflow-hidden shadow-glow z-[10000] flex flex-col max-h-[90vh]"
           >
             {/* Ambient Background Accents */}
             <div className="absolute top-0 right-0 w-36 h-36 bg-brand-primary/10 rounded-full blur-3xl -z-10 pointer-events-none" />
@@ -404,6 +415,7 @@ export function InstagramConnectionGuide({
           </m.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

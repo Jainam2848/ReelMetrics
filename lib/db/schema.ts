@@ -1,5 +1,6 @@
 import { pgTable, uuid, text, timestamp, integer, boolean, decimal, customType, jsonb, primaryKey, unique } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import type { TrendPillar, SoundRecommendation, HookMutation, ActionableBlueprint } from '@/lib/ai/prompts/trends';
 
 // ─── Custom Column Types ───────────────────────────────────────────────────
 
@@ -306,10 +307,10 @@ export const trendAnalyses = pgTable('trend_analyses', {
     .references(() => instagramAccounts.id, { onDelete: 'cascade' }),
   nicheTrendScore: integer('niche_trend_score').notNull(),
   trendVerdict: text('trend_verdict').notNull(),
-  trendPillars: jsonb('trend_pillars').notNull().$type<any>(),
-  soundRecommendations: jsonb('sound_recommendations').notNull().$type<any>(),
-  hookMutations: jsonb('hook_mutations').notNull().$type<any>(),
-  actionableBlueprints: jsonb('actionable_blueprints').notNull().$type<any>(),
+  trendPillars: jsonb('trend_pillars').notNull().$type<TrendPillar[]>(),
+  soundRecommendations: jsonb('sound_recommendations').notNull().$type<SoundRecommendation[]>(),
+  hookMutations: jsonb('hook_mutations').notNull().$type<HookMutation[]>(),
+  actionableBlueprints: jsonb('actionable_blueprints').notNull().$type<ActionableBlueprint[]>(),
   modelVersion: text('model_version'),
   tokensUsed: integer('tokens_used'),
   costUsd: decimal('cost_usd', { precision: 10, scale: 6 }),

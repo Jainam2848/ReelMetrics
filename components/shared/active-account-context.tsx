@@ -59,24 +59,36 @@ export function ActiveAccountProvider({ children }: { children: React.ReactNode 
 
   // Sync state when accounts list finishes loading
   useEffect(() => {
+    let active = true;
     requestAnimationFrame(() => {
+      if (!active) return;
       if (accounts.length > 0) {
-        // Keep the current active account if it still exists in the newly fetched list
-        const matches = activeAccount ? accounts.find((a) => a.id === activeAccount.id) : null;
-        if (matches) {
-          setActiveAccountState(matches);
-        } else {
-          // Automatically default to the first connected account
+        // Keep the current active account if it still exists in the newly fetched list.
+        // We only auto-switch if our current activeAccount is null or has been removed from the connected accounts list.
+        const stillExists = activeAccount ? accounts.some((a) => a.id === activeAccount.id) : false;
+        if (!stillExists) {
           const firstAccount = accounts[0];
           if (firstAccount) {
             setActiveAccountState(firstAccount);
+          }
+        } else {
+          // Update the active account reference to match the newly fetched item in the list
+          // so that the UI can instantly display updated synced statuses/followers count.
+          // We only do this if the reference itself changed to prevent rendering loops.
+          const currentMatch = accounts.find((a) => a.id === activeAccount!.id);
+          if (currentMatch && currentMatch !== activeAccount) {
+            setActiveAccountState(currentMatch);
           }
         }
       } else {
         setActiveAccountState(null);
       }
     });
-  }, [accounts, activeAccount]);
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accounts]);
 
   const setActiveAccount = useCallback((account: SocialAccountDetails) => {
     setActiveAccountState(account);

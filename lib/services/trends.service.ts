@@ -90,8 +90,9 @@ export class TrendService {
               updatedAt: new Date(),
             },
           });
-      } catch (err: any) {
-        console.error(`[trends-service] Failed to refresh trends feed for niche ${niche}:`, err.message);
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.error(`[trends-service] Failed to refresh trends feed for niche ${niche}:`, errorMsg);
       }
     }
   }

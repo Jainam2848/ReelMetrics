@@ -18,6 +18,8 @@ export function UsageMeter({
   unit = "credits",
   isLoading = false,
 }: UsageMeterProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   if (isLoading) {
     return (
       <div className="p-5 rounded-xl border border-glass bg-glass animate-pulse flex flex-col gap-2.5">
@@ -30,7 +32,6 @@ export function UsageMeter({
 
   const ratio = total > 0 ? used / total : 0;
   const percentage = Math.min(100, Math.round(ratio * 100));
-  const shouldReduceMotion = useReducedMotion();
 
   // Dynamic colors: Green < 80%, Yellow 80-94%, Red >= 95%
   const getTheme = (pct: number) => {

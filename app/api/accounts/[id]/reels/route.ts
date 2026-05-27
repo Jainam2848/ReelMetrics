@@ -44,7 +44,7 @@ export const GET = withRateLimit(
     const platform = searchParams.get("platform") || "all";
 
     // 3. Fetch real database reels (Instagram platform)
-    let query = db
+    const query = db
       .select({
         id: reels.id,
         igMediaId: reels.igMediaId,

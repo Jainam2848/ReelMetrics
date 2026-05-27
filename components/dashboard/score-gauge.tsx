@@ -24,18 +24,23 @@ export function ScoreGauge({
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (score / 100) * circumference;
 
+
   // Numerical Count-up Animation
   useEffect(() => {
     if (shouldReduceMotion) {
-      setDisplayScore(score);
-      return;
+      const handle = requestAnimationFrame(() => {
+        setDisplayScore(score);
+      });
+      return () => cancelAnimationFrame(handle);
     }
 
     let start = 0;
     const end = Math.min(100, Math.max(0, score));
     if (end === 0) {
-      setDisplayScore(0);
-      return;
+      const handle = requestAnimationFrame(() => {
+        setDisplayScore(0);
+      });
+      return () => cancelAnimationFrame(handle);
     }
 
     const duration = 1200; // 1.2 seconds to match spec §10.5

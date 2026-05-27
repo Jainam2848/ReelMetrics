@@ -61,14 +61,18 @@ export function GrowthMatrix({
     if (!animeLoaded || !animeInstance.current || !gridRef.current || isReducedMotion) return;
 
     const anime = animeInstance.current;
+    // Scoped query: target only the cells INSIDE this component's grid ref,
+    // not every .matrix-cell in the entire document. This avoids expensive
+    // document-wide DOM traversal and prevents cross-component style thrashing.
+    const cells = gridRef.current.querySelectorAll(".matrix-cell");
     
-    // Clear any previous animations
-    anime.remove(".matrix-cell");
+    // Clear any previous animations scoped to these exact nodes
+    anime.remove(cells);
 
     if (mode === "scoring") {
       // Dynamic pulsating matrix wave to signify active evaluation
       anime({
-        targets: ".matrix-cell",
+        targets: cells,
         scale: [0.96, 1.04, 0.96],
         opacity: [0.6, 1, 0.6],
         borderColor: ["rgba(255, 255, 255, 0.08)", "rgba(108, 92, 231, 0.4)", "rgba(255, 255, 255, 0.08)"],
@@ -80,7 +84,7 @@ export function GrowthMatrix({
     } else {
       // Staggered reveal upon load for display mode
       anime({
-        targets: ".matrix-cell",
+        targets: cells,
         scale: [0.3, 1],
         opacity: [0, 1],
         delay: anime.stagger(80, { grid: [3, 3], from: "first" }),
@@ -91,7 +95,7 @@ export function GrowthMatrix({
 
     return () => {
       if (animeInstance.current) {
-        animeInstance.current.remove(".matrix-cell");
+        animeInstance.current.remove(cells);
       }
     };
   }, [mode, animeLoaded, isReducedMotion]);

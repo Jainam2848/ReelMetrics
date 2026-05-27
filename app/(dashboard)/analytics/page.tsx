@@ -6,16 +6,15 @@ import { useAnalytics } from "@/hooks/use-analytics";
 import { LoadingSkeleton } from "@/components/dashboard/loading-skeleton";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { LoadError } from "@/components/shared/load-error";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip as ChartTooltip,
-} from "recharts";
+import { m, AnimatePresence } from "framer-motion";
+import dynamic from "next/dynamic";
+const ReelsPerformanceChart = dynamic(
+  () => import("@/components/analytics/reels-performance-chart").then((mod) => mod.ReelsPerformanceChart),
+  {
+    ssr: false,
+    loading: () => <LoadingSkeleton variant="chart" />,
+  }
+);
 import {
   BarChart3,
   Clock,
@@ -132,10 +131,11 @@ export default function AnalyticsPage() {
     if (rawStories.length > 0) return rawStories;
 
     // Seed mock stories if database has no stories ingested yet (Data Trust Mock fallback)
+    const referenceDate = new Date("2026-05-26T12:00:00Z");
     return [
-      { id: "s1", timestamp: new Date(Date.now() - 12 * 3600 * 1000), impressions: 850, reach: 720, replies: 12, exits: 45, completionRate: 94.7, dataTrustLabel: "Verified Source" },
-      { id: "s2", timestamp: new Date(Date.now() - 24 * 3600 * 1000), impressions: 1100, reach: 910, replies: 8, exits: 120, completionRate: 89.1, dataTrustLabel: "Calculated Signal" },
-      { id: "s3", timestamp: new Date(Date.now() - 48 * 3600 * 1000), impressions: 600, reach: 510, replies: 2, exits: 30, completionRate: 95.0, dataTrustLabel: "Verified Source" },
+      { id: "s1", timestamp: new Date(referenceDate.getTime() - 12 * 3600 * 1000), impressions: 850, reach: 720, replies: 12, exits: 45, completionRate: 94.7, dataTrustLabel: "Verified Source" },
+      { id: "s2", timestamp: new Date(referenceDate.getTime() - 24 * 3600 * 1000), impressions: 1100, reach: 910, replies: 8, exits: 120, completionRate: 89.1, dataTrustLabel: "Calculated Signal" },
+      { id: "s3", timestamp: new Date(referenceDate.getTime() - 48 * 3600 * 1000), impressions: 600, reach: 510, replies: 2, exits: 30, completionRate: 95.0, dataTrustLabel: "Verified Source" },
     ];
   }, [metrics]);
 
@@ -151,13 +151,14 @@ export default function AnalyticsPage() {
     }
 
     // Default Seeded Mock Timeline for visual excellence
+    const referenceDate = new Date("2026-05-26T12:00:00Z");
     return Array.from({ length: 15 }).map((_, idx) => {
-      const d = new Date();
+      const d = new Date(referenceDate.getTime());
       d.setDate(d.getDate() - (14 - idx));
       return {
         date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-        Reach: Math.round(1500 + Math.sin(idx * 0.8) * 400 + Math.random() * 200),
-        Impressions: Math.round(2500 + Math.sin(idx * 0.8) * 800 + Math.random() * 500),
+        Reach: Math.round(1500 + Math.sin(idx * 0.8) * 400 + (idx % 3) * 50),
+        Impressions: Math.round(2500 + Math.sin(idx * 0.8) * 800 + (idx % 5) * 100),
       };
     });
   }, [metrics]);
@@ -276,7 +277,7 @@ export default function AnalyticsPage() {
                 badge: "Calculated Signal",
               },
             ].map((stat, idx) => (
-              <motion.div
+              <m.div
                 key={idx}
                 whileHover={{ y: -4, scale: 1.01 }}
                 className="border border-white/10 bg-glass-deep backdrop-blur-md rounded-2xl p-5 shadow-glow relative overflow-hidden group transition-all"
@@ -300,7 +301,7 @@ export default function AnalyticsPage() {
                 <p className="text-[10px] text-gray-500 font-semibold mt-2">
                   {stat.desc}
                 </p>
-              </motion.div>
+              </m.div>
             ))}
           </div>
 
@@ -331,7 +332,7 @@ export default function AnalyticsPage() {
           <div className="relative z-10 min-h-[400px]">
             <AnimatePresence mode="wait">
               {activeTab === "growth" && (
-                <motion.div
+                <m.div
                   key="growth-tab"
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -354,39 +355,8 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
 
-                    <div className="w-full h-[250px] text-xs">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={lineChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                          <XAxis dataKey="date" stroke="rgba(255,255,255,0.3)" axisLine={false} tickLine={false} dy={10} />
-                          <YAxis stroke="rgba(255,255,255,0.3)" axisLine={false} tickLine={false} dx={-5} />
-                          <ChartTooltip
-                            content={({ active, payload }) => {
-                              if (active && payload && payload.length > 0) {
-                                const p0 = payload[0];
-                                const p1 = payload[1];
-                                if (!p0) return null;
-                                return (
-                                  <div className="p-3 rounded-xl border border-glass bg-popover/90 backdrop-blur-md text-white text-[10px] flex flex-col gap-1.5 shadow-glow select-none">
-                                    <span className="font-bold text-gray-400">{p0.payload?.date}</span>
-                                    <span className="font-semibold text-brand-primary flex items-center gap-1">
-                                      Reach: <strong className="text-white">{p0.value?.toLocaleString()}</strong>
-                                    </span>
-                                    {p1 && (
-                                      <span className="font-semibold text-brand-secondary flex items-center gap-1">
-                                        Impressions: <strong className="text-white">{p1.value?.toLocaleString()}</strong>
-                                      </span>
-                                    )}
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
-                          />
-                          <Line type="monotone" dataKey="Reach" stroke="#6C5CE7" strokeWidth={3} dot={false} activeDot={{ r: 5 }} />
-                          <Line type="monotone" dataKey="Impressions" stroke="#00B894" strokeWidth={2} dot={false} strokeDasharray="4 4" />
-                        </LineChart>
-                      </ResponsiveContainer>
+                    <div className="w-full h-[250px] min-w-0 min-h-0 text-xs">
+                      <ReelsPerformanceChart data={lineChartData} />
                     </div>
                   </div>
 
@@ -426,11 +396,11 @@ export default function AnalyticsPage() {
                       </p>
                     </div>
                   </div>
-                </motion.div>
+                </m.div>
               )}
 
               {activeTab === "content" && (
-                <motion.div
+                <m.div
                   key="content-tab"
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -583,11 +553,11 @@ export default function AnalyticsPage() {
                       ))}
                     </div>
                   </div>
-                </motion.div>
+                </m.div>
               )}
 
               {activeTab === "heatmap" && (
-                <motion.div
+                <m.div
                   key="heatmap-tab"
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -716,11 +686,11 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </m.div>
               )}
 
               {activeTab === "next-tests" && (
-                <motion.div
+                <m.div
                   key="next-tests-tab"
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -816,7 +786,7 @@ export default function AnalyticsPage() {
                       </p>
                     </div>
                   </div>
-                </motion.div>
+                </m.div>
               )}
             </AnimatePresence>
           </div>

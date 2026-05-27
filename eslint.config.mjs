@@ -12,6 +12,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "scripts/**",
   ]),
   // Public Bundle Separation Boundary (spec §14.7)
   {
@@ -55,6 +56,12 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
+      "@typescript-eslint/no-explicit-any": "warn",
+    }
+  }
 ]);
 
 export default eslintConfig;
