@@ -31,12 +31,13 @@ export function TrendChart({ data = [], isLoading = false }: TrendChartProps) {
   // Prevent SSR hydration mismatch warning by only rendering after mount
   useEffect(() => {
     let active = true;
-    requestAnimationFrame(() => {
+    const timer = setTimeout(() => {
       if (!active) return;
       setMounted(true);
-    });
+    }, 100);
     return () => {
       active = false;
+      clearTimeout(timer);
     };
   }, []);
 

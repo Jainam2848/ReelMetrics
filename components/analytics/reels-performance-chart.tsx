@@ -22,6 +22,24 @@ interface ReelsPerformanceChartProps {
 }
 
 export function ReelsPerformanceChart({ data }: ReelsPerformanceChartProps) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    let active = true;
+    const timer = setTimeout(() => {
+      if (!active) return;
+      setMounted(true);
+    }, 100);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, []);
+
+  if (!mounted) {
+    return <div className="w-full h-full bg-white/5 animate-pulse rounded-xl" />;
+  }
+
   return (
     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
       <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>

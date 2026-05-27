@@ -14,38 +14,9 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // 1. Initialize Supabase SSR client with request-response cookie forwarding
-  const supabase = createServerClient(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set({ name, value, ...options });
-            response = NextResponse.next({
-              request: {
-                headers: request.headers,
-              },
-            });
-            response.cookies.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-
-  // 2. Refresh user session safely using getUser() (not getSession() as per spec §11.4)
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const { pathname } = request.nextUrl;
 
-  // 3. Route Protection Gates
+  // 1. Pure Path-Based Redirections (Zero network latency overhead)
   // Redirect legacy /dashboard paths to route group counterparts to prevent 404s
   if (pathname === "/dashboard") {
     const targetUrl = new URL("/", request.url);
@@ -62,10 +33,40 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(targetUrl);
   }
 
-  // Gate all protected dashboard paths in the route group if anonymous
+  // 2. Gate all protected dashboard UI paths in the route group if anonymous
   const protectedPaths = ["/", "/posts", "/strategy", "/analytics", "/accounts", "/billing", "/settings"];
   const isProtected = protectedPaths.includes(pathname) || pathname.startsWith("/posts/") || pathname.startsWith("/strategy/");
+
   if (isProtected) {
+    // Initialize Supabase client ONLY for protected UI routes to prevent double auth queries on API/Webhook feeds
+    const supabase = createServerClient(
+      env.NEXT_PUBLIC_SUPABASE_URL,
+      env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              request.cookies.set({ name, value, ...options });
+              response = NextResponse.next({
+                request: {
+                  headers: request.headers,
+                },
+              });
+              response.cookies.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
+    // Refresh user session safely using getUser() (not getSession() as per spec §11.4)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirectTo", pathname);
