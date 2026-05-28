@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import { useActiveAccount } from "@/components/shared/active-account-context";
@@ -35,6 +35,45 @@ export default function AccountsPage() {
   
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [demoLoading, setDemoLoading] = useState(false);
+
+  // ── Strategy Recalibration States & Handlers ────────────────────────────────
+  const [calibratingId, setCalibratingId] = useState<string | null>(null);
+  const [editNiche, setEditNiche] = useState("");
+  const [editGoal, setEditGoal] = useState("");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const startRecalibrate = (acct: any) => {
+    if (calibratingId === acct.id) {
+      setCalibratingId(null);
+    } else {
+      setCalibratingId(acct.id);
+      setEditNiche(acct.niche || "tech");
+      setEditGoal(acct.goal || "retention");
+    }
+  };
+
+  const handleApplyRecalibration = async (accountId: string) => {
+    setUpdatingId(accountId);
+    try {
+      const res = await fetch(`/api/accounts/${accountId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ niche: editNiche, goal: editGoal }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Strategy successfully recalibrated! Adjusting strategy metrics.");
+        setCalibratingId(null);
+        await mutate();
+      } else {
+        toast.error("Failed to update strategy calibration.");
+      }
+    } catch {
+      toast.error("An unexpected error occurred.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   const handleManualSync = async (accountId: string) => {
     setSyncingId(accountId);
@@ -205,6 +244,19 @@ export default function AccountsPage() {
                           </button>
                         )}
 
+                        {/* Recalibrate Strategy */}
+                        <button
+                          onClick={() => startRecalibrate(acct)}
+                          className={`px-3 min-h-[32px] rounded-lg border text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 active:scale-95 cursor-pointer transition-all ${
+                            calibratingId === acct.id
+                              ? "border-brand-accent bg-brand-accent/15 text-brand-accent shadow-glow-sm"
+                              : "border-glass bg-white/5 text-brand-primary hover:bg-white/10"
+                          }`}
+                        >
+                          <Sparkles className="w-3 h-3 animate-pulse" />
+                          <span>{calibratingId === acct.id ? "Close" : "Recalibrate"}</span>
+                        </button>
+
                         {/* Sync Trigger */}
                         <button
                           onClick={() => handleManualSync(acct.id)}
@@ -216,6 +268,87 @@ export default function AccountsPage() {
                         </button>
                       </div>
                     </div>
+
+                    {/* Collapsible Strategy Recalibration Accordion Drawer */}
+                    <AnimatePresence>
+                      {calibratingId === acct.id && (
+                        <m.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                          className="overflow-hidden mt-4 pt-4 border-t border-white/5"
+                        >
+                          <div className="flex flex-col gap-4 select-none">
+                            <div>
+                              <span className="text-[9px] text-gray-500 font-extrabold uppercase tracking-widest block mb-2">
+                                Calibrate Niche Focus
+                              </span>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {[
+                                  { id: "tech", label: "Tech 💻" },
+                                  { id: "comedy", label: "Comedy 🎭" },
+                                  { id: "finance", label: "Finance 📈" },
+                                  { id: "education", label: "Education 🧠" },
+                                  { id: "lifestyle", label: "Lifestyle ✈️" },
+                                  { id: "fashion", label: "Fashion ✨" },
+                                ].map((nItem) => (
+                                  <button
+                                    key={nItem.id}
+                                    onClick={() => setEditNiche(nItem.id)}
+                                    className={`py-1.5 px-3 rounded-lg border text-[10px] font-bold text-center transition-all ${
+                                      editNiche === nItem.id
+                                        ? "border-brand-primary bg-brand-primary/10 text-brand-primary shadow-glow-sm"
+                                        : "border-glass bg-white/5 text-gray-300 hover:bg-white/10"
+                                    }`}
+                                  >
+                                    {nItem.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div>
+                              <span className="text-[9px] text-gray-500 font-extrabold uppercase tracking-widest block mb-2">
+                                Calibrate Strategy Goal Focus
+                              </span>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                {[
+                                  { id: "retention", label: "Audience Retention" },
+                                  { id: "engagement", label: "Engagement Velocity" },
+                                  { id: "followers", label: "Follower Expansion" },
+                                ].map((gItem) => (
+                                  <button
+                                    key={gItem.id}
+                                    onClick={() => setEditGoal(gItem.id)}
+                                    className={`py-1.5 px-3 rounded-lg border text-[10px] font-bold text-center transition-all ${
+                                      editGoal === gItem.id
+                                        ? "border-brand-secondary bg-brand-secondary/10 text-brand-secondary shadow-glow-sm"
+                                        : "border-glass bg-white/5 text-gray-300 hover:bg-white/10"
+                                    }`}
+                                  >
+                                    {gItem.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => handleApplyRecalibration(acct.id)}
+                              disabled={updatingId === acct.id}
+                              className="mt-2 w-full min-h-[36px] rounded-lg bg-gradient-to-r from-brand-primary to-brand-accent text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                            >
+                              {updatingId === acct.id ? (
+                                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Sparkles className="w-4 h-4 animate-pulse" />
+                              )}
+                              <span>{updatingId === acct.id ? "Applying recalibrations..." : "Apply Strategy Moat Calibrations"}</span>
+                            </button>
+                          </div>
+                        </m.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 );
               })}

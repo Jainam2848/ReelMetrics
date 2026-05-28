@@ -1,250 +1,252 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
-import * as THREE from "three";
+import React, { useEffect, useRef, useState } from "react";
+import { m, AnimatePresence } from "framer-motion";
 
 interface OnboardingCore3DProps {
   niche: string;
   goal: string;
 }
 
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  angle: number;
+  speed: number;
+  baseX: number;
+  baseY: number;
+}
+
+const NICHE_PALETTES = {
+  tech: { primary: "#6366F1", secondary: "#8B5CF6", glow: "rgba(99, 102, 241, 0.15)" },
+  comedy: { primary: "#F43F5E", secondary: "#EC4899", glow: "rgba(244, 63, 94, 0.15)" },
+  finance: { primary: "#F59E0B", secondary: "#10B981", glow: "rgba(245, 158, 11, 0.15)" },
+  education: { primary: "#0EA5E9", secondary: "#14B8A6", glow: "rgba(14, 165, 233, 0.15)" },
+  lifestyle: { primary: "#A78BFA", secondary: "#FDBA74", glow: "rgba(167, 139, 250, 0.15)" },
+  fashion: { primary: "#FDA4AF", secondary: "#FDE047", glow: "rgba(253, 164, 175, 0.15)" },
+};
+
 export default function OnboardingCore3D({ niche, goal }: OnboardingCore3DProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number | null>(null);
-
-  // References to pass props to the active animation loop
-  const currentNicheRef = useRef<string>(niche);
-  const currentGoalRef = useRef<string>(goal);
-
-  useEffect(() => {
-    currentNicheRef.current = niche;
-  }, [niche]);
+  
+  const [mouse, setMouse] = useState({ x: 0, y: 0, active: false });
+  const mouseRef = useRef(mouse);
 
   useEffect(() => {
-    currentGoalRef.current = goal;
-  }, [goal]);
+    mouseRef.current = mouse;
+  }, [mouse]);
+
+  // Extract visual configuration based on niche/goal parameters
+  const palette = NICHE_PALETTES[niche as keyof typeof NICHE_PALETTES] || NICHE_PALETTES.tech;
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const container = containerRef.current;
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-    // 1. Scene & Camera Setup
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-    camera.position.z = 8;
+    let width = canvas.width = containerRef.current?.clientWidth || 240;
+    let height = canvas.height = containerRef.current?.clientHeight || 220;
 
-    // 2. WebGL Renderer Setup
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    container.appendChild(renderer.domElement);
-
-    // 3. Programmatic Radial Gradient Particle Dot Texture
-    const createParticleTexture = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 32;
-      canvas.height = 32;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-        gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
-        gradient.addColorStop(0.2, "rgba(255, 255, 255, 0.8)");
-        gradient.addColorStop(0.5, "rgba(255, 255, 255, 0.15)");
-        gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, 32, 32);
-      }
-      return new THREE.CanvasTexture(canvas);
+    const handleResize = () => {
+      if (!canvas || !containerRef.current) return;
+      width = canvas.width = containerRef.current.clientWidth;
+      height = canvas.height = containerRef.current.clientHeight;
     };
+    window.addEventListener("resize", handleResize);
 
-    const particleTexture = createParticleTexture();
+    // Initializing high-density particle swarm
+    const particles: Particle[] = [];
+    const particleCount = 45;
 
-    // Helper to generate a points cloud from any geometry
-    const createPointsMesh = (geometry: THREE.BufferGeometry, colorHex: string) => {
-      const material = new THREE.PointsMaterial({
-        size: 0.16,
-        color: new THREE.Color(colorHex),
-        map: particleTexture,
-        transparent: true,
-        opacity: 0.0, // starts hidden, fades in
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (i / particleCount) * Math.PI * 2;
+      const radius = 25 + Math.random() * 40;
+      particles.push({
+        x: width / 2 + Math.cos(angle) * radius,
+        y: height / 2 + Math.sin(angle) * radius,
+        vx: 0,
+        vy: 0,
+        radius: 3 + Math.random() * 5,
+        angle: Math.random() * Math.PI * 2,
+        speed: 0.015 + Math.random() * 0.02,
+        baseX: radius,
+        baseY: radius,
       });
+    }
 
-      const mesh = new THREE.Points(geometry, material);
-      mesh.scale.setScalar(0.001); // starts collapsed
-      scene.add(mesh);
-      return { mesh, material };
-    };
-
-    // 4. Create the 4 Niche Geometric Shells
-    // Tech: Torus Knot Geometry
-    const techGeo = new THREE.TorusKnotGeometry(1.0, 0.32, 100, 12, 2, 3);
-    const tech = createPointsMesh(techGeo, "#6C5CE7"); // Electric Purple
-
-    // Finance: Swirling Cylinder
-    const financeGeo = new THREE.CylinderGeometry(0.8, 0.8, 2.0, 24, 24, true);
-    const finance = createPointsMesh(financeGeo, "#F5A623"); // Gold/Amber
-
-    // Comedy: Pulsing Sphere
-    const comedyGeo = new THREE.SphereGeometry(1.2, 32, 32);
-    const comedy = createPointsMesh(comedyGeo, "#FF007F"); // Neon Pink
-
-    // Education: Structural Icosahedron
-    const eduGeo = new THREE.IcosahedronGeometry(1.2, 2);
-    const edu = createPointsMesh(eduGeo, "#00B894"); // Neon Teal
-
-    // Map niche keys to their respective meshes
-    const nicheMeshes: Record<string, { mesh: THREE.Points; material: THREE.PointsMaterial }> = {
-      tech,
-      finance,
-      comedy,
-      education: edu,
-      // fallback options
-      "": tech, 
-      lifestyle: comedy,
-      fashion: edu,
-    };
-
-    // Ambient Lighting for visual depth (points don't require light, but adds mesh shading capability if we add a wireframe back shell)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
-
-    // 5. Animation Loop
-    let elapsed = 0;
-    const clock = new THREE.Clock();
-
-    // Spring interpolation values
-    const animStates = {
-      tech: { scale: 0.001, opacity: 0 },
-      finance: { scale: 0.001, opacity: 0 },
-      comedy: { scale: 0.001, opacity: 0 },
-      education: { scale: 0.001, opacity: 0 },
-    };
-
+    let frame = 0;
     const animate = () => {
-      const delta = clock.getDelta();
-      elapsed += delta;
+      frame++;
+      ctx.clearRect(0, 0, width, height);
 
-      // Extract current reactive props
-      const activeNiche = currentNicheRef.current || "tech";
-      const activeGoal = currentGoalRef.current || "";
+      const targetPalette = NICHE_PALETTES[niche as keyof typeof NICHE_PALETTES] || NICHE_PALETTES.tech;
+      const mState = mouseRef.current;
 
-      // Determine active target layout key
-      let resolvedKey = "tech";
-      if (activeNiche === "tech") resolvedKey = "tech";
-      else if (activeNiche === "finance") resolvedKey = "finance";
-      else if (activeNiche === "comedy" || activeNiche === "lifestyle") resolvedKey = "comedy";
-      else if (activeNiche === "education" || activeNiche === "fashion") resolvedKey = "education";
+      // ── Determine Dynamic Wave/Vortex Variables based on Niche & Goal ──
+      let swirlSpeed = 1.0;
+      let centerGravity = 0.08;
+      let mouseGravity = 0.12;
+      let liquidComplexity = 3;
 
-      // 6. Base scale and pulse variations based on selected Goal
-      let targetBaseScale = 1.0;
-      let pulseSpeed = 1.5;
-      let pulseAmp = 0.0;
-      let rotationMultiplier = 1.0;
-
-      if (activeGoal === "retention") {
-        // Hypnotic breathing pulse
-        pulseAmp = 0.12;
-        pulseSpeed = 2.0;
-      } else if (activeGoal === "engagement") {
-        // Fast rotation + minor vertical vibration
-        rotationMultiplier = 2.8;
-        pulseAmp = 0.04;
-        pulseSpeed = 8.0;
-      } else if (activeGoal === "followers") {
-        // Expanded shape
-        targetBaseScale = 1.4;
-        pulseAmp = 0.06;
-        pulseSpeed = 1.0;
+      if (goal === "retention") {
+        // Hypnotic concentric hold curve behavior
+        swirlSpeed = 0.5;
+        centerGravity = 0.15;
+        liquidComplexity = 2;
+      } else if (goal === "engagement") {
+        // Highly kinetic, rapid swirling vortex
+        swirlSpeed = 2.4;
+        centerGravity = 0.05;
+        mouseGravity = 0.22;
+        liquidComplexity = 5;
+      } else if (goal === "followers") {
+        // Expansive floaters
+        swirlSpeed = 0.8;
+        centerGravity = 0.03;
+        liquidComplexity = 4;
       }
 
-      const pulse = 1.0 + Math.sin(elapsed * pulseSpeed) * pulseAmp;
+      // Draw elegant glowing fluid blob background
+      const centerGradient = ctx.createRadialGradient(
+        width / 2,
+        height / 2,
+        5,
+        width / 2,
+        height / 2,
+        90 + Math.sin(frame * 0.02) * 15
+      );
+      centerGradient.addColorStop(0, targetPalette.glow);
+      centerGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = centerGradient;
+      ctx.beginPath();
+      ctx.arc(width / 2, height / 2, 100, 0, Math.PI * 2);
+      ctx.fill();
 
-      // 7. Smoothly Lerp Scales & Opacities of Niche Shapes
-      Object.keys(nicheMeshes).forEach((key) => {
-        const item = nicheMeshes[key];
-        if (!item) return;
-
-        // Skip keys that are just fallbacks to avoid double processing
-        if (key === "" || key === "lifestyle" || key === "fashion") return;
-
-        const targetScale = key === resolvedKey ? targetBaseScale * pulse : 0.001;
-        const targetOpacity = key === resolvedKey ? 0.85 : 0.0;
-
-        // Fetch local anim state values
-        const state = animStates[key as keyof typeof animStates];
-        if (state) {
-          // Lerp calculations for ultra-smooth easing
-          state.scale += (targetScale - state.scale) * 0.1;
-          state.opacity += (targetOpacity - state.opacity) * 0.12;
-
-          // Apply to ThreeJS Mesh and Material
-          item.mesh.scale.setScalar(state.scale);
-          item.material.opacity = state.opacity;
-
-          // Gentle rotation animation
-          item.mesh.rotation.y += delta * 0.4 * rotationMultiplier;
-          item.mesh.rotation.x += delta * 0.15 * (rotationMultiplier * 0.5);
-
-          // Subtle float oscillation
-          item.mesh.position.y = Math.sin(elapsed * 1.2 + (key === "tech" ? 0 : 2)) * 0.15;
+      // Render flowing sine-wave ribbons representing strategy pacing
+      ctx.lineWidth = 1.5;
+      for (let w = 0; w < liquidComplexity; w++) {
+        ctx.strokeStyle = w === 0 ? targetPalette.primary : targetPalette.secondary;
+        ctx.globalAlpha = 0.15 + (1 - w / liquidComplexity) * 0.45;
+        
+        ctx.beginPath();
+        for (let x = 0; x < width; x += 5) {
+          const wavePhase = frame * 0.03 * swirlSpeed + w * 1.5;
+          const y = height / 2 + 
+            Math.sin(x * 0.015 + wavePhase) * (20 + w * 6) * Math.sin(frame * 0.01 + w) + 
+            Math.cos(x * 0.006 - wavePhase * 0.5) * 10;
+          
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
         }
+        ctx.stroke();
+      }
+
+      // Render & Update Fluid Particles
+      ctx.globalAlpha = 1.0;
+      particles.forEach((p, idx) => {
+        p.angle += p.speed * swirlSpeed;
+
+        // Base orbiting paths around central coordinate
+        const orbitRadius = p.baseX + Math.sin(frame * 0.01 + idx) * 8;
+        let targetX = width / 2 + Math.cos(p.angle) * orbitRadius;
+        let targetY = height / 2 + Math.sin(p.angle) * orbitRadius;
+
+        // Drag particles toward active pointer coordinates
+        if (mState.active) {
+          const dx = mState.x - p.x;
+          const dy = mState.y - p.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          if (distance < 110) {
+            const force = (110 - distance) / 110;
+            targetX += (mState.x - targetX) * force * mouseGravity;
+            targetY += (mState.y - targetY) * force * mouseGravity;
+          }
+        }
+
+        // Apply smooth spring forces
+        p.vx += (targetX - p.x) * centerGravity;
+        p.vy += (targetY - p.y) * centerGravity;
+        
+        // Dampen velocities
+        p.vx *= 0.82;
+        p.vy *= 0.82;
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // Render particle with niche-specific gradient glow
+        const radGradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.radius);
+        radGradient.addColorStop(0, "#FFFFFF");
+        radGradient.addColorStop(0.3, targetPalette.primary);
+        radGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+        
+        ctx.fillStyle = radGradient;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
       });
 
-      // Render Scene
-      renderer.render(scene, camera);
       requestRef.current = requestAnimationFrame(animate);
     };
 
-    // 8. Resize Handler
-    const handleResize = () => {
-      const w = container.clientWidth;
-      const h = container.clientHeight;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    // Initial Trigger
     requestRef.current = requestAnimationFrame(animate);
 
-    // 9. Component Unmount Disposal & Cleanup
     return () => {
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
       window.removeEventListener("resize", handleResize);
-
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
-
-      // Dispose geometries
-      techGeo.dispose();
-      financeGeo.dispose();
-      comedyGeo.dispose();
-      eduGeo.dispose();
-
-      // Dispose materials & textures
-      tech.material.dispose();
-      finance.material.dispose();
-      comedy.material.dispose();
-      edu.material.dispose();
-      particleTexture.dispose();
-
-      renderer.dispose();
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
-  }, []);
+  }, [niche, goal]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    setMouse({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+      active: true,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setMouse((prev) => ({ ...prev, active: false }));
+  };
 
   return (
     <div 
       ref={containerRef} 
-      className="w-full h-full min-h-[220px] select-none pointer-events-none relative z-10"
-      aria-hidden="true"
-    />
+      className="w-full h-full min-h-[200px] relative select-none"
+    >
+      {/* Background soft ambient matching current niche */}
+      <AnimatePresence mode="wait">
+        <m.div
+          key={niche}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.8 }}
+          className="absolute inset-0 blur-2xl -z-10 rounded-full scale-75 opacity-20 pointer-events-none"
+          style={{
+            background: `radial-gradient(circle, ${palette.primary} 0%, ${palette.secondary} 100%)`,
+          }}
+        />
+      </AnimatePresence>
+
+      <canvas
+        ref={canvasRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className="w-full h-full block cursor-crosshair relative z-10"
+      />
+    </div>
   );
 }

@@ -18,10 +18,10 @@
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
   
-  /* Cyberpunk Brutalist Colors */
-  --color-brand-primary: #00F0FF;     /* Electric Cyan */
-  --color-brand-secondary: #0A0A0A;   /* Deep Void */
-  --color-brand-accent: #FF003C;      /* Cyberpunk Red */
+  /* Creator strategy palette */
+  --color-brand-primary: #4F46E5;     /* Strategy indigo */
+  --color-brand-secondary: #14B8A6;   /* Growth teal */
+  --color-brand-accent: #F97316;      /* Creator signal orange */
 
   /* Neutral overrides */
   --color-card: var(--card);
@@ -46,60 +46,60 @@
   --card-foreground: #050505;
   --popover: #FFFFFF;
   --popover-foreground: #050505;
-  --primary: #00F0FF;
+  --primary: #4F46E5;
   --primary-foreground: #000000;
   --secondary: #F0F0F0;
   --secondary-foreground: #050505;
   --muted: #F0F0F0;
   --muted-foreground: #666666;
-  --accent: #FF003C;
+  --accent: #F97316;
   --accent-foreground: #FFFFFF;
-  --destructive: #FF003C;
+  --destructive: #EF4444;
   --border: #E5E5E5;
   --input: #F0F0F0;
-  --ring: #00F0FF;
+  --ring: #4F46E5;
   --font-sans: var(--font-geist-sans), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-heading: var(--font-outfit), 'Outfit', 'Inter', sans-serif;
   
   --sidebar: #FFFFFF;
   --sidebar-foreground: #050505;
-  --sidebar-primary: #00F0FF;
+  --sidebar-primary: #4F46E5;
   --sidebar-primary-foreground: #000000;
   --sidebar-accent: #F0F0F0;
   --sidebar-accent-foreground: #050505;
   --sidebar-border: #E5E5E5;
-  --sidebar-ring: #00F0FF;
+  --sidebar-ring: #4F46E5;
 }
 
-/* Dark Mode First Custom Palette - Cyberpunk Brutalist */
+/* Dark mode creator analytics palette */
 .dark {
-  --background: #050505;          
+  --background: #08090D;          
   --foreground: #F8F8FC;          
-  --card: #0A0A0A;                
+  --card: #101114;                
   --card-foreground: #F8F8FC;
-  --popover: #0A0A0A;             
+  --popover: #101114;             
   --popover-foreground: #F8F8FC;
-  --primary: #00F0FF;  
+  --primary: #4F46E5;  
   --primary-foreground: #000000;
-  --secondary: #111111;           
-  --secondary-foreground: #00F0FF; 
-  --muted: #111111;               
-  --muted-foreground: #888888;    
-  --accent: #111111;              
-  --accent-foreground: #FF003C;   
-  --destructive: #FF003C;
-  --border: #222222; 
-  --input: #1A1A1A;
-  --ring: #00F0FF;
+  --secondary: #12141A;           
+  --secondary-foreground: #14B8A6; 
+  --muted: #12141A;               
+  --muted-foreground: #9CA3AF;    
+  --accent: #171A21;              
+  --accent-foreground: #F97316;   
+  --destructive: #EF4444;
+  --border: #252936; 
+  --input: #171A21;
+  --ring: #4F46E5;
   
-  --sidebar: #0A0A0A;             
+  --sidebar: #101114;             
   --sidebar-foreground: #F8F8FC;
-  --sidebar-primary: #00F0FF;
+  --sidebar-primary: #4F46E5;
   --sidebar-primary-foreground: #000000;
-  --sidebar-accent: #111111;
+  --sidebar-accent: #171A21;
   --sidebar-accent-foreground: #F8F8FC;
-  --sidebar-border: #222222;
-  --sidebar-ring: #00F0FF;
+  --sidebar-border: #252936;
+  --sidebar-ring: #4F46E5;
 }
 
 @layer base {
@@ -110,7 +110,7 @@
     @apply bg-background text-foreground min-h-screen font-sans antialiased;
   }
   ::selection {
-    background-color: rgba(0, 240, 255, 0.3);
+    background-color: rgba(79, 70, 229, 0.28);
     color: white;
   }
   html {
@@ -122,46 +122,30 @@
   }
 }
 
-/* Cyberpunk Glass & Shadows */
+/* Glass surfaces and restrained shadows */
 .bg-glass {
-  background: rgba(10, 10, 10, 0.7) !important;
+  background: rgba(16, 17, 20, 0.74) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
 }
 
 .border-glass {
-  border: 1px solid rgba(0, 240, 255, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
 .shadow-glow {
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
 }
 
 .shadow-glow-cyan {
-  box-shadow: 0 0 20px rgba(0, 240, 255, 0.4), inset 0 0 10px rgba(0, 240, 255, 0.2);
+  box-shadow: 0 16px 36px rgba(79, 70, 229, 0.22), inset 0 0 10px rgba(79, 70, 229, 0.08);
 }
 
 .shadow-glow-red {
-  box-shadow: 0 0 20px rgba(255, 0, 60, 0.4);
+  box-shadow: 0 16px 36px rgba(249, 115, 22, 0.2);
 }
 
-/* Scanlines Effect */
-.scanlines {
-  position: relative;
-}
-.scanlines::before {
-  content: " ";
-  display: block;
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-  z-index: 50;
-  background-size: 100% 2px, 3px 100%;
-  pointer-events: none;
-}
+
 
 /* Scrollbars */
 ::-webkit-scrollbar {

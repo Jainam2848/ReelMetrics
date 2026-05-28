@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -22,7 +22,7 @@ function LoginForm() {
   const toast = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirectTo") || "/";
+  const redirectTo = searchParams.get("redirectTo") || "/dashboard";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

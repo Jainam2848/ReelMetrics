@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { useActiveAccount } from "@/components/shared/active-account-context";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { LoadingSkeleton } from "@/components/dashboard/loading-skeleton";
@@ -22,17 +22,10 @@ import {
   TrendingUp,
   Info,
   ArrowUpRight,
-  ArrowDownRight,
   Sparkles,
   Layers,
   AlertTriangle,
-  ChevronRight,
   ShieldCheck,
-  Eye,
-  Heart,
-  MessageSquare,
-  Bookmark,
-  Share2,
 } from "lucide-react";
 
 const HEATMAP_HOUR_SLOTS = ["8:00", "12:00", "18:00", "20:00"];
@@ -47,24 +40,15 @@ export default function AnalyticsPage() {
 
   const {
     metrics,
-    trends,
-    trendsHasData,
-    metricsHasData,
     isLoading,
     error,
     mutate,
-  } = useAnalytics(timeframe);
-
-  // Re-fetch when baselineDays changes (SWR revalidation is handled nicely if we mutate)
-  useEffect(() => {
-    if (activeAccount) {
-      mutate();
-    }
-  }, [baselineDays, activeAccount]);
+    metricsHasData,
+  } = useAnalytics(timeframe, baselineDays);
 
   // Construct Heatmap Data Lookups
   const heatmapGrid = useMemo(() => {
-    const cells = (metrics as any)?.heatmap ?? [];
+    const cells = metrics?.heatmap ?? [];
     if (cells.length === 0) return null;
 
     const lookup = new Map<string, { score: number; lift: number; count: number }>();
@@ -83,39 +67,31 @@ export default function AnalyticsPage() {
 
   // Rank Feed Posts / Reels by intent
   const sortedReels = useMemo(() => {
-    const rows = (metrics as any)?.timeline ?? []; // timeline points can act as baseline elements, or we retrieve raw rows
-    // Wait, the API returns the parsed timeline, and the query for reels was reelRows.
-    // Let's fallback to calculating derived metrics on synced reels
-    // Wait, the reels list is available in GET /api/accounts/:id/reels. SWR hook is usePosts.
-    // Let's use custom mock mapping or build it dynamically from trends / dailyInsights to keep it self-contained
-    // Let's mock a beautiful set of recent reels using standard values if empty
-    const baselineReelReach = (metrics as any)?.baselines?.reels?.avgReach ?? 1200;
-    
-    const mockPosts = [
-      { id: "1", type: "REEL", title: "Scale your retention from 20% to 80%", date: "3 days ago", reach: 4500, views: 5200, likes: 320, comments: 45, shares: 180, saves: 210, skipRate: 15.4, trust: "Verified Source" },
-      { id: "2", type: "FEED", title: "9 Dimensions scoring engine layout", date: "6 days ago", reach: 2100, views: 2400, likes: 140, comments: 12, shares: 35, saves: 78, skipRate: 28.1, trust: "Calculated Signal" },
-      { id: "3", type: "REEL", title: "Behind the scenes: the hook moat", date: "10 days ago", reach: 7800, views: 9000, likes: 640, comments: 85, shares: 420, saves: 510, skipRate: 12.0, trust: "Verified Source" },
-      { id: "4", type: "FEED", title: "Instagram professional account sync setup", date: "14 days ago", reach: 1100, views: 1300, likes: 52, comments: 4, shares: 12, saves: 19, skipRate: 34.5, trust: "Delayed by Instagram" },
-    ];
+    const rows = metrics?.content ?? [];
+    const baselineReelReach = metrics?.baselines?.reels?.avgReach ?? 0;
 
-    return mockPosts.map(p => {
-      const followers = activeAccount?.followersCount ?? 5000;
-      const engagements = p.likes + p.comments + p.saves;
-      const er = (engagements / p.views) * 100;
-      const reachRate = (p.reach / followers) * 100;
-      const saveRate = (p.saves / p.reach) * 100;
-      const shareRate = (p.shares / p.reach) * 100;
-      const intentScore = p.saves * 2 + p.shares * 3 + p.comments; // Shares and saves get heavy weightings
-      const reachLift = ((p.reach - baselineReelReach) / baselineReelReach) * 100;
+    return rows.map((p) => {
+      const caption = p.caption?.trim();
+      const title = caption
+        ? caption.length > 86
+          ? `${caption.slice(0, 83)}...`
+          : caption
+        : "Untitled synced post";
+      const reachLift =
+        baselineReelReach > 0 ? ((p.reach - baselineReelReach) / baselineReelReach) * 100 : 0;
+      const intentScore = p.saves * 2 + p.shares * 3 + p.comments;
 
       return {
         ...p,
-        er: parseFloat(er.toFixed(2)),
-        reachRate: parseFloat(reachRate.toFixed(2)),
-        saveRate: parseFloat(saveRate.toFixed(2)),
-        shareRate: parseFloat(shareRate.toFixed(2)),
+        type: p.mediaType || "REEL",
+        title,
+        date: new Date(p.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        reachRate: Number(p.reachRate.toFixed(2)),
+        saveRate: Number(p.saveRateReach.toFixed(2)),
+        shareRate: Number(p.shareRateReach.toFixed(2)),
         intentScore,
-        reachLift: parseFloat(reachLift.toFixed(1)),
+        reachLift: Number(reachLift.toFixed(1)),
+        trust: p.dataTrustLabel,
       };
     }).sort((a, b) => {
       if (sortKey === "intent") return b.intentScore - a.intentScore;
@@ -123,44 +99,27 @@ export default function AnalyticsPage() {
       if (sortKey === "saveRate") return b.saveRate - a.saveRate;
       return b.shareRate - a.shareRate;
     });
-  }, [metrics, sortKey, activeAccount]);
+  }, [metrics, sortKey]);
 
   // Active Stories List
   const storiesList = useMemo(() => {
-    const rawStories = (metrics as any)?.stories ?? [];
-    if (rawStories.length > 0) return rawStories;
-
-    // Seed mock stories if database has no stories ingested yet (Data Trust Mock fallback)
-    const referenceDate = new Date("2026-05-26T12:00:00Z");
-    return [
-      { id: "s1", timestamp: new Date(referenceDate.getTime() - 12 * 3600 * 1000), impressions: 850, reach: 720, replies: 12, exits: 45, completionRate: 94.7, dataTrustLabel: "Verified Source" },
-      { id: "s2", timestamp: new Date(referenceDate.getTime() - 24 * 3600 * 1000), impressions: 1100, reach: 910, replies: 8, exits: 120, completionRate: 89.1, dataTrustLabel: "Calculated Signal" },
-      { id: "s3", timestamp: new Date(referenceDate.getTime() - 48 * 3600 * 1000), impressions: 600, reach: 510, replies: 2, exits: 30, completionRate: 95.0, dataTrustLabel: "Verified Source" },
-    ];
+    return metrics?.stories ?? [];
   }, [metrics]);
 
   // Account daily reach and impressions line data
   const lineChartData = useMemo(() => {
-    const rows = (metrics as any)?.dailyInsights ?? [];
+    const rows = metrics?.dailyInsights ?? [];
     if (rows.length > 0) {
-      return [...rows].reverse().map((r: any) => ({
+      return [...rows].reverse().map((r) => ({
         date: new Date(r.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         Reach: r.reach,
-        Impressions: r.impressions,
+        Views: r.impressions,
+        Intent: 0,
+        Engagements: 0,
       }));
     }
 
-    // Default Seeded Mock Timeline for visual excellence
-    const referenceDate = new Date("2026-05-26T12:00:00Z");
-    return Array.from({ length: 15 }).map((_, idx) => {
-      const d = new Date(referenceDate.getTime());
-      d.setDate(d.getDate() - (14 - idx));
-      return {
-        date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-        Reach: Math.round(1500 + Math.sin(idx * 0.8) * 400 + (idx % 3) * 50),
-        Impressions: Math.round(2500 + Math.sin(idx * 0.8) * 800 + (idx % 5) * 100),
-      };
-    });
+    return metrics?.contentTimeline ?? [];
   }, [metrics]);
 
   if (!activeAccount) {
@@ -175,10 +134,26 @@ export default function AnalyticsPage() {
     );
   }
 
-  const growthMetrics = (metrics as any)?.growth ?? { totalFollowers: activeAccount.followersCount, newFollowers: 145, growthRate: 2.84 };
-  const formatBaselines = (metrics as any)?.baselines ?? {
-    reels: { avgReach: 1200, avgEngagement: 5.4, avgSaves: 45, avgShares: 22 },
-    stories: { avgReach: 850, avgImpressions: 1100, avgCompletionRate: 92.5 }
+  if (!isLoading && !error && !metricsHasData) {
+    return (
+      <EmptyState
+        context="analytics"
+        actionLabel="Go to Accounts to Sync"
+        onActionClick={() => {
+          window.location.assign("/accounts");
+        }}
+      />
+    );
+  }
+
+  const growthMetrics = metrics?.growth ?? {
+    totalFollowers: activeAccount.followersCount,
+    newFollowers: 0,
+    growthRate: 0,
+  };
+  const formatBaselines = metrics?.baselines ?? {
+    reels: { avgReach: 0, avgEngagement: 0, avgSaves: 0, avgShares: 0 },
+    stories: { avgReach: 0, avgImpressions: 0, avgCompletionRate: 0 },
   };
 
   const avgEngagementRate =
@@ -272,7 +247,7 @@ export default function AnalyticsPage() {
               {
                 label: "Proprietary Hook Strength",
                 val: hookStrength,
-                desc: "100% − average Skip Resistance index",
+                desc: "100% minus average skip rate",
                 icon: <BarChart3 className="w-5 h-5 text-brand-secondary" />,
                 badge: "Calculated Signal",
               },
@@ -307,15 +282,15 @@ export default function AnalyticsPage() {
 
           {/* Navigation tab bar matching creator-centric questions */}
           <div className="flex border-b border-white/10 p-0.5 select-none relative z-10 w-full overflow-x-auto gap-2">
-            {[
-              { id: "growth", label: "📈 Did I Grow?", question: "Audience & Reach Velocity" },
-              { id: "content", label: "🔥 What Content Worked?", question: "Intent-driven post ranking" },
-              { id: "heatmap", label: "⏰ When Should I Post?", question: "Reach lift optimal times" },
-              { id: "next-tests", label: "🧪 What to Test Next?", question: "Format baselines & warnings" },
-            ].map((tab) => (
+            {([
+              { id: "growth", label: "Did I Grow?", question: "Audience & Reach Velocity" },
+              { id: "content", label: "What Worked?", question: "Intent-driven post ranking" },
+              { id: "heatmap", label: "When to Post?", question: "Reach lift optimal times" },
+              { id: "next-tests", label: "What to Test?", question: "Format baselines & warnings" },
+            ] as const).map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`flex flex-col text-left px-5 py-3 rounded-t-xl transition-all relative shrink-0 active:scale-98 cursor-pointer ${
                   activeTab === tab.id
                     ? "text-brand-primary bg-white/5 font-bold border-t-2 border-brand-primary"
@@ -347,7 +322,7 @@ export default function AnalyticsPage() {
                           Daily Account Reach vs Impressions
                         </h3>
                         <p className="text-xs text-muted-foreground">
-                          Rolling {timeframe}d time-series of total account-level views
+                          Rolling {timeframe}d time-series from account insights or synced content
                         </p>
                       </div>
                       <div className="px-3 py-1 border border-brand-primary/30 bg-brand-primary/10 text-[9px] font-bold text-brand-primary rounded-full uppercase tracking-wider">
@@ -415,15 +390,15 @@ export default function AnalyticsPage() {
                       <span className="text-xs font-black uppercase tracking-wider">Rank Content By:</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {[
+                      {([
                         { id: "intent", label: "Saves + Shares Index (Intent)" },
                         { id: "reachRate", label: "Reach Rate %" },
                         { id: "saveRate", label: "Save Rate %" },
                         { id: "shareRate", label: "Share Rate %" },
-                      ].map((key) => (
+                      ] as const).map((key) => (
                         <button
                           key={key.id}
-                          onClick={() => setSortKey(key.id as any)}
+                          onClick={() => setSortKey(key.id)}
                           className={`px-3.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all active:scale-95 ${
                             sortKey === key.id
                               ? "bg-brand-primary text-white shadow-glow-sm"
@@ -445,7 +420,7 @@ export default function AnalyticsPage() {
                           <label className="text-[10px] text-gray-500 font-bold uppercase">Baseline Window:</label>
                           <select
                             value={baselineDays}
-                            onChange={(e) => setBaselineDays(Number(e.target.value) as any)}
+                            onChange={(e) => setBaselineDays(Number(e.target.value) === 60 ? 60 : 30)}
                             className="bg-white/5 text-white border border-white/10 rounded-lg text-[9px] px-2 py-0.5 font-bold uppercase"
                           >
                             <option value={30}>30d Baseline</option>
@@ -454,7 +429,7 @@ export default function AnalyticsPage() {
                         </div>
                       </div>
 
-                      {sortedReels.map((post) => (
+                      {sortedReels.length > 0 ? sortedReels.map((post) => (
                         <div key={post.id} className="border border-white/10 bg-glass-deep backdrop-blur-md rounded-2xl p-5 hover:border-brand-primary/45 transition-all flex flex-col gap-4 group">
                           <div className="flex justify-between items-start gap-4">
                             <div>
@@ -507,19 +482,25 @@ export default function AnalyticsPage() {
                             </div>
                           </div>
                         </div>
-                      ))}
+                      )) : (
+                        <div className="border border-white/10 bg-white/5 rounded-2xl p-6 text-center">
+                          <p className="text-xs text-muted-foreground font-semibold">
+                            No synced posts in this window yet. Sync an account to rank content by reach, saves, and shares.
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Stories Listing */}
                     <div className="flex flex-col gap-4">
                       <h3 className="text-sm font-black uppercase tracking-wider text-gray-400 mb-1">Active Stories ({storiesList.length})</h3>
 
-                      {storiesList.map((story: any) => (
+                      {storiesList.length > 0 ? storiesList.map((story) => (
                         <div key={story.id} className="border border-white/10 bg-glass-deep backdrop-blur-md rounded-2xl p-5 hover:border-brand-secondary/45 transition-all flex flex-col gap-4 group">
                           <div className="flex justify-between items-start">
                             <div>
                               <span className="text-[10px] text-gray-500 font-bold">
-                                {new Date(story.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {new Date(story.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                {new Date(story.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(story.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                               </span>
                               <h4 className="text-xs font-black text-white mt-0.5">
                                 Story Broadcast Ingestion
@@ -546,11 +527,17 @@ export default function AnalyticsPage() {
                             </div>
                             <div>
                               <span className="text-[9px] text-gray-500 font-bold uppercase block mb-1">Completion Rate</span>
-                              <strong className="text-xs text-brand-secondary font-black">{Number(story.completionRate).toFixed(1)}%</strong>
+                              <strong className="text-xs text-brand-secondary font-black">{story.completionRate == null ? "-" : `${Number(story.completionRate).toFixed(1)}%`}</strong>
                             </div>
                           </div>
                         </div>
-                      ))}
+                      )) : (
+                        <div className="border border-white/10 bg-white/5 rounded-2xl p-6 text-center">
+                          <p className="text-xs text-muted-foreground font-semibold">
+                            No active story insights in this window.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </m.div>

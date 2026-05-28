@@ -53,8 +53,18 @@ export function TrendChart({ data = [], isLoading = false }: TrendChartProps) {
     );
   }
 
-  // Filter data based on selected range
   const filteredData = data.slice(-range);
+  const hasData = filteredData.length > 0;
+  const latestPoint = hasData ? filteredData[filteredData.length - 1] : null;
+  const averageValue = hasData
+    ? filteredData.reduce((sum, point) => sum + Number(point[metricKey] ?? 0), 0) /
+      filteredData.length
+    : 0;
+  const peakPoint = hasData
+    ? filteredData.reduce((best, point) =>
+        Number(point[metricKey] ?? 0) > Number(best[metricKey] ?? 0) ? point : best
+      )
+    : null;
 
   // Y-axis tick formatter (K formatting and percentages)
   const formatYAxis = (val: number) => {
@@ -68,7 +78,7 @@ export function TrendChart({ data = [], isLoading = false }: TrendChartProps) {
     return metricKey === "engagementRate" ? "Engagement Rate" : "Hook Retention (Commute Opener)";
   };
 
-  const activeColor = metricKey === "engagementRate" ? "#6C5CE7" : "#00B894";
+  const activeColor = metricKey === "engagementRate" ? "#4F46E5" : "#14B8A6";
   const activeGradient = metricKey === "engagementRate" ? "url(#colorER)" : "url(#colorHR)";
 
   return (
@@ -80,7 +90,7 @@ export function TrendChart({ data = [], isLoading = false }: TrendChartProps) {
             {getMetricLabel()}
           </h3>
           <p className="text-xs text-gray-500 mt-0.5">
-            Proprietary strategy trends over time
+            Live daily averages from synced content
           </p>
         </div>
 
@@ -122,20 +132,34 @@ export function TrendChart({ data = [], isLoading = false }: TrendChartProps) {
         </div>
       </div>
 
+      <div className="grid grid-cols-3 gap-3 select-none">
+        {[
+          { label: "Latest", value: latestPoint ? formatYAxis(Number(latestPoint[metricKey] ?? 0)) : "-" },
+          { label: "Average", value: hasData ? formatYAxis(averageValue) : "-" },
+          { label: "Best Day", value: peakPoint ? peakPoint.date : "-" },
+        ].map((item) => (
+          <div key={item.label} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-gray-500">{item.label}</p>
+            <p className="mt-1 text-sm font-black text-white">{item.value}</p>
+          </div>
+        ))}
+      </div>
+
       {/* Recharts container */}
-      <div className="w-full h-[220px] min-w-0 min-h-0 text-xs">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+      <div className="w-full text-xs">
+        {hasData ? (
+        <ResponsiveContainer width="100%" height={220}>
           <AreaChart data={filteredData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               {/* Engagement Rate Gradient */}
               <linearGradient id="colorER" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#6C5CE7" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#6C5CE7" stopOpacity={0} />
+                <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
               </linearGradient>
               {/* Hook Retention Gradient */}
               <linearGradient id="colorHR" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#00B894" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#00B894" stopOpacity={0} />
+                <stop offset="5%" stopColor="#14B8A6" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#14B8A6" stopOpacity={0} />
               </linearGradient>
             </defs>
 
@@ -190,6 +214,13 @@ export function TrendChart({ data = [], isLoading = false }: TrendChartProps) {
             />
           </AreaChart>
         </ResponsiveContainer>
+        ) : (
+          <div className="flex h-[220px] items-center justify-center rounded-xl border border-white/10 bg-white/5 px-6 text-center">
+            <p className="text-xs font-semibold text-muted-foreground">
+              No synced post trend data yet. Once posts sync, this chart will show real engagement and hook retention movement.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

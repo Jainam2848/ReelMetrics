@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Outfit } from "next/font/google";
 
 // Validate critical env vars at boot. This import has the side-effect of
 // throwing if any required variable in the Zod schema (lib/env.ts) is missing
@@ -18,12 +18,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const outfit = Outfit({
+  variable: "--font-outfit",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
-  title: "Trendoraa",
+  title: "Trendora | Cinematic Intelligence",
   description: "AI-powered short-form video strategy & analytics (Instagram & TikTok)",
 };
 
 import { Providers } from "@/app/providers";
+import { NeuralBackground } from "@/components/visual/NeuralBackground";
 
 export default function RootLayout({
   children,
@@ -33,11 +39,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} h-full antialiased dark`}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+      <body className="min-h-full flex flex-col bg-background text-foreground relative">
+        <NeuralBackground />
         <Providers>
           {children}
         </Providers>

@@ -55,7 +55,9 @@ export default function DashboardLayout({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT" || !session) {
+      if (event === "SIGNED_OUT") {
+        router.push("/");
+      } else if (!session) {
         router.push("/login");
       }
     });
@@ -67,8 +69,6 @@ export default function DashboardLayout({
     const supabase = createClient();
     await supabase.auth.signOut();
     toast.success("Disconnected successfully.");
-    router.push("/");
-    router.refresh();
   };
 
   // 1. Sidebar Items definitions

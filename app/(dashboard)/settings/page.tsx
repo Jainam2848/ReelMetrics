@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import useSWR from "swr";
@@ -186,7 +186,7 @@ export default function SettingsPage() {
         return;
       }
       toast.success("Account deleted. Signing you out…");
-      window.location.assign("/login");
+      window.location.assign("/");
     } catch (err) {
       console.error("Account deletion failed:", err);
       toast.error("Network error while deleting your account.");

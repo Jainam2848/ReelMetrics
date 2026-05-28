@@ -1,285 +1,313 @@
 "use client";
 
-import React, { useRef, useMemo, useEffect, useState } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import * as THREE from "three";
-import { EffectComposer, Bloom } from "@react-three/postprocessing";
-import { useScroll } from "framer-motion";
+import React, { useEffect, useRef } from "react";
 
-// Configuration
-const NUM_NODES = 80;
-const NUM_CHILDREN = 70; // Reserve for particles
-const TOTAL_INSTANCES = NUM_NODES + NUM_CHILDREN;
-
-const BRAND_COLORS = {
-  purple: new THREE.Color("#6C5CE7"),
-  green: new THREE.Color("#00B894"),
-  pink: new THREE.Color("#FD79A8"),
-  grey: new THREE.Color("#444444"),
-  idle: new THREE.Color("#2a2a35"),
-};
-
-// Types
-type NodeState = "idle" | "ignited" | "dead";
-
-interface ParticleData {
-  position: THREE.Vector3;
-  velocity: THREE.Vector3;
-  basePosition: THREE.Vector3; // For brownian motion return
-  color: THREE.Color;
-  targetColor: THREE.Color;
-  state: NodeState;
-  scale: number;
-  targetScale: number;
-  isChild: boolean;
-  active: boolean;
-  parentIndex: number;
-  lifeTime: number;
-  maxLife: number;
-  ignitionCooldown: number;
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  baseX: number;
+  baseY: number;
+  size: number;
+  targetSize: number;
+  color: string;
+  targetColor: string;
+  alpha: number;
+  pulsePhase: number;
+  pulseSpeed: number;
+  isIgnited: boolean;
+  ignitionTime: number;
 }
 
-const ViralNodes = () => {
-  const meshRef = useRef<THREE.InstancedMesh>(null);
-  const { viewport, pointer } = useThree();
-  const { scrollYProgress } = useScroll();
-
-  // Internal state tracking
-  const particles = useMemo(() => {
-    const arr: ParticleData[] = [];
-    
-    // Primary Nodes
-    for (let i = 0; i < NUM_NODES; i++) {
-      const isDead = Math.random() < 0.15; // 15% start dead
-      const x = (Math.random() - 0.5) * viewport.width * 1.5;
-      const y = (Math.random() - 0.5) * viewport.height * 1.5;
-      const z = (Math.random() - 0.5) * 5 - 2;
-
-      arr.push({
-        position: new THREE.Vector3(x, y, z),
-        basePosition: new THREE.Vector3(x, y, z),
-        velocity: new THREE.Vector3(Math.random() * 0.01 + 0.005, (Math.random() - 0.5) * 0.01, 0),
-        color: isDead ? BRAND_COLORS.grey.clone() : BRAND_COLORS.idle.clone(),
-        targetColor: isDead ? BRAND_COLORS.grey.clone() : BRAND_COLORS.idle.clone(),
-        state: isDead ? "dead" : "idle",
-        scale: isDead ? 0.4 : 1.0,
-        targetScale: isDead ? 0.4 : 1.0,
-        isChild: false,
-        active: true,
-        parentIndex: -1,
-        lifeTime: 0,
-        maxLife: 0,
-        ignitionCooldown: Math.random() * 5 + 2, // Random delay before ignition
-      });
-    }
-
-    // Child Particles
-    for (let i = 0; i < NUM_CHILDREN; i++) {
-      arr.push({
-        position: new THREE.Vector3(0, 0, 0),
-        basePosition: new THREE.Vector3(0, 0, 0),
-        velocity: new THREE.Vector3(0, 0, 0),
-        color: new THREE.Color(0,0,0),
-        targetColor: new THREE.Color(0,0,0),
-        state: "idle",
-        scale: 0,
-        targetScale: 0,
-        isChild: true,
-        active: false,
-        parentIndex: -1,
-        lifeTime: 0,
-        maxLife: 2,
-        ignitionCooldown: 0,
-      });
-    }
-
-    return arr;
-  }, [viewport]);
-
-  const dummy = useMemo(() => new THREE.Object3D(), []);
-  const colorObj = useMemo(() => new THREE.Color(), []);
-
-  // Ripple Event Listener
-  const [rippleTrigger, setRippleTrigger] = useState<{x: number, y: number, time: number} | null>(null);
-  
-  useEffect(() => {
-    const handleRipple = (e: any) => {
-      // Convert screen coords to viewport coords roughly
-      const x = (e.detail.x / window.innerWidth) * 2 - 1;
-      const y = -(e.detail.y / window.innerHeight) * 2 + 1;
-      setRippleTrigger({ x: x * viewport.width / 2, y: y * viewport.height / 2, time: performance.now() });
-    };
-    window.addEventListener("viral-ripple", handleRipple);
-    return () => window.removeEventListener("viral-ripple", handleRipple);
-  }, [viewport]);
-
-  // Scroll triggers
-  const lastScroll = useRef(0);
-  useEffect(() => {
-    return scrollYProgress.on("change", (v) => {
-      const thresholds = [0.2, 0.5, 0.8];
-      for (const t of thresholds) {
-        if (lastScroll.current < t && v >= t) {
-          // Trigger wave
-          particles.forEach((p) => {
-            if (!p.isChild && p.state === "idle" && Math.random() > 0.4) {
-              igniteNode(p);
-            }
-          });
-        }
-      }
-      lastScroll.current = v;
-    });
-  }, [scrollYProgress, particles]);
-
-  const igniteNode = (p: ParticleData) => {
-    p.state = "ignited";
-    p.targetScale = 2.5;
-    p.targetColor = Math.random() > 0.5 ? BRAND_COLORS.purple.clone() : BRAND_COLORS.green.clone();
-    p.ignitionCooldown = Math.random() * 5 + 3; // Cooldown till next random ignition
-    p.lifeTime = 0; // use lifeTime to track ignition duration
-    p.maxLife = 1.5; // seconds
-  };
-
-  useFrame((state, delta) => {
-    if (!meshRef.current) return;
-
-    const pointerVec = new THREE.Vector3(
-      (pointer.x * viewport.width) / 2,
-      (pointer.y * viewport.height) / 2,
-      0
-    );
-
-    let childIndex = NUM_NODES; // Track available children
-
-    particles.forEach((p, i) => {
-      if (!p.active) {
-        // Hide inactive
-        dummy.position.set(9999, 9999, 9999);
-        dummy.scale.set(0,0,0);
-        dummy.updateMatrix();
-        meshRef.current!.setMatrixAt(i, dummy.matrix);
-        return;
-      }
-
-      // Movement & Physics
-      if (!p.isChild) {
-        // Drift rightwards
-        p.basePosition.addScaledVector(p.velocity, delta * 60);
-        
-        // Wrap around
-        if (p.basePosition.x > viewport.width / 2 + 2) {
-          p.basePosition.x = -viewport.width / 2 - 2;
-          p.basePosition.y = (Math.random() - 0.5) * viewport.height;
-        }
-
-        // Brownian motion
-        p.position.lerp(p.basePosition, 0.1);
-        p.position.x += (Math.random() - 0.5) * 0.05;
-        p.position.y += (Math.random() - 0.5) * 0.05;
-
-        // Gravitational pull to pointer
-        const distToPointer = p.position.distanceTo(pointerVec);
-        if (distToPointer < 3) {
-          const force = new THREE.Vector3().subVectors(pointerVec, p.position).normalize().multiplyScalar(0.05 / Math.max(distToPointer, 0.5));
-          p.position.add(force);
-        }
-
-        // Ripple Effect
-        if (rippleTrigger && performance.now() - rippleTrigger.time < 1000) {
-          const ripCenter = new THREE.Vector3(rippleTrigger.x, rippleTrigger.y, 0);
-          const distToRipple = p.position.distanceTo(ripCenter);
-          const timeSinceRipple = (performance.now() - rippleTrigger.time) / 1000;
-          // Wave front travels outward
-          const waveFront = timeSinceRipple * 15;
-          if (Math.abs(distToRipple - waveFront) < 1.5) {
-             p.position.add(new THREE.Vector3().subVectors(p.position, ripCenter).normalize().multiplyScalar(0.1));
-             if (p.state === "idle" && Math.random() > 0.7) igniteNode(p);
-          }
-        }
-
-        // Random Ignition Logic
-        if (p.state === "idle") {
-          p.ignitionCooldown -= delta;
-          if (p.ignitionCooldown <= 0 && Math.random() < 0.2) {
-            igniteNode(p);
-          }
-        } else if (p.state === "ignited") {
-          p.lifeTime += delta;
-          
-          // Spawn children on initial ignition
-          if (p.lifeTime < 0.1 && childIndex < TOTAL_INSTANCES - 3) {
-             for(let j=0; j<3; j++) {
-               const cp = particles[childIndex++];
-               if(cp) {
-                 cp.active = true;
-                 cp.position.copy(p.position);
-                 cp.velocity = new THREE.Vector3((Math.random()-0.5)*5, (Math.random()-0.5)*5, (Math.random()-0.5)*2);
-                 cp.color = p.targetColor.clone();
-                 cp.targetColor = BRAND_COLORS.pink.clone();
-                 cp.scale = 0.5;
-                 cp.targetScale = 0;
-                 cp.lifeTime = 0;
-                 cp.maxLife = 0.8 + Math.random()*0.5;
-               }
-             }
-          }
-
-          if (p.lifeTime > p.maxLife) {
-            // Cool down
-            p.state = "idle";
-            p.targetScale = 1.0;
-            p.targetColor = BRAND_COLORS.idle.clone();
-            p.ignitionCooldown = Math.random() * 8 + 4;
-          }
-        }
-      } else {
-        // Child particle logic (sparks)
-        p.lifeTime += delta;
-        p.position.addScaledVector(p.velocity, delta);
-        p.velocity.multiplyScalar(0.95); // drag
-        p.scale = THREE.MathUtils.lerp(0.5, 0, p.lifeTime / p.maxLife);
-        
-        if (p.lifeTime >= p.maxLife) {
-          p.active = false;
-        }
-      }
-
-      // Smooth transitions
-      p.scale += (p.targetScale - p.scale) * 0.1;
-      p.color.lerp(p.targetColor, 0.1);
-
-      // Apply to matrix
-      dummy.position.copy(p.position);
-      dummy.scale.setScalar(p.scale * 0.15); // Base node size
-      dummy.updateMatrix();
-      
-      meshRef.current!.setMatrixAt(i, dummy.matrix);
-      meshRef.current!.setColorAt(i, p.color);
-    });
-
-    meshRef.current.instanceMatrix.needsUpdate = true;
-    if (meshRef.current.instanceColor) meshRef.current.instanceColor.needsUpdate = true;
-  });
-
-  return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, TOTAL_INSTANCES]}>
-      <sphereGeometry args={[1, 16, 16]} />
-      <meshBasicMaterial toneMapped={false} />
-    </instancedMesh>
-  );
-};
+interface Ripple {
+  x: number;
+  y: number;
+  radius: number;
+  maxRadius: number;
+  speed: number;
+  alpha: number;
+}
 
 export function ViralBackground({ className }: { className?: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const particles = useRef<Particle[]>([]);
+  const ripples = useRef<Ripple[]>([]);
+  const mouse = useRef({ x: -9999, y: -9999 });
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
+
+    // Initialize particles
+    const initParticles = () => {
+      particles.current = [];
+      const density = 0.00005; // Adjust count based on screen area
+      const count = Math.min(100, Math.floor(width * height * density));
+
+      const colors = ["#4F46E5", "#14B8A6", "#F97316"]; // strategy palette
+
+      for (let i = 0; i < count; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        particles.current.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 0.35,
+          vy: (Math.random() - 0.5) * 0.35,
+          baseX: x,
+          baseY: y,
+          size: Math.random() * 2 + 1.5,
+          targetSize: Math.random() * 2 + 1.5,
+          color: "rgba(255, 255, 255, 0.12)",
+          targetColor: "rgba(255, 255, 255, 0.12)",
+          alpha: Math.random() * 0.4 + 0.2,
+          pulsePhase: Math.random() * Math.PI * 2,
+          pulseSpeed: Math.random() * 0.015 + 0.005,
+          isIgnited: false,
+          ignitionTime: 0,
+        });
+      }
+    };
+
+    initParticles();
+
+    // Mouse events
+    const handleMouseMove = (e: MouseEvent) => {
+      mouse.current.x = e.clientX;
+      mouse.current.y = e.clientY;
+    };
+
+    const handleMouseLeave = () => {
+      mouse.current.x = -9999;
+      mouse.current.y = -9999;
+    };
+
+    // Custom Event Listener for Global Ripples
+    const handleGlobalRipple = (e: any) => {
+      const x = e.detail?.x ?? width / 2;
+      const y = e.detail?.y ?? height / 2;
+
+      ripples.current.push({
+        x,
+        y,
+        radius: 0,
+        maxRadius: Math.max(width, height) * 0.6,
+        speed: 10,
+        alpha: 0.8,
+      });
+
+      // Ignite nearby nodes initially
+      particles.current.forEach((p) => {
+        const dx = p.x - x;
+        const dy = p.y - y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 150) {
+          p.isIgnited = true;
+          p.ignitionTime = 1.0;
+          p.targetColor = Math.random() > 0.5 ? "#4F46E5" : "#F97316";
+          p.targetSize = p.size * 2.2;
+          p.vx += (dx / dist) * 1.5;
+          p.vy += (dy / dist) * 1.5;
+        }
+      });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseleave", handleMouseLeave);
+    window.addEventListener("viral-ripple", handleGlobalRipple);
+
+    const handleResize = () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      initParticles();
+    };
+    window.addEventListener("resize", handleResize);
+
+    // Animation loop
+    const render = () => {
+      // Cockpit Dark background color
+      ctx.fillStyle = "#08090D";
+      ctx.fillRect(0, 0, width, height);
+
+      // Draw active ripples
+      ripples.current.forEach((rip, idx) => {
+        rip.radius += rip.speed;
+        rip.alpha -= 0.015;
+
+        // Draw soft expanding strategic ring
+        ctx.strokeStyle = `rgba(79, 70, 229, ${rip.alpha * 0.15})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(rip.x, rip.y, rip.radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(20, 184, 166, ${rip.alpha * 0.08})`;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(rip.x, rip.y, rip.radius + 15, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Remove dead ripples
+        if (rip.alpha <= 0 || rip.radius > rip.maxRadius) {
+          ripples.current.splice(idx, 1);
+        }
+      });
+
+      const maxDistance = 140; // Max connecting distance
+      const activeColors = ["#4F46E5", "#14B8A6", "#F97316"];
+
+      // Update and draw nodes
+      particles.current.forEach((p) => {
+        // Drift movement
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // Bounce boundaries
+        if (p.x < 0 || p.x > width) p.vx *= -1;
+        if (p.y < 0 || p.y > height) p.vy *= -1;
+
+        // Interactive mouse physics: gentle push
+        if (mouse.current.x > 0) {
+          const dx = p.x - mouse.current.x;
+          const dy = p.y - mouse.current.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 180) {
+            const force = (180 - dist) / 180;
+            p.x += (dx / dist) * force * 1.5;
+            p.y += (dy / dist) * force * 1.5;
+
+            // Ignite on hover
+            if (!p.isIgnited && Math.random() > 0.98) {
+              p.isIgnited = true;
+              p.ignitionTime = 1.0;
+              p.targetColor = activeColors[Math.floor(Math.random() * activeColors.length)]!;
+              p.targetSize = p.size * 2.0;
+            }
+          }
+        }
+
+        // Ripple collision detection
+        ripples.current.forEach((rip) => {
+          const dx = p.x - rip.x;
+          const dy = p.y - rip.y;
+          const dist = Math.hypot(dx, dy);
+          if (Math.abs(dist - rip.radius) < 20) {
+            p.isIgnited = true;
+            p.ignitionTime = 1.0;
+            p.targetColor = activeColors[Math.floor(Math.random() * activeColors.length)]!;
+            p.targetSize = p.size * 2.5;
+            p.vx += (dx / dist) * 0.8;
+            p.vy += (dy / dist) * 0.8;
+          }
+        });
+
+        // Breathing/pulsing scale phase
+        p.pulsePhase += p.pulseSpeed;
+        const pulseFactor = Math.sin(p.pulsePhase) * 0.2 + 0.9;
+
+        // Ignition cooling down
+        if (p.isIgnited) {
+          p.ignitionTime -= 0.01;
+          if (p.ignitionTime <= 0) {
+            p.isIgnited = false;
+            p.targetColor = "rgba(255, 255, 255, 0.12)";
+            p.targetSize = p.size;
+          }
+        }
+
+        // Smooth size and color interpolation
+        const currentSize = p.isIgnited 
+          ? p.targetSize * pulseFactor 
+          : p.size * pulseFactor;
+
+        // Draw connecting mesh lines (restrained & gorgeous)
+        particles.current.forEach((other) => {
+          if (p === other) return;
+          const dx = other.x - p.x;
+          const dy = other.y - p.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < maxDistance) {
+            const alpha = (1 - dist / maxDistance) * 0.06;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(other.x, other.y);
+            ctx.stroke();
+
+            // Active strategic glows between ignited nodes
+            if (p.isIgnited && other.isIgnited) {
+              const activeAlpha = (1 - dist / maxDistance) * 0.15;
+              ctx.strokeStyle = `rgba(79, 70, 229, ${activeAlpha})`;
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(other.x, other.y);
+              ctx.stroke();
+            }
+          }
+        });
+
+        // Draw particle node
+        ctx.fillStyle = p.isIgnited ? p.targetColor : p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, currentSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Ignited glow ring
+        if (p.isIgnited) {
+          ctx.strokeStyle = p.targetColor;
+          ctx.lineWidth = 0.5;
+          ctx.globalAlpha = p.ignitionTime * 0.4;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, currentSize * 2.2, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.globalAlpha = 1.0;
+        }
+      });
+
+      // Add a premium ambient radial gradient mesh overlay
+      const gradient = ctx.createRadialGradient(
+        width * 0.5,
+        height * 0.3,
+        10,
+        width * 0.5,
+        height * 0.3,
+        Math.max(width, height) * 0.8
+      );
+      gradient.addColorStop(0, "rgba(79, 70, 229, 0.04)"); // strategies indigo
+      gradient.addColorStop(0.5, "rgba(20, 184, 166, 0.01)"); // growth teal
+      gradient.addColorStop(1, "rgba(8, 9, 13, 0)");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseleave", handleMouseLeave);
+      window.removeEventListener("viral-ripple", handleGlobalRipple);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
   return (
-    <div className={`fixed inset-0 z-[-1] pointer-events-none bg-[#0B0C10] ${className || ""}`}>
-      <Canvas camera={{ position: [0, 0, 10], fov: 50 }} dpr={[1, 2]}>
-        <color attach="background" args={["#0B0C10"]} />
-        <ViralNodes />
-        <EffectComposer>
-          <Bloom luminanceThreshold={0.2} mipmapBlur intensity={1.5} />
-        </EffectComposer>
-      </Canvas>
-    </div>
+    <canvas
+      ref={canvasRef}
+      className={`fixed inset-0 z-0 pointer-events-none w-full h-full bg-[#08090D] ${className || ""}`}
+    />
   );
 }

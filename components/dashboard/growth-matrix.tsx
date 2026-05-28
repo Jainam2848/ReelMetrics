@@ -3,7 +3,7 @@
 
 import React, { useEffect, useId, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
-import { Activity, CheckCircle } from "lucide-react";
+import { Activity, Sparkles, AlertCircle, CheckCircle2, TrendingUp, Clock, Target } from "lucide-react";
 
 interface GrowthMatrixProps {
   mode?: "scoring" | "interactive";
@@ -30,9 +30,10 @@ export function GrowthMatrix({
   const uid = useId().replace(/:/g, "-");
   const gradientGlowId = `retention-glow-${uid}`;
   const gradientAreaId = `retention-area-${uid}`;
-  const gridRef = useRef<HTMLDivElement>(null);
+  const patternId = `dot-matrix-${uid}`;
   const pathRef = useRef<SVGPathElement>(null);
-  const [activeCell, setActiveCell] = useState<number | null>(null);
+  
+  const [activePhase, setActivePhase] = useState<number>(0);
   const [animeLoaded, setAnimeLoaded] = useState(false);
   const animeInstance = useRef<any>(null);
 
@@ -44,219 +45,246 @@ export function GrowthMatrix({
     });
   }, []);
 
-  const dimensions = [
-    { name: "Hook Execution", score: scores?.hook ?? 82, color: "from-[#6C5CE7] to-[#8F82FF]", desc: "Scroll-stop efficacy within initial 3s." },
-    { name: "Scroll-Stop Velocity", score: scores?.retention ?? 74, color: "from-[#FD79A8] to-[#FF9ECA]", desc: "Resistance to swipe behaviors." },
-    { name: "Watch-Through Completion", score: scores?.completion ?? 68, color: "from-[#00B894] to-[#55EFC4]", desc: "End-to-end retention profile." },
-    { name: "CTA Value Index", score: scores?.cta ?? 85, color: "from-[#6C5CE7] to-[#FD79A8]", desc: "Conversion trigger alignment." },
-    { name: "Visual Pacing Peak", score: scores?.visual ?? 90, color: "from-[#00B894] to-[#6C5CE7]", desc: "Cut-density and frame variations." },
-    { name: "Audio Match Moat", score: scores?.audio ?? 77, color: "from-[#FD79A8] to-[#00B894]", desc: "Trend audio and track integration." },
-    { name: "Trend Relevance Matrix", score: scores?.trend ?? 88, color: "from-[#6C5CE7] to-[#00B894]", desc: "Algorithmic amplification indexing." },
-    { name: "Caption Structure", score: scores?.caption ?? 65, color: "from-[#FD79A8] to-[#6C5CE7]", desc: "Keyword weight and read duration." },
-    { name: "Timing Efficiency", score: scores?.timing ?? 80, color: "from-[#00B894] to-[#FD79A8]", desc: "Audience activity overlap indexing." },
+  // Timeline values from live scores
+  const hookVal = scores?.hook ?? 82;
+  const retentionVal = scores?.retention ?? 74;
+  const completionVal = scores?.completion ?? 68;
+
+  // Map 0-100 scores to SVG Y coordinates (15 = 100%, 85 = 0%)
+  const getCurveY = (score: number) => {
+    const clamped = Math.max(0, Math.min(100, score));
+    return 85 - (clamped / 100) * 70;
+  };
+
+  const hookY = getCurveY(hookVal);
+  const retentionY = getCurveY(retentionVal);
+  const completionY = getCurveY(completionVal);
+
+  // Generate smooth cubic bezier representing typical decay curve using real scores
+  const currentPathD = mode === "scoring"
+    ? "M 10 50 C 200 25, 400 75, 790 50" // Loading state wave A
+    : `M 10 15 C 100 15, 170 ${hookY}, 240 ${hookY} C 360 ${hookY}, 440 ${retentionY}, 520 ${retentionY} C 620 ${retentionY}, 710 ${completionY}, 790 ${completionY}`;
+
+  // Timeline Phases Data
+  const phases = [
+    {
+      id: 0,
+      name: "Hook Phase (0-3s)",
+      metric: "Scroll-Stop Rate",
+      score: hookVal,
+      color: "text-brand-accent bg-brand-accent/10 border-brand-accent/25",
+      accentColor: "#F97316",
+      desc: "Capturing user attention before they swipe. The first 3 seconds dictate the organic reach distribution multiplier.",
+      suggestions: [
+        "Incorporate highly-legible text overlays stating the core promise in the first 0.5s.",
+        "Change the opening scene to show dynamic, high-momentum movement rather than a static intro.",
+        "Avoid slow intro transitions or branding frames that cause immediate swipe-away behavior."
+      ]
+    },
+    {
+      id: 1,
+      name: "Body Phase (3-15s)",
+      metric: "Pacing & Retention Velocity",
+      score: retentionVal,
+      color: "text-brand-primary bg-brand-primary/10 border-brand-primary/25",
+      accentColor: "#4F46E5",
+      desc: "Holding viewer interest after the initial scroll-stop. A stable decay rate signals high-value, engaging storytelling.",
+      suggestions: [
+        "Deliver visual pacing shifts (cuts, zooms, or B-roll injection) every 2.5s to maintain focus.",
+        "Align storytelling arcs directly with background audio beats for satisfying sensory pacing.",
+        "Remove fluff segments or dead air immediately to prevent sudden watch drop-offs."
+      ]
+    },
+    {
+      id: 2,
+      name: "End Phase (15s+)",
+      metric: "Completion & Exit Resistance",
+      score: completionVal,
+      color: "text-brand-secondary bg-brand-secondary/10 border-brand-secondary/25",
+      accentColor: "#14B8A6",
+      desc: "Maximizing the percentage of viewers who complete the video. High completion signals the algorithm to boost search and explore delivery.",
+      suggestions: [
+        "Use a seamless loop style where the end of the video connects perfectly back to the hook.",
+        "Deliver a punchy Call-to-Action (CTA) inside the last 2s, paired with high-contrast text instructions.",
+        "Avoid long wrap-up segments that signal to the viewer that the value delivery is over."
+      ]
+    }
   ];
 
-  // 1. Grid Stagger Animation Loop (Scoring vs Display Mode)
-  useEffect(() => {
-    if (!animeLoaded || !animeInstance.current || !gridRef.current || isReducedMotion) return;
+  const activePhaseInfo = (phases[activePhase] || phases[0]) as {
+    id: number;
+    name: string;
+    metric: string;
+    score: number;
+    color: string;
+    accentColor: string;
+    desc: string;
+    suggestions: string[];
+  };
 
-    const anime = animeInstance.current;
-    // Scoped query: target only the cells INSIDE this component's grid ref,
-    // not every .matrix-cell in the entire document. This avoids expensive
-    // document-wide DOM traversal and prevents cross-component style thrashing.
-    const cells = gridRef.current.querySelectorAll(".matrix-cell");
-    
-    // Clear any previous animations scoped to these exact nodes
-    anime.remove(cells);
-
-    if (mode === "scoring") {
-      // Dynamic pulsating matrix wave to signify active evaluation
-      anime({
-        targets: cells,
-        scale: [0.96, 1.04, 0.96],
-        opacity: [0.6, 1, 0.6],
-        borderColor: ["rgba(255, 255, 255, 0.08)", "rgba(108, 92, 231, 0.4)", "rgba(255, 255, 255, 0.08)"],
-        delay: anime.stagger(120, { grid: [3, 3], from: "center" }),
-        loop: true,
-        duration: 2000,
-        easing: "easeInOutSine",
-      });
-    } else {
-      // Staggered reveal upon load for display mode
-      anime({
-        targets: cells,
-        scale: [0.3, 1],
-        opacity: [0, 1],
-        delay: anime.stagger(80, { grid: [3, 3], from: "first" }),
-        duration: 1200,
-        easing: "spring(1, 80, 10, 0)", // Bespoke spring physics
-      });
-    }
-
-    return () => {
-      if (animeInstance.current) {
-        animeInstance.current.remove(cells);
-      }
-    };
-  }, [mode, animeLoaded, isReducedMotion]);
-
-  // 2. SVG Path Drawing / Morphing Animation Loop
+  // 1. Morphing / Wave Animation Loop
   useEffect(() => {
     if (!animeLoaded || !animeInstance.current || !pathRef.current || isReducedMotion) return;
 
     const anime = animeInstance.current;
     const path = pathRef.current;
-    
+
     // Reset path dash offsets
     const pathLength = path.getTotalLength();
     path.setAttribute("stroke-dasharray", pathLength.toString());
     path.setAttribute("stroke-dashoffset", pathLength.toString());
 
     if (mode === "scoring") {
-      // Endless morphing/drawing wave for AI processing loop
+      // Gentle breathing wave motion for scoring/loading state
+      anime.remove(path);
       anime({
         targets: path,
-        strokeDashoffset: [pathLength, 0],
-        duration: 3000,
-        easing: "easeInOutQuad",
+        d: [
+          { value: "M 10 50 C 200 25, 400 75, 790 50" },
+          { value: "M 10 50 C 200 75, 400 25, 790 50" },
+          { value: "M 10 50 C 200 25, 400 75, 790 50" }
+        ],
+        strokeDashoffset: 0,
+        duration: 4000,
+        easing: "easeInOutSine",
         loop: true,
-        direction: "alternate",
       });
     } else {
-      // Crisp custom elastic growth reveal for finalized charts
+      // Crisp strategy cockpit reveal
+      anime.remove(path);
       anime({
         targets: path,
         strokeDashoffset: [pathLength, 0],
-        duration: 2000,
-        easing: "easeOutElastic(1, .6)",
+        duration: 1600,
+        easing: "easeOutCubic",
       });
     }
-
-    // Add radar sweep animation
-    anime({
-      targets: "#radar-sweep",
-      translateX: ["-100%", "800px"],
-      opacity: [0, 1, 0],
-      duration: 3500,
-      loop: true,
-      easing: "linear",
-    });
 
     const currentPath = pathRef.current;
     return () => {
       if (animeInstance.current && currentPath) {
         animeInstance.current.remove(currentPath);
-        animeInstance.current.remove("#radar-sweep");
       }
     };
   }, [mode, animeLoaded, isReducedMotion]);
 
-  // Handler for cell clicks with elastic physics pop
-  const handleCellClick = (idx: number, name: string, score: number) => {
-    if (!animeLoaded || !animeInstance.current || isReducedMotion) {
-      setActiveCell(idx);
-      onCellClick?.(name, score);
-      return;
+  // Handler for phase click
+  const handlePhaseSelect = (idx: number) => {
+    setActivePhase(idx);
+    const phase = phases[idx];
+    if (phase) {
+      onCellClick?.(phase.name, phase.score);
     }
 
-    const anime = animeInstance.current;
-    setActiveCell(idx);
-
-    // Dynamic scale-pop on selection
-    anime({
-      targets: `#cell-${idx}`,
-      scale: [1, 1.1, 1],
-      rotateZ: [0, idx % 2 === 0 ? 2 : -2, 0],
-      duration: 600,
-      easing: "spring(1, 75, 8, 0)",
-    });
-
-    onCellClick?.(name, score);
+    // Apply soft scale spring animation to selected interactive node
+    if (animeLoaded && animeInstance.current && !isReducedMotion) {
+      const anime = animeInstance.current;
+      anime({
+        targets: `#node-${idx}`,
+        scale: [1, 1.3, 1],
+        duration: 500,
+        easing: "easeOutElastic(1, .6)"
+      });
+    }
   };
 
-  // Retention profile bezier curves: morph path during loading vs display
-  // scoring path: wavy fluctuating curve
-  // interactive path: smooth growth curve representing stable skip resistance
-  const currentPathD = mode === "scoring" 
-    ? "M 10 90 C 80 10, 120 180, 200 40 C 280 160, 320 10, 390 70" 
-    : "M 10 90 C 100 80, 150 15, 200 25 C 250 35, 300 5, 390 10";
+  // Score badge color helper
+  const getEfficacyLevel = (score: number) => {
+    if (score >= 80) return { label: "Elite", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> };
+    if (score >= 60) return { label: "Strong", color: "text-brand-primary bg-brand-primary/10 border-brand-primary/20", icon: <TrendingUp className="w-3.5 h-3.5 text-brand-primary" /> };
+    return { label: "Needs Tuning", color: "text-brand-accent bg-brand-accent/10 border-brand-accent/20", icon: <AlertCircle className="w-3.5 h-3.5 text-brand-accent" /> };
+  };
+
+  const efficacy = getEfficacyLevel(activePhaseInfo.score);
 
   return (
-    <div className="flex flex-col gap-6 w-full select-none">
+    <div className="flex flex-col gap-6 w-full select-none font-sans">
       {/* Visual Header */}
       <div className="flex justify-between items-center bg-white/5 border border-glass rounded-2xl p-4">
         <div className="flex items-center gap-2.5">
           <Activity className="w-5 h-5 text-brand-primary animate-pulse" />
           <div>
-            <h4 className="text-sm font-display font-extrabold text-white">
-              {mode === "scoring" ? "Algorithmic Moat Evaluation Matrix" : "Skip Resistance Graph & Scores"}
+            <h4 className="text-sm font-heading font-extrabold text-white">
+              {mode === "scoring" ? "Calculating Video Strategy Profile" : "Scroll Retention Curve Analyzer"}
             </h4>
-            <p className="text-[10px] text-muted-foreground">
-              {mode === "scoring" ? "Simulating hook skipped boundaries..." : "Select dimensions to inspect targeted advice."}
+            <p className="text-[10px] text-muted-foreground font-medium">
+              {mode === "scoring" ? "Simulating scroll drop-offs and exit velocity..." : "Select milestones along the curve to inspect strategic optimization advice."}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${mode === "scoring" ? "bg-brand-accent" : "bg-brand-secondary"}`}></span>
             <span className={`relative inline-flex rounded-full h-2 w-2 ${mode === "scoring" ? "bg-brand-accent" : "bg-brand-secondary"}`}></span>
           </span>
           <span className="text-[9px] uppercase font-bold tracking-widest text-gray-300">
-            {mode === "scoring" ? "AI Pipeline Active" : "Scored"}
+            {mode === "scoring" ? "Creator Intelligence Pipeline" : "Analysis Complete"}
           </span>
         </div>
       </div>
 
+      {/* Main Graph Card */}
       <div className="w-full border border-glass bg-glass rounded-2xl p-5 md:h-64 flex flex-col justify-between relative overflow-hidden shadow-glow">
-        {/* Radar Sweep Overlay (AnimeJS animated) */}
-        <div id="radar-sweep" className="absolute top-0 bottom-0 left-0 w-12 bg-gradient-to-r from-transparent via-brand-primary/20 to-brand-primary/50 border-r-2 border-brand-primary/60 blur-[1px] z-20 mix-blend-screen opacity-0" />
-
-        {/* Overlay grid lines for dashboard theme */}
-        <div className="absolute inset-0 grid grid-cols-6 grid-rows-4 opacity-10 pointer-events-none">
-          {Array.from({ length: 24 }).map((_, i) => (
-            <div key={i} className="border border-brand-primary/20" />
-          ))}
-        </div>
-
+        
         <div className="flex justify-between items-center z-10">
           <span className="text-[10px] font-mono uppercase font-bold text-brand-primary tracking-widest flex items-center gap-2">
-            <Activity className="w-4 h-4 text-brand-accent animate-pulse" />
-            Retention Profile Analysis
+            <Clock className="w-4 h-4 text-brand-secondary" />
+            Viewer Attention Decay Timeline
           </span>
-          {activeCell !== null && mode === "interactive" && (
-            <span className="text-[10px] font-mono text-brand-accent font-bold px-2 py-0.5 bg-brand-accent/15 border border-brand-accent/25 rounded-md">
-              Active Index: {dimensions[activeCell]?.score}%
+          {mode === "interactive" && (
+            <span className="text-[10px] font-mono text-white/70 font-semibold px-2 py-0.5 bg-white/5 border border-white/10 rounded-md">
+              Selected Phase: <strong className="text-white">{activePhaseInfo.name}</strong>
             </span>
           )}
         </div>
 
         {/* Canvas-Like SVG Container */}
-        <div className="relative w-full h-full flex flex-col items-center justify-center my-4">
+        <div className="relative w-full h-full flex flex-col items-center justify-center my-4 min-h-[120px]">
           <svg 
             viewBox="0 0 800 100" 
-            className="w-full h-full overflow-visible drop-shadow-[0_0_15px_rgba(0,240,255,0.25)]"
+            className="w-full h-full overflow-visible"
           >
-            {/* Reference Grid lines */}
-            <line x1="0" y1="90" x2="800" y2="90" stroke="rgba(0,240,255,0.15)" strokeWidth="1" />
-            <line x1="0" y1="50" x2="800" y2="50" stroke="rgba(0,240,255,0.05)" strokeWidth="1" strokeDasharray="4 4" />
-            <line x1="0" y1="10" x2="800" y2="10" stroke="rgba(0,240,255,0.15)" strokeWidth="1" />
-
-            {/* SVG <defs> */}
+            {/* SVG Defs */}
             <defs>
-              <linearGradient id={gradientGlowId} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#00F0FF" />
-                <stop offset="50%" stopColor="#0080FF" />
-                <stop offset="100%" stopColor="#FF003C" />
+              {/* Dot Matrix Background Pattern */}
+              <pattern id={patternId} width="20" height="20" patternUnits="userSpaceOnUse">
+                <circle cx="2" cy="2" r="1" fill="rgba(255, 255, 255, 0.08)" />
+              </pattern>
+
+              {/* Shaded Area Underneath the dynamic path */}
+              <linearGradient id={gradientAreaId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#4F46E5" stopOpacity="0.22" />
+                <stop offset="100%" stopColor="#4F46E5" stopOpacity="0.0" />
               </linearGradient>
-              <linearGradient id={gradientAreaId} x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#00F0FF" stopOpacity="0.25" />
-                <stop offset="100%" stopColor="#00F0FF" stopOpacity="0.0" />
+
+              {/* Strategy Indigo to Growth Teal stroke gradient */}
+              <linearGradient id={gradientGlowId} x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#F97316" />   {/* Orange (Hook) */}
+                <stop offset="40%" stopColor="#4F46E5" />  {/* Indigo (Body) */}
+                <stop offset="100%" stopColor="#14B8A6" /> {/* Teal (End) */}
               </linearGradient>
             </defs>
 
-            {/* Shaded Area underneath the dynamic path */}
+            {/* Pattern Background Fill */}
+            <rect width="800" height="100" fill={`url(#${patternId})`} rx="8" />
+
+            {/* Timeline Vertical Markers & Labels */}
+            {mode === "interactive" && (
+              <>
+                {/* Boundary lines */}
+                <line x1="240" y1="0" x2="240" y2="100" stroke="rgba(255, 255, 255, 0.06)" strokeWidth="1" strokeDasharray="3 3" />
+                <line x1="520" y1="0" x2="520" y2="100" stroke="rgba(255, 255, 255, 0.06)" strokeWidth="1" strokeDasharray="3 3" />
+
+                {/* Grid timeline zones */}
+                <text x="120" y="93" fill="rgba(255, 255, 255, 0.2)" fontSize="8" fontWeight="bold" textAnchor="middle" letterSpacing="0.05em">HOOK (0-3s)</text>
+                <text x="380" y="93" fill="rgba(255, 255, 255, 0.2)" fontSize="8" fontWeight="bold" textAnchor="middle" letterSpacing="0.05em">PACE & BODY (3-15s)</text>
+                <text x="655" y="93" fill="rgba(255, 255, 255, 0.2)" fontSize="8" fontWeight="bold" textAnchor="middle" letterSpacing="0.05em">WATCH-THROUGH (15s+)</text>
+              </>
+            )}
+
+            {/* Shaded Area Under Curve */}
             <path
-              d={`${currentPathD} L 800 90 L 0 90 Z`}
+              d={`${currentPathD} L 790 90 L 10 90 Z`}
               fill={`url(#${gradientAreaId})`}
               className="transition-all duration-700 ease-in-out"
             />
@@ -267,28 +295,139 @@ export function GrowthMatrix({
               d={currentPathD}
               fill="none"
               stroke={`url(#${gradientGlowId})`}
-              strokeWidth="3"
+              strokeWidth="2.5"
               strokeLinecap="round"
               style={{ willChange: "stroke-dashoffset" }}
               className="transition-all duration-700 ease-in-out"
             />
+
+            {/* Interactive Milestone Nodes (Only visible in interactive mode) */}
+            {mode === "interactive" && (
+              <>
+                {/* Node 1: Hook (Orange) */}
+                <g 
+                  className="cursor-pointer group/node"
+                  onClick={() => handlePhaseSelect(0)}
+                >
+                  <circle cx="240" cy={hookY} r="8" fill="rgba(249, 115, 22, 0.15)" stroke="rgba(249, 115, 22, 0.4)" strokeWidth="1" className="group-hover/node:scale-125 transition-transform" />
+                  <circle id="node-0" cx="240" cy={hookY} r="4.5" fill="#F97316" className="transition-all" />
+                  {activePhase === 0 && <circle cx="240" cy={hookY} r="9" fill="none" stroke="#F97316" strokeWidth="1.5" className="animate-pulse" />}
+                </g>
+
+                {/* Node 2: Body (Indigo) */}
+                <g 
+                  className="cursor-pointer group/node"
+                  onClick={() => handlePhaseSelect(1)}
+                >
+                  <circle cx="520" cy={retentionY} r="8" fill="rgba(79, 70, 229, 0.15)" stroke="rgba(79, 70, 229, 0.4)" strokeWidth="1" className="group-hover/node:scale-125 transition-transform" />
+                  <circle id="node-1" cx="520" cy={retentionY} r="4.5" fill="#4F46E5" className="transition-all" />
+                  {activePhase === 1 && <circle cx="520" cy={retentionY} r="9" fill="none" stroke="#4F46E5" strokeWidth="1.5" className="animate-pulse" />}
+                </g>
+
+                {/* Node 3: Completion (Teal) */}
+                <g 
+                  className="cursor-pointer group/node"
+                  onClick={() => handlePhaseSelect(2)}
+                >
+                  <circle cx="790" cy={completionY} r="8" fill="rgba(20, 184, 166, 0.15)" stroke="rgba(20, 184, 166, 0.4)" strokeWidth="1" className="group-hover/node:scale-125 transition-transform" />
+                  <circle id="node-2" cx="790" cy={completionY} r="4.5" fill="#14B8A6" className="transition-all" />
+                  {activePhase === 2 && <circle cx="790" cy={completionY} r="9" fill="none" stroke="#14B8A6" strokeWidth="1.5" className="animate-pulse" />}
+                </g>
+              </>
+            )}
           </svg>
         </div>
-          <div className="z-10 flex flex-col gap-1 mt-4">
-            <span className="text-[10px] text-gray-200 font-extrabold truncate">
-              {activeCell !== null && mode === "interactive"
-                ? dimensions[activeCell]?.name
-                : mode === "scoring"
-                  ? "Evaluating Hook skipped margins..."
-                  : "Skip Resistance Diagnostics"}
-            </span>
-            <p className="text-[9px] text-muted-foreground leading-normal line-clamp-2">
-              {activeCell !== null && mode === "interactive"
-                ? dimensions[activeCell]?.desc
-                : "The graph renders real-time scroll-stop velocity points. High indices represent elite skip resistance (retaining viewers beyond the initial 3 seconds)."}
-            </p>
-          </div>
+
+        {/* Bottom Legend */}
+        <div className="z-10 flex justify-between items-center text-[9px] text-gray-500 font-bold uppercase">
+          <span>0s / Start</span>
+          <span>15s+ / End</span>
         </div>
       </div>
+
+      {/* Strategy Detail Viewer & Advice Drawer */}
+      {mode === "interactive" && (
+        <div className="flex flex-col gap-5">
+          {/* Phase Navigation Tabs */}
+          <div className="grid grid-cols-3 gap-2 select-none">
+            {phases.map((phase) => (
+              <button
+                key={phase.id}
+                onClick={() => handlePhaseSelect(phase.id)}
+                className={`py-3 px-2 rounded-xl text-left border transition-all active:scale-98 cursor-pointer flex flex-col justify-between gap-1.5 ${
+                  activePhase === phase.id
+                    ? "bg-white/5 border-white/20 text-white font-bold"
+                    : "bg-glass border-glass text-muted-foreground hover:text-white"
+                }`}
+              >
+                <span className="text-[9px] uppercase tracking-wider font-extrabold opacity-75">
+                  Phase 0{phase.id + 1}
+                </span>
+                <span className="text-[11px] font-heading font-extrabold truncate w-full">
+                  {phase.name.split(" ")[0]} {phase.name.split(" ")[1]}
+                </span>
+                <div className="flex justify-between items-center w-full mt-1 border-t border-white/5 pt-1.5">
+                  <span className="text-[8px] uppercase tracking-wide opacity-50 truncate max-w-[50px] sm:max-w-[100px]">
+                    {phase.metric}
+                  </span>
+                  <span className="text-xs font-black text-white shrink-0">
+                    {phase.score}%
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Dynamic Advice Panel */}
+          <div className="border border-glass bg-glass rounded-2xl p-5 shadow-glow flex flex-col gap-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.01] rounded-full blur-xl pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-brand-primary" />
+                <h4 className="text-xs font-black uppercase tracking-wider text-white">
+                  Strategy Guide: {activePhaseInfo.name}
+                </h4>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-gray-400 font-bold uppercase">
+                  Efficacy Index: <strong className="text-white font-black">{activePhaseInfo.score}%</strong>
+                </span>
+                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider ${efficacy.color}`}>
+                  {efficacy.icon}
+                  {efficacy.label}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-gray-300 leading-relaxed font-semibold">
+              {activePhaseInfo.desc}
+            </p>
+
+            <div className="border-t border-white/5 pt-4">
+              <span className="text-[10px] font-mono font-black uppercase tracking-widest text-brand-primary mb-3.5 block flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-brand-secondary" />
+                Actionable Growth Recommendations:
+              </span>
+
+              <ul className="flex flex-col gap-2.5">
+                {activePhaseInfo.suggestions.map((tip, index) => (
+                  <li key={index} className="flex items-start gap-3">
+                    <span 
+                      className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" 
+                      style={{ backgroundColor: activePhaseInfo.accentColor }} 
+                    />
+                    <p className="text-[10px] text-gray-400 leading-normal font-semibold">
+                      {tip}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

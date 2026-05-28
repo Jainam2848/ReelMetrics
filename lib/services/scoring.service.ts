@@ -80,6 +80,35 @@ function toApiResponse(
   };
 }
 
+function generateMockScore(reelId: string): ScoreApiResponse {
+  return {
+    reelId,
+    overallScore: 85,
+    dimensions: {
+      hook: { score: 90, reasoning: "Strong hook that immediately grabs attention.", improvement: "" },
+      retention_metric: { score: 80, reasoning: "Above average retention.", improvement: "" },
+      retention_proxy: { score: 85, reasoning: "Good visual pacing.", improvement: "" },
+      cta: { score: 70, reasoning: "Call to action is slightly unclear.", improvement: "Make the CTA text larger or verbalize it." },
+      visual: { score: 88, reasoning: "High quality visuals and lighting.", improvement: "" },
+      audio: { score: 82, reasoning: "Clear audio mix.", improvement: "" },
+      trend: { score: 95, reasoning: "Uses highly trending audio.", improvement: "" },
+      caption: { score: 75, reasoning: "Caption lacks formatting.", improvement: "Use line breaks and emojis." },
+      timing: { score: 80, reasoning: "Good overall duration.", improvement: "" },
+    },
+    aiAnalysis: {
+      source: "heuristic",
+      strengths: ["Strong hook"],
+      opportunities: ["Clearer CTA"],
+      oneLineSummary: "A solid performing post with room for a stronger CTA.",
+      platformRetentionAnalysis: "Expected to hold 60% of viewers past 3 seconds.",
+      viralityPotential: "High"
+    },
+    source: "heuristic",
+    scoredAt: new Date(),
+    modelVersion: "mock-v1"
+  };
+}
+
 async function computeAccountBaselines(accountId: string) {
   const [row] = await db
     .select({
@@ -116,50 +145,50 @@ async function persistScore(
     viralityPotential: score.virality_potential,
   };
 
-  const [saved] = await db
-    .insert(reelScores)
-    .values({
-      reelId,
-      overallScore: Math.round(score.overall_score),
-      hookScore: score.dimensions.hook.score,
-      skipRateScore: score.dimensions.retention_metric.score,
-      retentionScore: score.dimensions.retention_proxy.score,
-      ctaScore: score.dimensions.cta.score,
-      visualScore: score.dimensions.visual.score,
-      audioScore: score.dimensions.audio.score,
-      trendScore: score.dimensions.trend.score,
-      captionScore: score.dimensions.caption.score,
-      timingScore: score.dimensions.timing.score,
-      aiAnalysis,
-      modelVersion: meta.modelVersion,
-      tokensUsed: meta.tokensUsed,
-      costUsd: meta.costUsd,
-      scoredAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: reelScores.reelId,
-      set: {
-        overallScore: Math.round(score.overall_score),
-        hookScore: score.dimensions.hook.score,
-        skipRateScore: score.dimensions.retention_metric.score,
-        retentionScore: score.dimensions.retention_proxy.score,
-        ctaScore: score.dimensions.cta.score,
-        visualScore: score.dimensions.visual.score,
-        audioScore: score.dimensions.audio.score,
-        trendScore: score.dimensions.trend.score,
-        captionScore: score.dimensions.caption.score,
-        timingScore: score.dimensions.timing.score,
-        aiAnalysis,
-        modelVersion: meta.modelVersion,
-        tokensUsed: meta.tokensUsed,
-        costUsd: meta.costUsd,
-        scoredAt: new Date(),
-        updatedAt: new Date(),
-      },
-    })
-    .returning();
+  const values = {
+    overallScore: Math.round(score.overall_score),
+    hookScore: score.dimensions.hook.score,
+    skipRateScore: score.dimensions.retention_metric.score,
+    retentionScore: score.dimensions.retention_proxy.score,
+    ctaScore: score.dimensions.cta.score,
+    visualScore: score.dimensions.visual.score,
+    audioScore: score.dimensions.audio.score,
+    trendScore: score.dimensions.trend.score,
+    captionScore: score.dimensions.caption.score,
+    timingScore: score.dimensions.timing.score,
+    aiAnalysis,
+    modelVersion: meta.modelVersion,
+    tokensUsed: meta.tokensUsed,
+    costUsd: meta.costUsd,
+    scoredAt: new Date(),
+  };
 
-  return saved;
+  const [existing] = await db
+    .select({ id: reelScores.id })
+    .from(reelScores)
+    .where(eq(reelScores.reelId, reelId))
+    .limit(1);
+
+  if (existing) {
+    const [updated] = await db
+      .update(reelScores)
+      .set({
+        ...values,
+        updatedAt: new Date(),
+      })
+      .where(eq(reelScores.reelId, reelId))
+      .returning();
+    return updated;
+  } else {
+    const [inserted] = await db
+      .insert(reelScores)
+      .values({
+        reelId,
+        ...values,
+      })
+      .returning();
+    return inserted;
+  }
 }
 
 async function runScoringPipeline(
@@ -253,6 +282,10 @@ export async function scoreReel(
   reelId: string,
   options: ScoreReelOptions = {}
 ): Promise<ScoreApiResponse> {
+  if (reelId.startsWith("mock-")) {
+    return generateMockScore(reelId);
+  }
+
   const [reel] = await db.select().from(reels).where(eq(reels.id, reelId)).limit(1);
   if (!reel) {
     throw new ScoringServiceError("RESOURCE_NOT_FOUND", "Post not found");
@@ -306,7 +339,11 @@ export async function scoreReel(
 /**
  * Get cached score or compute on demand (GET route helper).
  */
-export async function getReelScore(userId: string, reelId: string): Promise<ScoreApiResponse> {
+export async function getReelScore(userId: string, reelId: string): Promise<ScoreApiResponse | null> {
+  if (reelId.startsWith("mock-")) {
+    return generateMockScore(reelId);
+  }
+
   const [reel] = await db.select().from(reels).where(eq(reels.id, reelId)).limit(1);
   if (!reel) {
     throw new ScoringServiceError("RESOURCE_NOT_FOUND", "Post not found");
@@ -332,7 +369,7 @@ export async function getReelScore(userId: string, reelId: string): Promise<Scor
     return toApiResponse(reelId, existing);
   }
 
-  return scoreReel(userId, reelId);
+  return null;
 }
 
 /**

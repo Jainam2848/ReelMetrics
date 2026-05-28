@@ -64,7 +64,7 @@ export function ScoreGauge({
     if (val > 70) {
       return {
         stroke: "url(#green-gradient)",
-        text: "text-brand-secondary",
+        text: "text-emerald-400",
         label: "Excellent",
       };
     }

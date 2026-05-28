@@ -23,6 +23,16 @@ const OnboardingCore3D = dynamic(
   { ssr: false }
 );
 
+const NICHE_COLORS = {
+  tech: { from: "rgba(99, 102, 241, 0.12)", to: "rgba(139, 92, 246, 0.12)" },
+  comedy: { from: "rgba(244, 63, 94, 0.12)", to: "rgba(236, 72, 153, 0.12)" },
+  finance: { from: "rgba(245, 158, 11, 0.12)", to: "rgba(16, 185, 129, 0.12)" },
+  education: { from: "rgba(14, 165, 233, 0.12)", to: "rgba(20, 184, 166, 0.12)" },
+  lifestyle: { from: "rgba(167, 139, 250, 0.12)", to: "rgba(253, 186, 116, 0.12)" },
+  fashion: { from: "rgba(253, 164, 175, 0.12)", to: "rgba(253, 224, 71, 0.12)" },
+  "": { from: "rgba(255, 255, 255, 0.03)", to: "rgba(255, 255, 255, 0.03)" },
+};
+
 interface OnboardingWizardProps {
   onComplete: () => void; // called after mutateAccounts to refresh the parent
 }
@@ -90,14 +100,20 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
     }
   };
 
+  const activeBackdrop = NICHE_COLORS[niche as keyof typeof NICHE_COLORS] || NICHE_COLORS[""];
+
   return (
-    <div className="max-w-xl mx-auto py-10">
+    <div className={`mx-auto py-10 transition-all duration-500 ease-out ${onboardingStep === 3 ? "max-w-4xl" : "max-w-xl"}`}>
       <OAuthErrorBanner />
       <m.div
         initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", duration: 0.8 }}
-        className="border border-glass bg-glass backdrop-blur-2xl rounded-2xl p-8 shadow-glow overflow-hidden relative"
+        animate={{ 
+          opacity: 1, 
+          y: 0,
+          background: `radial-gradient(circle at 50% 50%, ${activeBackdrop.from} 0%, ${activeBackdrop.to} 100%), rgba(10, 10, 12, 0.85)`
+        }}
+        transition={{ type: "spring", stiffness: 100, damping: 20 }}
+        className="border border-glass backdrop-blur-2xl rounded-2xl p-8 shadow-glow overflow-hidden relative"
       >
         {/* Decorative background glow */}
         <div className="absolute top-0 right-0 w-48 h-48 bg-brand-primary/10 rounded-full blur-3xl -z-10" />
@@ -242,9 +258,9 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
             animate={{ opacity: 1, x: 0 }}
             className="flex flex-col gap-6"
           >
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-8 items-center">
-              {/* Left column: Actions */}
-              <div className="md:col-span-3 flex flex-col gap-4 text-center md:text-left">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+              {/* Left column: Actions (3/5 width) */}
+              <div className="lg:col-span-3 flex flex-col gap-4 text-center lg:text-left">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-1">
                   Step 3: Connect Social Profile
                 </h3>
@@ -256,7 +272,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                       className="w-full min-h-[52px] bg-gradient-to-r from-brand-primary to-brand-accent hover:opacity-90 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-95 shadow-glow cursor-pointer"
                     >
                       <Sparkles className="w-4 h-4 animate-pulse" />
-                      <span>Explore Sandbox Demo Account</span>
+                      <span>Explore Sandbox Demo Account (3 Seconds)</span>
                     </button>
 
                     <div className="flex items-center justify-center gap-4 my-2 select-none">
@@ -285,9 +301,9 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 )}
 
                 {syncStatus === "sandbox_syncing" && (
-                  <div className="py-6 flex flex-col items-center md:items-start justify-center gap-4 select-none">
-                    <div className="relative w-16 h-16 rounded-full border-4 border-white/5 border-t-brand-primary animate-spin mx-auto md:mx-0" />
-                    <div className="flex flex-col gap-1 text-center md:text-left">
+                  <div className="py-6 flex flex-col items-center lg:items-start justify-center gap-4 select-none">
+                    <div className="relative w-16 h-16 rounded-full border-4 border-white/5 border-t-brand-primary animate-spin mx-auto lg:mx-0" />
+                    <div className="flex flex-col gap-1 text-center lg:text-left">
                       <p className="font-bold text-sm text-white animate-pulse">
                         Generating sandbox metrics...
                       </p>
@@ -299,20 +315,20 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 )}
 
                 {syncStatus === "success" && (
-                  <div className="py-6 flex flex-col items-center md:items-start justify-center gap-3 select-none">
+                  <div className="py-6 flex flex-col items-center lg:items-start justify-center gap-3 select-none">
                     <div className="w-12 h-12 rounded-full bg-brand-secondary/15 border border-brand-secondary flex items-center justify-center text-brand-secondary mb-2 animate-bounce">
                       <Check className="w-6 h-6" />
                     </div>
                     <h4 className="font-display font-extrabold text-white text-lg">
                       Sandbox Ready!
                     </h4>
-                    <p className="text-xs text-muted-foreground max-w-xs">
+                    <p className="text-xs text-muted-foreground max-w-xs mx-auto lg:mx-0">
                       We connected your test credentials and imported mock data. Press
                       continue to view your dashboard!
                     </p>
                     <button
                       onClick={onComplete}
-                      className="mt-4 px-6 min-h-[40px] bg-white text-black font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-gray-100 flex items-center gap-2 mx-auto active:scale-95"
+                      className="mt-4 px-6 min-h-[40px] bg-white text-black font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-gray-100 flex items-center gap-2 mx-auto lg:mx-0 active:scale-95"
                     >
                       <span>Go to Dashboard</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -321,7 +337,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 )}
 
                 {syncStatus === "error" && (
-                  <div className="py-6 flex flex-col items-center md:items-start justify-center gap-3">
+                  <div className="py-6 flex flex-col items-center lg:items-start justify-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-red-500/15 border border-red-500 flex items-center justify-center text-red-500 mb-2">
                       <AlertCircle className="w-6 h-6" />
                     </div>
@@ -344,37 +360,74 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 {syncStatus === "idle" && (
                   <button
                     onClick={() => setOnboardingStep(2)}
-                    className="text-xs font-semibold text-gray-500 hover:text-white mt-2 underline self-center md:self-start"
+                    className="text-xs font-semibold text-gray-500 hover:text-white mt-2 underline self-center lg:self-start"
                   >
                     Back to Goal Selection
                   </button>
                 )}
               </div>
 
-              {/* Right column: Interactive 3D Onboarding Strategy Core */}
-              <div className="md:col-span-2 flex flex-col items-center justify-center border border-glass bg-glass-deep p-5 rounded-2xl relative shadow-glow">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 rounded-full blur-2xl" />
-
-                <div className="w-full h-[220px] flex items-center justify-center">
-                  <OnboardingCore3D niche={niche} goal={goal} />
+              {/* Right column: Interactive 3D Strategy Core & Surfing Academy (2/5 width) */}
+              <div className="lg:col-span-2 flex flex-col gap-4">
+                {/* 3D Visual Block */}
+                <div className="flex flex-col items-center justify-center border border-glass bg-glass-deep p-4 rounded-2xl relative shadow-glow">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 rounded-full blur-2xl" />
+                  <div className="w-full h-[140px] flex items-center justify-center">
+                    <OnboardingCore3D niche={niche} goal={goal} />
+                  </div>
+                  <div className="w-full mt-2 text-center select-none z-10">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] font-black uppercase bg-brand-primary/20 text-brand-primary border border-brand-primary/30 tracking-wider">
+                      <Sparkles className="w-2.5 h-2.5 animate-pulse" />
+                      Active 3D Strategy Core
+                    </span>
+                  </div>
                 </div>
 
-                <div className="w-full mt-3 p-3 rounded-xl bg-white/5 border border-glass text-center select-none z-10">
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] font-black uppercase bg-brand-primary/20 text-brand-primary border border-brand-primary/30 tracking-wider">
-                    <Sparkles className="w-2.5 h-2.5 animate-pulse" />
-                    Active 3D Strategy Core
+                {/* Surfing Academy Guide Preview Cards */}
+                <div className="flex flex-col gap-3">
+                  <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-widest pl-1">
+                    📖 Trendoraa Surfing Academy
                   </span>
-                  <p className="text-[10px] text-gray-300 font-bold mt-1.5 leading-relaxed">
-                    Holographic shell aligned to{" "}
-                    <strong className="text-brand-accent">
-                      {niche ? niche.toUpperCase() : "GENERAL"}
-                    </strong>{" "}
-                    niche and morphing under{" "}
-                    <strong className="text-brand-secondary">
-                      {goal ? goal.toUpperCase() : "GROWTH"}
-                    </strong>{" "}
-                    parameters.
-                  </p>
+
+                  {[
+                    {
+                      num: "1",
+                      title: "Explore Hold Curves (My Posts)",
+                      desc: "See a mathematical Bezier timeline tracking exactly where viewers scrolled away in the first 3 seconds of your Reels.",
+                      color: "border-brand-primary/20 text-brand-primary bg-brand-primary/5 hover:border-brand-primary/40",
+                    },
+                    {
+                      num: "2",
+                      title: "Inspect Engagement Velocity (Analytics)",
+                      desc: "Identify peak commuting times and optimal posting schedules automatically calculated for your niche.",
+                      color: "border-brand-secondary/20 text-brand-secondary bg-brand-secondary/5 hover:border-brand-secondary/40",
+                    },
+                    {
+                      num: "3",
+                      title: "Access Content Roadmaps (Strategy)",
+                      desc: "Grab personalized AI script outlines, scheduled drop times, and formatting baselines customized for you.",
+                      color: "border-brand-accent/20 text-brand-accent bg-brand-accent/5 hover:border-brand-accent/40",
+                    },
+                  ].map((academyItem) => (
+                    <div
+                      key={academyItem.num}
+                      className={`p-3 rounded-xl border backdrop-blur-md transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 select-none ${academyItem.color}`}
+                    >
+                      <div className="flex gap-2.5 items-start">
+                        <span className="w-5 h-5 rounded-full border border-current flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">
+                          {academyItem.num}
+                        </span>
+                        <div className="flex flex-col gap-0.5">
+                          <h4 className="font-bold text-xs text-white">
+                            {academyItem.title}
+                          </h4>
+                          <p className="text-[10px] leading-relaxed text-gray-300 font-medium">
+                            {academyItem.desc}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

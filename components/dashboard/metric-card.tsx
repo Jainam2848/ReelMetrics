@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { BentoCardMotion } from "@/components/shared/performance-motion";
+import { PremiumCard } from "@/components/ui/PremiumCard";
 import { TrendingUp, TrendingDown, HelpCircle } from "lucide-react";
 
 interface MetricCardProps {
@@ -37,10 +37,10 @@ export function MetricCard({
   const isDown = trend === "down";
 
   return (
-    <BentoCardMotion className="p-6 rounded-2xl border border-glass bg-glass hover:shadow-glow transition-all flex flex-col justify-between min-h-[140px] relative overflow-hidden group">
-      {/* Glow highlight in corner */}
-      <div className="absolute -top-10 -right-10 w-24 h-24 bg-brand-primary/10 rounded-full blur-xl group-hover:bg-brand-primary/20 transition-all duration-300 pointer-events-none" />
-
+    <PremiumCard 
+      className="p-6 flex flex-col justify-between min-h-[140px] relative group"
+      glowColor="blue"
+    >
       <div className="flex justify-between items-start gap-4">
         {/* Label */}
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 select-none">
@@ -65,7 +65,7 @@ export function MetricCard({
 
       <div className="flex items-baseline justify-between mt-4">
         {/* Value */}
-        <span className="text-3xl font-bold font-heading text-white tracking-tight">
+        <span className="text-3xl font-extrabold font-heading text-white tracking-tight">
           {value}
         </span>
 
@@ -86,6 +86,6 @@ export function MetricCard({
           </div>
         )}
       </div>
-    </BentoCardMotion>
+    </PremiumCard>
   );
 }

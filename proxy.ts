@@ -17,27 +17,14 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1. Pure Path-Based Redirections (Zero network latency overhead)
-  // Redirect legacy /dashboard paths to route group counterparts to prevent 404s
-  if (pathname === "/dashboard") {
-    const targetUrl = new URL("/", request.url);
-    request.nextUrl.searchParams.forEach((value, key) => {
-      targetUrl.searchParams.set(key, value);
-    });
-    return NextResponse.redirect(targetUrl);
-  }
-  if (pathname.startsWith("/dashboard/")) {
-    const targetUrl = new URL(pathname.replace("/dashboard", ""), request.url);
-    request.nextUrl.searchParams.forEach((value, key) => {
-      targetUrl.searchParams.set(key, value);
-    });
-    return NextResponse.redirect(targetUrl);
-  }
+  // (Legacy redirects removed to allow /dashboard as primary route)
 
   // 2. Gate all protected dashboard UI paths in the route group if anonymous
-  const protectedPaths = ["/", "/posts", "/strategy", "/analytics", "/accounts", "/billing", "/settings"];
+  const protectedPaths = ["/dashboard", "/posts", "/strategy", "/analytics", "/accounts", "/billing", "/settings"];
   const isProtected = protectedPaths.includes(pathname) || pathname.startsWith("/posts/") || pathname.startsWith("/strategy/");
+  const isRoot = pathname === "/";
 
-  if (isProtected) {
+  if (isProtected || isRoot) {
     // Initialize Supabase client ONLY for protected UI routes to prevent double auth queries on API/Webhook feeds
     const supabase = createServerClient(
       env.NEXT_PUBLIC_SUPABASE_URL,
@@ -67,10 +54,15 @@ export async function proxy(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) {
+    if (isProtected && !user) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirectTo", pathname);
       return NextResponse.redirect(loginUrl);
+    }
+    
+    if (isRoot && user) {
+      const dashboardUrl = new URL("/dashboard", request.url);
+      return NextResponse.redirect(dashboardUrl);
     }
   }
 

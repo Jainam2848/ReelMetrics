@@ -606,3 +606,40 @@ export class SyncError extends Error {
     this.name = "SyncError";
   }
 }
+
+/**
+ * Auto-sync helper: triggers a live sync for a real account if it's never synced or stale (>15 mins).
+ * Safe against Meta Graph API rate limits (respects 5-min cooldown and hourly quotas).
+ */
+export async function triggerSyncIfStale(userId: string, accountId: string): Promise<void> {
+  const account = await db.query.instagramAccounts.findFirst({
+    where: and(
+      eq(instagramAccounts.id, accountId),
+      eq(instagramAccounts.userId, userId)
+    ),
+  });
+
+  if (!account) return;
+
+  // Sandbox demo check: if username is alice_reels or has no token, use saved data
+  const isDemo = account.username === "alice_reels" || !account.accessTokenEnc;
+  if (isDemo) return;
+
+  const STALE_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+  const isStale =
+    !account.lastSyncedAt ||
+    (Date.now() - account.lastSyncedAt.getTime()) > STALE_INTERVAL_MS;
+
+  if (isStale) {
+    try {
+      console.log(`[auto-sync] Triggering live sync for real account ${accountId}...`);
+      await syncAccount(userId, accountId, { skipCooldown: false });
+    } catch (syncError) {
+      console.error(
+        `[auto-sync] Stale live sync failed for account ${accountId} (falling back to cache):`,
+        syncError instanceof Error ? syncError.message : "Unknown error"
+      );
+      // Gracefully catch SyncErrors (e.g. rate limits or quota issues) and serve cached DB data
+    }
+  }
+}

@@ -20,6 +20,36 @@ export interface HeatmapItem {
   day: string;
   hour: string;
   score: number;
+  lift: number;
+  count: number;
+}
+
+export interface ContentPerformanceItem {
+  id: string;
+  caption: string | null;
+  mediaType: string;
+  timestamp: string;
+  reach: number;
+  views: number;
+  impressions: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+  engagementRate: number;
+  reachRate: number;
+  saveRateReach: number;
+  shareRateReach: number;
+  hookRetention: number | null;
+  dataTrustLabel: string;
+}
+
+export interface ContentTimelinePoint {
+  date: string;
+  Reach: number;
+  Views: number;
+  Intent: number;
+  Engagements: number;
 }
 
 export interface AnalyticsData {
@@ -27,6 +57,42 @@ export interface AnalyticsData {
   summary: AnalyticsSummary;
   contentTypes: ContentTypePerformance[];
   heatmap: HeatmapItem[];
+  content?: ContentPerformanceItem[];
+  contentTimeline?: ContentTimelinePoint[];
+  dailyInsights?: Array<{
+    date: string;
+    reach: number;
+    impressions: number;
+    profileViews: number;
+  }>;
+  stories?: Array<{
+    id: string;
+    timestamp: string;
+    impressions: number;
+    reach: number;
+    replies: number;
+    exits: number;
+    completionRate: string | number | null;
+    dataTrustLabel: string;
+  }>;
+  growth?: {
+    totalFollowers: number;
+    newFollowers: number;
+    growthRate: number;
+  };
+  baselines?: {
+    reels: {
+      avgReach: number;
+      avgEngagement: number;
+      avgSaves: number;
+      avgShares: number;
+    };
+    stories: {
+      avgReach: number;
+      avgImpressions: number;
+      avgCompletionRate: number;
+    };
+  };
 }
 
 export interface TrendItem {
@@ -41,7 +107,10 @@ interface TrendsResponse {
   timeline: TrendItem[];
 }
 
-export function useAnalytics(timeframeDays: 7 | 30 | 90 = 30) {
+export function useAnalytics(
+  timeframeDays: 7 | 30 | 90 = 30,
+  baselineDays: 30 | 60 = 30
+) {
   const { activeAccount } = useActiveAccount();
 
   const {
@@ -51,7 +120,7 @@ export function useAnalytics(timeframeDays: 7 | 30 | 90 = 30) {
     mutate: mutateMetrics,
   } = useSWR<AnalyticsData>(
     activeAccount
-      ? `/api/accounts/${activeAccount.id}/analytics?days=${timeframeDays}`
+      ? `/api/accounts/${activeAccount.id}/analytics?days=${timeframeDays}&baselineDays=${baselineDays}`
       : null,
     {
       revalidateOnFocus: false,

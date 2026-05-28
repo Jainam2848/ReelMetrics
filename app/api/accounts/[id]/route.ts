@@ -127,3 +127,61 @@ export const DELETE = withRateLimit(
     });
   })
 );
+
+// ── PATCH: Update Account Properties (Niche & Goal) ─────────────────────────
+
+/**
+ * PATCH /api/accounts/[id]
+ *
+ * Updates an Instagram account's niche and growth goals.
+ */
+export const PATCH = withRateLimit(
+  withAuth(async (request, context) => {
+    const { id } = (await context.params) as { id: string };
+
+    let body: { niche?: string; goal?: string } = {};
+    try {
+      body = await request.json().catch(() => ({}));
+    } catch {
+      return apiError("VALIDATION_ERROR", "Malformed or missing body");
+    }
+
+    const { niche, goal } = body;
+
+    // Verify ownership
+    const [existing] = await db
+      .select({
+        id: instagramAccounts.id,
+      })
+      .from(instagramAccounts)
+      .where(
+        and(
+          eq(instagramAccounts.id, id),
+          eq(instagramAccounts.userId, request.user.id)
+        )
+      )
+      .limit(1);
+
+    if (!existing) {
+      return apiError("RESOURCE_NOT_FOUND", "Account not found");
+    }
+
+    // Build update object
+    const updateFields: any = {
+      updatedAt: new Date(),
+    };
+    if (niche !== undefined) updateFields.niche = niche;
+    if (goal !== undefined) updateFields.goal = goal;
+
+    await db
+      .update(instagramAccounts)
+      .set(updateFields)
+      .where(eq(instagramAccounts.id, id));
+
+    return apiSuccess({
+      message: "Account properties updated successfully",
+      niche,
+      goal,
+    });
+  })
+);
