@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { SlidingTabs } from "@/components/shared/sliding-tabs";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -96,39 +97,29 @@ export function TrendChart({ data = [], isLoading = false }: TrendChartProps) {
 
         <div className="flex items-center gap-3">
           {/* Metric selector */}
-          <div className="flex p-1 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-            <button
-              onClick={() => setMetricKey("engagementRate")}
-              className={`px-3 py-1.5 rounded-lg cursor-pointer transition-all active:scale-95 ${
-                metricKey === "engagementRate" ? "bg-brand-primary text-white" : "hover:text-white"
-              }`}
-            >
-              ER
-            </button>
-            <button
-              onClick={() => setMetricKey("hookRetention")}
-              className={`px-3 py-1.5 rounded-lg cursor-pointer transition-all active:scale-95 ${
-                metricKey === "hookRetention" ? "bg-brand-secondary text-white" : "hover:text-white"
-              }`}
-            >
-              Hook hold
-            </button>
-          </div>
+          <SlidingTabs
+            options={[
+              { value: "engagementRate", label: "ER" },
+              { value: "hookRetention", label: "Hook hold" },
+            ]}
+            selectedValue={metricKey}
+            onChange={setMetricKey}
+            layoutId="trend-metric-selector"
+            activeClassName="bg-brand-primary/80"
+          />
 
           {/* Range Selector */}
-          <div className="flex p-1 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-            {([7, 30, 90] as const).map((r) => (
-              <button
-                key={r}
-                onClick={() => setRange(r)}
-                className={`px-3 py-1.5 rounded-lg cursor-pointer transition-all active:scale-95 ${
-                  range === r ? "bg-white/10 text-white" : "hover:text-white"
-                }`}
-              >
-                {r}d
-              </button>
-            ))}
-          </div>
+          <SlidingTabs
+            options={[
+              { value: 7, label: "7d" },
+              { value: 30, label: "30d" },
+              { value: 90, label: "90d" },
+            ]}
+            selectedValue={range}
+            onChange={setRange}
+            layoutId="trend-range-selector"
+            activeClassName="bg-white/10"
+          />
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { use } from "react";
+import { m } from "framer-motion";
 import { usePostDetail } from "@/hooks/use-post-detail";
 import { ScoreGauge } from "@/components/dashboard/score-gauge";
 import { DimensionBar } from "@/components/dashboard/dimension-bar";
@@ -149,15 +150,17 @@ export default function PostDetailPageClient({ params }: PageProps) {
               </div>
 
               {post.permalink && (
-                <a
+                <m.a
                   href={post.permalink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="absolute bottom-4 right-4 px-4 py-2 rounded-full bg-black/55 border border-white/15 hover:bg-white/10 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider transition-all z-30 flex items-center gap-1.5 cursor-pointer active:scale-95 group"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="absolute bottom-4 right-4 px-4 py-2 rounded-full bg-black/55 border border-white/15 hover:bg-white/10 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider transition-all z-30 flex items-center gap-1.5 cursor-pointer group"
                 >
                   <span>Open post</span>
                   <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+                </m.a>
               )}
             </div>
 
@@ -223,13 +226,15 @@ export default function PostDetailPageClient({ params }: PageProps) {
                   <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-8">
                     This short-form video has not been processed by the Trendoraa AI engine yet. Click below to analyze hook density and cta structures.
                   </p>
-                  <button
+                  <m.button
                     onClick={handleTriggerScoring}
-                    className="min-h-[44px] px-8 bg-brand-primary hover:opacity-90 text-white rounded-xl font-bold text-sm flex items-center gap-2 active:scale-95 shadow-glow cursor-pointer"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98, transition: { type: "spring", stiffness: 500, damping: 15 } }}
+                    className="min-h-[44px] px-8 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-xl font-bold text-sm flex items-center gap-2 shadow-glow cursor-pointer"
                   >
                     <Sparkles className="w-4 h-4" />
                     <span>Execute AI Evaluation</span>
-                  </button>
+                  </m.button>
                 </div>
               )}
             </div>

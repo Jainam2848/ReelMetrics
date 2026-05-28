@@ -1,16 +1,23 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { m, useInView } from "framer-motion";
+import { m, useInView, useReducedMotion } from "framer-motion";
 import anime from "animejs";
-import { Play, TrendingUp, AlertTriangle, Eye, MessageCircle, RefreshCw } from "lucide-react";
+import { Play, TrendingUp, AlertTriangle, Eye, RefreshCw } from "lucide-react";
 
 export function BeforeAfterSplit() {
   const containerRef = useRef<HTMLDivElement>(null);
   const inView = useInView(containerRef, { once: true, margin: "-100px" });
+  const shouldReduceMotion = useReducedMotion();
   
   const [sequenceStarted, setSequenceStarted] = useState(false);
   const [simulating, setSimulating] = useState(false);
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+
+  useEffect(() => {
+    const isMobileQuery = window.matchMedia("(pointer: coarse)");
+    setIsMobileDevice(isMobileQuery.matches);
+  }, []);
 
   // Refs for AnimeJS targets
   const shakyGridRef = useRef<HTMLDivElement>(null);
@@ -20,20 +27,46 @@ export function BeforeAfterSplit() {
   const skipRateTextRef = useRef<HTMLSpanElement>(null);
   const retentionCurveRef = useRef<SVGPathElement>(null);
 
-  // Left Side Shake Animation (Continuous)
+  const shakeAnimationRef = useRef<any>(null);
+
+  // Left Side Shake Animation (IntersectionObserver Paced)
   useEffect(() => {
-    if (shakyGridRef.current) {
-      anime({
-        targets: shakyGridRef.current.children,
-        translateX: () => anime.random(-2, 2),
-        translateY: () => anime.random(-2, 2),
-        rotate: () => anime.random(-1, 1),
-        duration: 200,
-        direction: "alternate",
-        loop: true,
-        easing: "easeInOutSine",
-      });
+    if (!shakyGridRef.current) return;
+
+    shakeAnimationRef.current = anime({
+      targets: shakyGridRef.current.children,
+      translateX: () => anime.random(-2, 2),
+      translateY: () => anime.random(-2, 2),
+      rotate: () => anime.random(-1, 1),
+      duration: 200,
+      direction: "alternate",
+      loop: true,
+      easing: "easeInOutSine",
+      autoplay: false,
+    });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry && entry.isIntersecting) {
+          shakeAnimationRef.current?.play();
+        } else if (shakeAnimationRef.current) {
+          shakeAnimationRef.current.pause();
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
     }
+
+    return () => {
+      observer.disconnect();
+      if (shakeAnimationRef.current) {
+        shakeAnimationRef.current.pause();
+      }
+    };
   }, []);
 
   const startSimulation = () => {
@@ -140,17 +173,70 @@ export function BeforeAfterSplit() {
             </div>
 
             <div className="text-center">
-              <span className="font-display italic text-white/40 text-lg">"Why did this flop??"</span>
+              <span className="font-display italic text-white/40 text-lg">&quot;Why did this flop??&quot;</span>
             </div>
           </div>
 
           {/* RIGHT: Trendoraa Way */}
-          <div className="flex flex-col h-full border border-glass bg-glass shadow-glow backdrop-blur-xl rounded-3xl p-6 md:p-8 relative">
-            <div className="absolute top-0 right-0 bg-brand-primary/20 text-brand-primary text-xs font-bold px-4 py-1.5 rounded-bl-2xl uppercase tracking-wider">
+          <m.div
+            style={{ 
+              transformStyle: "preserve-3d", 
+              perspective: "1000px",
+              rotateX: (shouldReduceMotion || isMobileDevice) ? 0 : 2
+            }}
+            whileHover={(shouldReduceMotion || isMobileDevice) ? {} : { rotateX: 0 }}
+            transition={{ type: "spring", stiffness: 120, damping: 18 }}
+            className="flex flex-col h-full border border-white/10 bg-white/[0.03] backdrop-blur-[8px] rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-glow before-after-glass"
+          >
+            {/* Stacked backdrop-filter layer for premium glass depth */}
+            <div className="absolute inset-0 bg-black/[0.15] backdrop-blur-[20px] pointer-events-none z-0 before-after-glass-inner" />
+
+            <style dangerouslySetInnerHTML={{ __html: `
+              @keyframes analysis-ring-pulse {
+                0% {
+                  transform: scale(0.95);
+                  opacity: 0.5;
+                }
+                50% {
+                  opacity: 0.25;
+                }
+                100% {
+                  transform: scale(1.25);
+                  opacity: 0;
+                }
+              }
+              
+              @supports not (backdrop-filter: blur(8px)) {
+                .before-after-glass {
+                  background-color: #0F1015 !important;
+                }
+                .before-after-glass-inner {
+                  display: none !important;
+                }
+              }
+              
+              @media (prefers-reduced-motion: no-preference) {
+                .analysis-pulse-btn {
+                  position: relative;
+                }
+                .analysis-pulse-btn::after {
+                  content: '';
+                  position: absolute;
+                  inset: 0;
+                  border-radius: inherit;
+                  border: 2px solid #4F46E5;
+                  animation: analysis-ring-pulse 3.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+                  pointer-events: none;
+                  z-index: 1;
+                }
+              }
+            `}} />
+
+            <div className="absolute top-0 right-0 bg-brand-primary/20 text-brand-primary text-xs font-bold px-4 py-1.5 rounded-bl-2xl uppercase tracking-wider z-10">
               Trendoraa Way
             </div>
 
-            <div className="flex justify-between items-start mt-4 mb-8">
+            <div className="flex justify-between items-start mt-4 mb-8 z-10 relative">
               <div>
                 <h3 className="text-xl font-display font-bold text-white mb-2">Deep Post Analysis</h3>
                 <p className="text-brand-secondary text-sm flex items-center gap-2">
@@ -161,14 +247,20 @@ export function BeforeAfterSplit() {
               <button 
                 onClick={startSimulation}
                 disabled={sequenceStarted || simulating}
-                className={`px-4 py-2 text-sm font-bold rounded-lg border ${sequenceStarted ? 'border-brand-primary/50 text-brand-primary bg-brand-primary/10' : 'border-white/10 text-white bg-white/5 hover:bg-white/10'} transition-colors flex items-center gap-2`}
+                className={`px-4 py-2 text-sm font-bold rounded-lg border ${
+                  !sequenceStarted && !simulating ? "analysis-pulse-btn" : ""
+                } ${
+                  sequenceStarted 
+                    ? "border-brand-primary/50 text-brand-primary bg-brand-primary/10" 
+                    : "border-white/10 text-white bg-white/5 hover:bg-white/10"
+                } transition-colors flex items-center gap-2 relative z-25`}
               >
                 {simulating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                 {sequenceStarted ? 'Analysis Complete' : 'Run Analysis'}
               </button>
             </div>
 
-            <div className="flex-1 flex flex-col justify-center relative">
+            <div className="flex-1 flex flex-col justify-center relative z-10">
               <div className="relative aspect-[9/16] w-full max-w-[220px] mx-auto bg-[#1A1B23] rounded-xl border border-white/10 overflow-hidden mb-6 flex items-center justify-center">
                 <video 
                   src="/videos/sample1.mp4"
@@ -253,7 +345,7 @@ export function BeforeAfterSplit() {
                 )}
               </div>
             </div>
-          </div>
+          </m.div>
         </div>
       </div>
     </section>

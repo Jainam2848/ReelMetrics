@@ -2,14 +2,21 @@
 
 import React from "react";
 import { m } from "framer-motion";
+import { NumberTicker } from "@/components/shared/number-ticker";
 
 export function SocialProofTicker() {
   return (
-    <div className="w-full border-y border-white/5 bg-black/40 backdrop-blur-md py-4 relative z-10">
+    <m.div
+      initial={{ opacity: 0, y: 30, filter: "blur(8px)" }}
+      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+      className="w-full border-y border-white/5 bg-black/40 backdrop-blur-md py-4 relative z-10"
+    >
       <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
         
         {/* Ticker side */}
-        <div className="flex items-center gap-3 text-sm font-mono text-muted-foreground">
+        <div className="flex items-center gap-3 text-sm font-mono text-gray-400">
           <div className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-secondary opacity-75"></span>
@@ -19,7 +26,7 @@ export function SocialProofTicker() {
           </div>
           <span className="hidden md:inline-block w-px h-4 bg-white/10 mx-2"></span>
           <p>
-            Trendoraa has analyzed <span className="text-white font-bold">23,412</span> Reels in the last 24 hours. {/* TODO: Replace with SWR fetch */}
+            Trendoraa has analyzed <NumberTicker value={23412} /> Reels in the last 24 hours.
           </p>
         </div>
 
@@ -34,13 +41,13 @@ export function SocialProofTicker() {
           </div>
           <div>
             <p className="text-xs text-white/90 italic leading-relaxed mb-1">
-              "Trendoraa’s Hook Retention Analysis told me exactly why my hooks were failing. +120% views in 2 weeks."
+              &quot;Trendoraa’s Hook Retention Analysis told me exactly why my hooks were failing. +120% views in 2 weeks.&quot;
             </p>
             <p className="text-[10px] font-bold text-brand-secondary">@creatorhandle</p>
           </div>
         </m.div>
 
       </div>
-    </div>
+    </m.div>
   );
 }

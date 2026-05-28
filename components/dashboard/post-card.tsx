@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { BentoCardMotion } from "@/components/shared/performance-motion";
+import { SpotlightCard } from "@/components/shared/spotlight-card";
 import { Eye, ThumbsUp, Percent } from "lucide-react";
 
 export interface PostCardProps {
@@ -50,7 +50,7 @@ export function PostCard({ post }: PostCardProps) {
 
   return (
     <Link href={`/posts/${post.id}`} className="block h-full">
-      <BentoCardMotion className="h-full rounded-2xl border border-glass bg-glass hover:shadow-glow transition-all duration-300 flex flex-col overflow-hidden group">
+      <SpotlightCard className="h-full">
         {/* Visual Media Frame */}
         <div className="relative aspect-video w-full bg-secondary/20 overflow-hidden flex-shrink-0">
           {post.mediaUrl ? (
@@ -135,7 +135,7 @@ export function PostCard({ post }: PostCardProps) {
             </div>
           </div>
         </div>
-      </BentoCardMotion>
+      </SpotlightCard>
     </Link>
   );
 }

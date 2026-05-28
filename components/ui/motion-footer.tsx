@@ -104,29 +104,46 @@ const MagneticButton = React.forwardRef<HTMLElement, MagneticButtonProps>(
 
     useEffect(() => {
       if (typeof window === "undefined") return;
+      
+      // Mobile / touchscreen device pointer bypass
+      if (window.matchMedia("(pointer: coarse)").matches) return;
+      
       const element = localRef.current;
       if (!element) return;
 
       const ctx = gsap.context(() => {
-        const handleMouseMove = (e: MouseEvent) => {
-          const rect = element.getBoundingClientRect();
-          const h = rect.width / 2;
-          const w = rect.height / 2;
-          const x = e.clientX - rect.left - h;
-          const y = e.clientY - rect.top - w;
+        let ticking = false;
+        let lastEvent: MouseEvent | null = null;
 
-          gsap.to(element, {
-            x: x * 0.4,
-            y: y * 0.4,
-            rotationX: -y * 0.15,
-            rotationY: x * 0.15,
-            scale: 1.05,
-            ease: "power2.out",
-            duration: 0.4,
-          });
+        const handleMouseMove = (e: MouseEvent) => {
+          lastEvent = e;
+          if (!ticking) {
+            window.requestAnimationFrame(() => {
+              if (lastEvent) {
+                const rect = element.getBoundingClientRect();
+                const h = rect.width / 2;
+                const w = rect.height / 2;
+                const x = lastEvent.clientX - rect.left - h;
+                const y = lastEvent.clientY - rect.top - w;
+
+                gsap.to(element, {
+                  x: x * 0.4,
+                  y: y * 0.4,
+                  rotationX: -y * 0.15,
+                  rotationY: x * 0.15,
+                  scale: 1.05,
+                  ease: "power2.out",
+                  duration: 0.4,
+                });
+              }
+              ticking = false;
+            });
+            ticking = true;
+          }
         };
 
         const handleMouseLeave = () => {
+          lastEvent = null;
           gsap.to(element, {
             x: 0,
             y: 0,

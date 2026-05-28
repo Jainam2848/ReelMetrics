@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import { useActiveAccount } from "@/components/shared/active-account-context";
@@ -11,6 +11,7 @@ import { LoadError } from "@/components/shared/load-error";
 import Link from "next/link";
 import { useToast } from "@/components/shared/toast";
 import { m, AnimatePresence } from "framer-motion";
+import { SlidingTabs } from "@/components/shared/sliding-tabs";
 import { 
   Sparkles, 
   Search, 
@@ -23,6 +24,32 @@ import {
   Eye,
   Award
 } from "lucide-react";
+
+const gridContainerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    }
+  }
+} as const;
+
+const gridCardVariants = {
+  hidden: { opacity: 0, scale: 0.96, filter: "blur(6px)" },
+  show: { 
+    opacity: 1, 
+    scale: 1, 
+    filter: "blur(0px)",
+    transition: { type: "spring", stiffness: 100, damping: 20 }
+  },
+  exit: { 
+    opacity: 0, 
+    scale: 0.96, 
+    filter: "blur(6px)",
+    transition: { duration: 0.2 }
+  }
+} as const;
 
 export default function PostsPage() {
   const { activeAccount } = useActiveAccount();
@@ -129,18 +156,24 @@ export default function PostsPage() {
         </div>
 
         {/* Bulk Action Button */}
-        <button
+        <m.button
           onClick={handleScoreAll}
           disabled={bulkScoringInProgress || posts.length === 0}
+          whileHover={bulkScoringInProgress || posts.length === 0 ? {} : { scale: 1.02 }}
+          whileTap={bulkScoringInProgress || posts.length === 0 ? {} : { scale: 0.98, transition: { type: "spring", stiffness: 500, damping: 15 } }}
           className={`min-h-[44px] px-6 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer ${
             bulkScoringInProgress
               ? "bg-white/10 text-gray-500 border border-white/5 cursor-not-allowed"
-              : "bg-brand-primary text-white shadow-glow active:scale-95 hover:opacity-90"
+              : "bg-brand-primary text-white shadow-glow hover:bg-brand-primary/90"
           }`}
         >
-          <Sparkles className="w-4 h-4" />
+          {bulkScoringInProgress ? (
+            <div className="w-4 h-4 rounded-full border-2 border-gray-500 border-t-white animate-spin" />
+          ) : (
+            <Sparkles className="w-4 h-4" />
+          )}
           <span>{bulkScoringInProgress ? "Scoring Progress Active" : "Score All Unrated"}</span>
-        </button>
+        </m.button>
       </div>
 
       {/* Bulk Scoring Floating Panel */}
@@ -183,21 +216,17 @@ export default function PostsPage() {
         </div>
 
         {/* Platform tabs */}
-        <div className="flex bg-white/5 p-1 rounded-lg border border-glass select-none">
-          {(["all", "instagram", "tiktok"] as const).map((plat) => (
-            <button
-              key={plat}
-              onClick={() => setPlatformFilter(plat)}
-              className={`px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all active:scale-95 ${
-                platformFilter === plat
-                  ? "bg-brand-primary text-white"
-                  : "text-muted-foreground hover:text-white"
-              }`}
-            >
-              {plat}
-            </button>
-          ))}
-        </div>
+        <SlidingTabs
+          options={[
+            { value: "all", label: "All" },
+            { value: "instagram", label: "Instagram" },
+            { value: "tiktok", label: "TikTok" },
+          ]}
+          selectedValue={platformFilter}
+          onChange={setPlatformFilter}
+          layoutId="posts-platform-filter"
+          activeClassName="bg-brand-primary/80"
+        />
 
         {/* Sort selector */}
         <div className="relative min-w-[160px] select-none">
@@ -224,10 +253,13 @@ export default function PostsPage() {
         />
       ) : isLoading ? (
         <LoadingSkeleton variant="posts" count={6} />
-      ) : paginatedPosts.length > 0 ? (
+      ) : filteredPosts.length > 0 ? (
         <div className="flex flex-col gap-6">
           <m.div 
             layout
+            variants={gridContainerVariants}
+            initial="hidden"
+            animate="show"
             className="grid grid-cols-1 md:grid-cols-3 gap-6"
           >
             <AnimatePresence mode="popLayout">
@@ -235,10 +267,11 @@ export default function PostsPage() {
                 <m.div
                   key={post.id}
                   layout
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ type: "spring", duration: 0.5 }}
+                  variants={gridCardVariants}
+                  initial="hidden"
+                  animate="show"
+                  exit="exit"
+                  style={{ originY: 0.5 }}
                 >
                   <PostCard post={post} />
                 </m.div>
