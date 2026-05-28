@@ -132,10 +132,21 @@ export function GrowthMatrix({
       });
     }
 
+    // Add radar sweep animation
+    anime({
+      targets: "#radar-sweep",
+      translateX: ["-100%", "800px"],
+      opacity: [0, 1, 0],
+      duration: 3500,
+      loop: true,
+      easing: "linear",
+    });
+
     const currentPath = pathRef.current;
     return () => {
       if (animeInstance.current && currentPath) {
         animeInstance.current.remove(currentPath);
+        animeInstance.current.remove("#radar-sweep");
       }
     };
   }, [mode, animeLoaded, isReducedMotion]);
@@ -196,131 +207,74 @@ export function GrowthMatrix({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-        {/* Grid Matrix (9 Dimensions Staggered Grid) */}
-        <div 
-          ref={gridRef}
-          className="md:col-span-7 grid grid-cols-3 gap-3 w-full"
-        >
-          {dimensions.map((dim, idx) => {
-            const isCellSelected = activeCell === idx;
-            return (
-              <button
-                key={idx}
-                id={`cell-${idx}`}
-                onClick={() => handleCellClick(idx, dim.name, dim.score)}
-                disabled={mode === "scoring"}
-                className={`matrix-cell relative flex flex-col justify-between aspect-square p-3 border rounded-xl bg-glass text-left transition-all duration-300 group cursor-pointer ${
-                  isCellSelected
-                    ? "border-brand-primary ring-2 ring-brand-primary/30 shadow-glow bg-brand-primary/10"
-                    : "border-glass hover:border-white/20 hover:bg-white/5"
-                } ${mode === "scoring" ? "cursor-wait" : ""}`}
-              >
-                {/* Background soft color glow */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${dim.color} opacity-0 group-hover:opacity-[0.03] rounded-xl transition-opacity duration-300`} />
+      <div className="w-full border border-glass bg-glass rounded-2xl p-5 md:h-64 flex flex-col justify-between relative overflow-hidden shadow-glow">
+        {/* Radar Sweep Overlay (AnimeJS animated) */}
+        <div id="radar-sweep" className="absolute top-0 bottom-0 left-0 w-12 bg-gradient-to-r from-transparent via-brand-primary/20 to-brand-primary/50 border-r-2 border-brand-primary/60 blur-[1px] z-20 mix-blend-screen opacity-0" />
 
-                <div className="flex justify-between items-start w-full">
-                  <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wide block truncate max-w-[80%]">
-                    {dim.name.split(" ")[0]}
-                  </span>
-                  {mode === "interactive" && dim.score >= 80 && (
-                    <CheckCircle className="w-3.5 h-3.5 text-brand-secondary shrink-0" />
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-0.5 items-start mt-auto">
-                  <span className="text-xl font-display font-extrabold tracking-tighter text-white">
-                    {mode === "scoring" ? (
-                      <span className="inline-block animate-pulse">--</span>
-                    ) : (
-                      dim.score
-                    )}
-                  </span>
-                  <span className="text-[8px] text-muted-foreground truncate w-full group-hover:text-gray-300 transition-colors">
-                    {dim.name.split(" ").slice(1).join(" ")}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
+        {/* Overlay grid lines for dashboard theme */}
+        <div className="absolute inset-0 grid grid-cols-6 grid-rows-4 opacity-10 pointer-events-none">
+          {Array.from({ length: 24 }).map((_, i) => (
+            <div key={i} className="border border-brand-primary/20" />
+          ))}
         </div>
 
-        {/* Dynamic Watch-Through Retention Curve Visualizer */}
-        <div className="md:col-span-5 border border-glass bg-glass rounded-2xl p-5 aspect-square md:aspect-[4/3] flex flex-col justify-between relative overflow-hidden shadow-glow">
-          {/* Overlay grid lines for dashboard theme */}
-          <div className="absolute inset-0 grid grid-cols-4 grid-rows-3 opacity-[0.03] pointer-events-none">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="border border-white" />
-            ))}
-          </div>
-
-          <div className="flex justify-between items-center z-10">
-            <span className="text-[9px] uppercase font-bold text-gray-300 tracking-wider flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5 text-brand-accent animate-pulse" />
-              Retention Profile
+        <div className="flex justify-between items-center z-10">
+          <span className="text-[10px] font-mono uppercase font-bold text-brand-primary tracking-widest flex items-center gap-2">
+            <Activity className="w-4 h-4 text-brand-accent animate-pulse" />
+            Retention Profile Analysis
+          </span>
+          {activeCell !== null && mode === "interactive" && (
+            <span className="text-[10px] font-mono text-brand-accent font-bold px-2 py-0.5 bg-brand-accent/15 border border-brand-accent/25 rounded-md">
+              Active Index: {dimensions[activeCell]?.score}%
             </span>
-            {activeCell !== null && mode === "interactive" && (
-              <span className="text-[9px] font-mono text-brand-accent font-bold px-2 py-0.5 bg-brand-accent/15 border border-brand-accent/25 rounded-md">
-                Active Index: {dimensions[activeCell]?.score}%
-              </span>
-            )}
-          </div>
+          )}
+        </div>
 
-          {/* Canvas-Like SVG Container */}
-          <div className="relative w-full h-32 flex items-center justify-center my-2">
-            <svg 
-              viewBox="0 0 400 100" 
-              className="w-full h-full overflow-visible drop-shadow-[0_0_15px_rgba(253,121,168,0.25)]"
-            >
-              {/* Reference Grid lines */}
-              <line x1="10" y1="90" x2="390" y2="90" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-              <line x1="10" y1="10" x2="390" y2="10" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+        {/* Canvas-Like SVG Container */}
+        <div className="relative w-full h-full flex flex-col items-center justify-center my-4">
+          <svg 
+            viewBox="0 0 800 100" 
+            className="w-full h-full overflow-visible drop-shadow-[0_0_15px_rgba(0,240,255,0.25)]"
+          >
+            {/* Reference Grid lines */}
+            <line x1="0" y1="90" x2="800" y2="90" stroke="rgba(0,240,255,0.15)" strokeWidth="1" />
+            <line x1="0" y1="50" x2="800" y2="50" stroke="rgba(0,240,255,0.05)" strokeWidth="1" strokeDasharray="4 4" />
+            <line x1="0" y1="10" x2="800" y2="10" stroke="rgba(0,240,255,0.15)" strokeWidth="1" />
 
-              {/* SVG <defs> placed first so gradients are declared before use */}
-              <defs>
-                {/* Instance-scoped IDs (via useId) prevent gradient bleed when multiple
-                    GrowthMatrix components are mounted in the same page simultaneously */}
-                <linearGradient id={gradientGlowId} x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#6C5CE7" />
-                  <stop offset="50%" stopColor="#FD79A8" />
-                  <stop offset="100%" stopColor="#00B894" />
-                </linearGradient>
-                <linearGradient id={gradientAreaId} x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#FD79A8" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="#6C5CE7" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
+            {/* SVG <defs> */}
+            <defs>
+              <linearGradient id={gradientGlowId} x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#00F0FF" />
+                <stop offset="50%" stopColor="#0080FF" />
+                <stop offset="100%" stopColor="#FF003C" />
+              </linearGradient>
+              <linearGradient id={gradientAreaId} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#00F0FF" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#00F0FF" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
 
-              {/* Shaded Area underneath the dynamic path */}
-              <path
-                d={`${currentPathD} L 390 90 L 10 90 Z`}
-                fill={`url(#${gradientAreaId})`}
-                className="transition-all duration-700 ease-in-out"
-              />
+            {/* Shaded Area underneath the dynamic path */}
+            <path
+              d={`${currentPathD} L 800 90 L 0 90 Z`}
+              fill={`url(#${gradientAreaId})`}
+              className="transition-all duration-700 ease-in-out"
+            />
 
-              {/* Dynamic Retention Line */}
-              <path
-                ref={pathRef}
-                d={currentPathD}
-                fill="none"
-                stroke={`url(#${gradientGlowId})`}
-                strokeWidth="4"
-                strokeLinecap="round"
-                style={{ willChange: "stroke-dashoffset" }}
-                className="transition-all duration-700 ease-in-out"
-              />
-
-              {/* Glowing Interactive Circles on Data Points */}
-              {mode === "interactive" && (
-                <>
-                  <circle cx="200" cy="25" r="5" fill="#FD79A8" className="animate-pulse" />
-                  <circle cx="200" cy="25" r="10" fill="none" stroke="#FD79A8" strokeWidth="2" className="opacity-40 animate-ping" />
-                </>
-              )}
-            </svg>
-          </div>
-
-          <div className="z-10 flex flex-col gap-1">
+            {/* Dynamic Retention Line */}
+            <path
+              ref={pathRef}
+              d={currentPathD}
+              fill="none"
+              stroke={`url(#${gradientGlowId})`}
+              strokeWidth="3"
+              strokeLinecap="round"
+              style={{ willChange: "stroke-dashoffset" }}
+              className="transition-all duration-700 ease-in-out"
+            />
+          </svg>
+        </div>
+          <div className="z-10 flex flex-col gap-1 mt-4">
             <span className="text-[10px] text-gray-200 font-extrabold truncate">
               {activeCell !== null && mode === "interactive"
                 ? dimensions[activeCell]?.name
@@ -336,6 +290,5 @@ export function GrowthMatrix({
           </div>
         </div>
       </div>
-    </div>
   );
 }
