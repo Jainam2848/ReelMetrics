@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import { createClient } from "@/lib/supabase/client";
 import {
   LayoutDashboard,
   Film,
@@ -16,6 +17,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  LogOut,
 } from "lucide-react";
 
 
@@ -36,13 +38,42 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const toast = useToast();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Auth Guard
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        router.push("/login");
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || !session) {
+        router.push("/login");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [router]);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    toast.success("Disconnected successfully.");
+    router.push("/");
+    router.refresh();
+  };
+
   // 1. Sidebar Items definitions
   const sidebarItems: SidebarItem[] = [
-    { label: "Dashboard", href: "/", icon: <LayoutDashboard className="w-5 h-5" /> },
+    { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
     { label: "My Posts", href: "/posts", icon: <Film className="w-5 h-5" /> },
     { label: "Strategy", href: "/strategy", icon: <Calendar className="w-5 h-5" /> },
     { label: "Analytics", href: "/analytics", icon: <BarChart2 className="w-5 h-5" /> },
@@ -53,13 +84,13 @@ export default function DashboardLayout({
 
   // 2. Mobile Primary Navigation items (4 items fit perfectly on 375px screens)
   const mobilePrimaryItems = [
-    { label: "Home", href: "/", icon: <LayoutDashboard className="w-5 h-5" /> },
+    { label: "Home", href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
     { label: "Posts", href: "/posts", icon: <Film className="w-5 h-5" /> },
     { label: "Strategy", href: "/strategy", icon: <Calendar className="w-5 h-5" /> },
   ];
 
   const getBreadcrumbTitle = () => {
-    if (pathname === "/") return "Dashboard";
+    if (pathname === "/dashboard") return "Dashboard";
     const parts = pathname.split("/").filter(Boolean);
     if (parts.length === 0) return "Dashboard";
     if (parts[0] === "posts" && parts.length > 1) return "Post Analysis";
@@ -89,7 +120,7 @@ export default function DashboardLayout({
         {/* Sidebar Navigation */}
         <nav className="flex-grow flex flex-col gap-1.5 mt-8">
           {sidebarItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
             return (
               <Link
                 key={item.href}
@@ -108,8 +139,17 @@ export default function DashboardLayout({
         </nav>
 
         {/* Sidebar Footer details */}
-        <div className="text-[10px] text-gray-600 font-bold uppercase tracking-wider select-none text-center pt-4 border-t border-white/5">
-          MVP Rolling Beta v1.0
+        <div className="mt-auto pt-4 border-t border-white/5 flex flex-col gap-4">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-2 rounded-xl text-muted-foreground hover:text-white hover:bg-white/5 active:scale-95 transition-all w-full text-left font-semibold text-sm"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>Sign Out</span>
+          </button>
+          <div className="text-[10px] text-gray-600 font-bold uppercase tracking-wider select-none text-center">
+            MVP Rolling Beta v1.0
+          </div>
         </div>
       </aside>
 
@@ -160,7 +200,7 @@ export default function DashboardLayout({
       {/* ── MOBILE BOTTOM BAR NAVIGATION (Hidden on Desktop, optimized for 375px) ── */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-16 border-t border-glass bg-glass/85 backdrop-blur-xl px-4 flex justify-between items-center select-none shadow-glow">
         {mobilePrimaryItems.map((item) => {
-          const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+          const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}
@@ -246,6 +286,16 @@ export default function DashboardLayout({
                     </Link>
                   );
                 })}
+                <button
+                  onClick={() => {
+                    setIsMoreOpen(false);
+                    handleLogout();
+                  }}
+                  className="col-span-2 min-h-[48px] flex justify-center items-center gap-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider border border-red-500/20 transition-colors bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 active:scale-95 shadow-glow"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Sign Out</span>
+                </button>
               </div>
             </m.div>
           </>
