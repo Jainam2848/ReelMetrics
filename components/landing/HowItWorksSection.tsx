@@ -4,7 +4,7 @@ import { HowItWorksConnector } from "./HowItWorksConnector";
 
 export function HowItWorksSection() {
   return (
-    <section id="how-it-works" className="relative py-28 md:py-36 bg-[#08090D] overflow-hidden select-none border-t border-white/[0.03]">
+    <section id="how-it-works" className="relative py-28 md:py-36 overflow-hidden select-none border-t border-white/[0.03]">
       {/* Background ambient radial lights inside the section */}
       <div className="absolute top-[20%] left-[-10%] w-[35vw] h-[35vw] max-w-[400px] rounded-full bg-[#4F46E5]/3 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[20%] right-[-10%] w-[35vw] h-[35vw] max-w-[400px] rounded-full bg-[#10B981]/3 blur-[120px] pointer-events-none" />

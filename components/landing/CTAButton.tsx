@@ -10,6 +10,7 @@ interface CTAButtonProps {
   variant?: "primary" | "ghost";
   onClick?: (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => void;
   className?: string;
+  "data-magnetic"?: boolean;
 }
 
 export function CTAButton({
@@ -17,7 +18,8 @@ export function CTAButton({
   href,
   variant = "primary",
   onClick,
-  className = ""
+  className = "",
+  "data-magnetic": dataMagnetic,
 }: CTAButtonProps) {
   const shouldReduceMotion = useReducedMotion();
 
@@ -105,6 +107,7 @@ export function CTAButton({
           whileTap={shouldReduceMotion ? {} : { scale: 0.97 }}
           transition={{ type: "spring", stiffness: 400, damping: 25 }}
           className={`${baseClasses} ${variantClasses} cta-btn-wrapper w-full sm:w-auto ${className}`}
+          data-magnetic={dataMagnetic ? "" : undefined}
         >
           {buttonContent}
         </m.div>
@@ -118,6 +121,7 @@ export function CTAButton({
       whileTap={shouldReduceMotion ? {} : { scale: 0.97 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
       className={`${baseClasses} ${variantClasses} cta-btn-wrapper w-full sm:w-auto ${className}`}
+      data-magnetic={dataMagnetic ? "" : undefined}
     >
       {buttonContent}
     </m.button>

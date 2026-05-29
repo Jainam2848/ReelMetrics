@@ -1,8 +1,19 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState, Suspense } from "react";
+import dynamic from "next/dynamic";
 
-export function ViralBackground() {
+// Dynamically import the WebGL shader background with SSR disabled
+const ShaderBg = dynamic(() => import("./ShaderBackground"), {
+  ssr: false,
+});
+
+/**
+ * Robust CSS Variable Grid fallback from Phase 1.
+ * Active on low-performance devices, screens with high DPI mobile devices,
+ * during Suspense hydration, and for users who prefer reduced motion.
+ */
+function CSSGridFallback() {
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Use refs to keep track of mouse state without causing React re-renders
@@ -13,7 +24,7 @@ export function ViralBackground() {
   const rafId = useRef<number | null>(null);
 
   useEffect(() => {
-    // 1. Detect pointer: coarse (mobile / touchscreen devices) and skip JS loops
+    // Detect pointer: coarse (mobile / touchscreen devices) and skip JS loops
     const isMobileQuery = window.matchMedia("(pointer: coarse)");
     if (isMobileQuery.matches) {
       return;
@@ -76,7 +87,7 @@ export function ViralBackground() {
         ))}
       </div>
 
-      {/* 3. Radial-gradient spotlight reacting to mouse coordinates (hidden on coarse touch via media query fallback) */}
+      {/* 3. Radial-gradient spotlight reacting to mouse coordinates */}
       <div
         className="absolute inset-0 pointer-events-none transition-opacity duration-700 opacity-0 md:opacity-100"
         style={{
@@ -88,4 +99,38 @@ export function ViralBackground() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(79,70,229,0.04),transparent_55%)]" />
     </div>
   );
+}
+
+/**
+ * Main Dynamic Background Component.
+ * Progressively enhances layout background using a hardware-capped GPU capability check.
+ */
+export function ViralBackground() {
+  const [useShader, setUseShader] = useState<boolean>(false);
+
+  useEffect(() => {
+    // GPU hardware check utility:
+    // - navigator.hardwareConcurrency >= 4 (requires at least 4 cores)
+    // - prefers-reduced-motion is inactive
+    // - devicePixelRatio <= 2 (caps pixel ratio to save mobile/laptop battery efficiency)
+    const hasHighPerf =
+      typeof navigator !== "undefined" &&
+      navigator.hardwareConcurrency >= 4 &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches &&
+      (window.devicePixelRatio || 1) <= 2;
+
+    setUseShader(hasHighPerf);
+  }, []);
+
+  if (useShader) {
+    return (
+      <Suspense fallback={<CSSGridFallback />}>
+        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none select-none bg-[#08090D]">
+          <ShaderBg />
+        </div>
+      </Suspense>
+    );
+  }
+
+  return <CSSGridFallback />;
 }

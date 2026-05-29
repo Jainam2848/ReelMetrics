@@ -384,7 +384,7 @@ export function FeatureScrollSequence() {
   // RENDER FALLBACK: Mobile responsive stacked list
   if (isMobile) {
     return (
-      <div className="w-full bg-[#08090D] py-20 px-6 flex flex-col gap-20 select-none font-satoshi border-t border-white/[0.03]">
+      <div className="w-full py-20 px-6 flex flex-col gap-20 select-none font-satoshi border-t border-white/[0.03]">
         {/* Mobile Header */}
         <div className="max-w-md mx-auto text-center flex flex-col items-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-primary">
@@ -431,12 +431,12 @@ export function FeatureScrollSequence() {
   return (
     <div 
       ref={containerRef}
-      className="relative w-full bg-[#08090D] select-none font-satoshi overflow-hidden border-t border-white/[0.03]"
+      className="relative w-full select-none font-satoshi overflow-hidden border-t border-white/[0.03]"
       style={{ height: "400vh" }}
     >
       <div className="sticky top-0 left-0 w-full h-screen flex items-center overflow-hidden">
         {/* Left 40% Panel details */}
-        <div className="w-[40%] h-full flex flex-col justify-center pl-16 pr-8 z-10 relative bg-[#08090D]">
+        <div className="w-[40%] h-full flex flex-col justify-center pl-16 pr-8 z-10 relative bg-[#08090D]/70 backdrop-blur-sm">
           {panels.map((panel, idx) => (
             <div 
               key={idx}
@@ -458,7 +458,7 @@ export function FeatureScrollSequence() {
         </div>
 
         {/* Right 60% Visualization elements */}
-        <div className="w-[60%] h-full relative bg-[#090A0E] border-l border-white/[0.03] flex items-center justify-center overflow-hidden">
+        <div className="w-[60%] h-full relative bg-[#090A0E]/50 border-l border-white/[0.03] flex items-center justify-center overflow-hidden">
           {panels.map((panel, idx) => (
             <div
               key={idx}

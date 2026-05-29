@@ -15,8 +15,10 @@ import { eq, and } from "drizzle-orm";
 export const POST = withRateLimit(
   withAuth(async (request) => {
     const userId = request.user.id;
+    console.log("[POST /api/accounts/demo] Received seeding request for user:", userId);
 
     if (process.env.NODE_ENV === "production") {
+      console.warn("[POST /api/accounts/demo] Denied: Production environment check active.");
       return apiError("FORBIDDEN", "Sandbox demo is disabled in production environments.");
     }
 
@@ -29,6 +31,7 @@ export const POST = withRateLimit(
     }
     const niche = body.niche || null;
     const goal = body.goal || null;
+    console.log("[POST /api/accounts/demo] Personalization parameters - niche:", niche, "goal:", goal);
 
     try {
       // 1. Check if the user already has their own sandbox demo account

@@ -247,6 +247,7 @@ export function BeforeAfterSplit() {
               <button 
                 onClick={startSimulation}
                 disabled={sequenceStarted || simulating}
+                data-magnetic
                 className={`px-4 py-2 text-sm font-bold rounded-lg border ${
                   !sequenceStarted && !simulating ? "analysis-pulse-btn" : ""
                 } ${

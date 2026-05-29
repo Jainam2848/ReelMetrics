@@ -36,63 +36,64 @@ export function PricingSection() {
 
   const plans = [
     {
-      name: "Starter",
-      subheading: "Start engineering your hooks",
-      priceMonthly: 0,
-      priceAnnual: 0,
-      ctaLabel: "Start Free",
-      ctaHref: "/signup?plan=starter",
+      name: "Creator",
+      subheading: "For full-time digital creators scaling content velocity",
+      priceMonthly: 39,
+      priceAnnual: 31,
+      ctaLabel: "Get Creator",
+      ctaHref: "/signup?plan=creator",
       ctaVariant: "ghost" as const,
       popular: false,
       features: [
-        { text: "Analyze up to 5 Reels/month", included: true },
-        { text: "Unlock skip resistance diagnostic score", included: true },
-        { text: "Generate basic retention curve visual map", included: true },
-        { text: "Parse full 9-dimension diagnostic vectors", included: false },
-        { text: "Auto-schedule calendar script recommendations", included: false }
+        { text: "Dual-Profile Meta API Integration", included: true },
+        { text: "50 Reel hook & retention scoring runs / cycle", included: true },
+        { text: "4 Creator Growth Strategies / week", included: true },
+        { text: "150 Priority API Processing Calls / month", included: true },
+        { text: "Growth Tier Analytical Suite", included: true },
+        { text: "Premium Multi-Modal Routing Tier", included: false }
       ]
     },
     {
       name: "Pro",
-      subheading: "For creators serious about growth",
-      priceMonthly: 29,
-      priceAnnual: 23, // 20% discount
+      subheading: "For creators serious about raw velocity & scaling",
+      priceMonthly: 89,
+      priceAnnual: 71,
       ctaLabel: "Get Pro",
       ctaHref: "/signup?plan=pro",
       ctaVariant: "primary" as const,
       popular: true,
       features: [
-        { text: "Analyze up to 50 Reels/month", included: true },
-        { text: "Parse full 9-dimension diagnostic vectors", included: true },
-        { text: "Auto-schedule calendar script recommendations", included: true },
-        { text: "Unlock skip resistance diagnostic score", included: true },
-        { text: "Generate comprehensive retention curve overlays", included: true },
-        { text: "Add multiple team seat accounts", included: false },
-        { text: "Export custom PDF diagnostic reports", included: false }
+        { text: "Multi-Profile API Sync (Up to 5 Accounts)", included: true },
+        { text: "200 Reel hook & retention scoring runs / cycle", included: true },
+        { text: "12 Custom Strategy Blueprints / month", included: true },
+        { text: "600 Priority API Calls (Advanced Multi-Modal)", included: true },
+        { text: "Scale Tier Clinical Analytics Suite", included: true },
+        { text: "Premium Multi-Modal Routing Tier", included: true },
+        { text: "Enterprise Client Operations Hub", included: false }
       ]
     },
     {
-      name: "Studio",
-      subheading: "For agencies and power creators",
-      priceMonthly: 79,
-      priceAnnual: 63, // 20% discount
-      ctaLabel: "Go Studio",
-      ctaHref: "/signup?plan=studio",
+      name: "Agency",
+      subheading: "For full-scale production agencies & client operations",
+      priceMonthly: 249,
+      priceAnnual: 199,
+      ctaLabel: "Go Agency",
+      ctaHref: "/signup?plan=agency",
       ctaVariant: "ghost" as const,
       popular: false,
       features: [
-        { text: "Analyze unlimited Reels/month", included: true },
-        { text: "Add multiple team seat accounts", included: true },
-        { text: "Unlock priority processing queue speeds", included: true },
-        { text: "Integrate direct developer API tokens", included: true },
-        { text: "Export custom PDF diagnostic reports", included: true },
-        { text: "Auto-schedule calendar script recommendations", included: true }
+        { text: "Enterprise Client Ingestion (Up to 20 Accounts)", included: true },
+        { text: "1000 Reel hook & retention scoring runs / cycle", included: true },
+        { text: "40 Custom Client Strategy Blueprints / month", included: true },
+        { text: "2500 Priority API Processing Calls / month", included: true },
+        { text: "Enterprise Client Operations Hub", included: true },
+        { text: "Full Export Custom PDF Client Reports", included: true }
       ]
     }
   ];
 
   return (
-    <section id="pricing" className="relative py-28 md:py-36 bg-[#08090D] overflow-hidden select-none border-t border-white/[0.03]">
+    <section id="pricing" className="relative py-28 md:py-36 overflow-hidden select-none border-t border-white/[0.03]">
       {/* Background ambient radial lights */}
       <div className="absolute top-[30%] left-[-15%] w-[40vw] h-[40vw] max-w-[500px] rounded-full bg-[#4F46E5]/4 blur-[130px] pointer-events-none" />
       <div className="absolute bottom-[30%] right-[-15%] w-[40vw] h-[40vw] max-w-[500px] rounded-full bg-[#10B981]/3 blur-[130px] pointer-events-none" />
@@ -240,6 +241,7 @@ export function PricingSection() {
                     href={plan.ctaHref}
                     variant={plan.ctaVariant}
                     className="w-full text-center"
+                    data-magnetic
                   />
                 </div>
 

@@ -40,34 +40,34 @@
 }
 
 :root {
-  --background: #FFFFFF;
-  --foreground: #050505;
-  --card: #FFFFFF;
-  --card-foreground: #050505;
-  --popover: #FFFFFF;
-  --popover-foreground: #050505;
-  --primary: #4F46E5;
+  --background: #08090D;          
+  --foreground: #F8F8FC;          
+  --card: #101114;                
+  --card-foreground: #F8F8FC;
+  --popover: #101114;             
+  --popover-foreground: #F8F8FC;
+  --primary: #4F46E5;  
   --primary-foreground: #000000;
-  --secondary: #F0F0F0;
-  --secondary-foreground: #050505;
-  --muted: #F0F0F0;
-  --muted-foreground: #666666;
-  --accent: #F97316;
-  --accent-foreground: #FFFFFF;
+  --secondary: #12141A;           
+  --secondary-foreground: #14B8A6; 
+  --muted: #12141A;               
+  --muted-foreground: #9CA3AF;    
+  --accent: #171A21;              
+  --accent-foreground: #F97316;   
   --destructive: #EF4444;
-  --border: #E5E5E5;
-  --input: #F0F0F0;
+  --border: #252936; 
+  --input: #171A21;
   --ring: #4F46E5;
   --font-sans: var(--font-geist-sans), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-heading: var(--font-outfit), 'Outfit', 'Inter', sans-serif;
   
-  --sidebar: #FFFFFF;
-  --sidebar-foreground: #050505;
+  --sidebar: #101114;             
+  --sidebar-foreground: #F8F8FC;
   --sidebar-primary: #4F46E5;
   --sidebar-primary-foreground: #000000;
-  --sidebar-accent: #F0F0F0;
-  --sidebar-accent-foreground: #050505;
-  --sidebar-border: #E5E5E5;
+  --sidebar-accent: #171A21;
+  --sidebar-accent-foreground: #F8F8FC;
+  --sidebar-border: #252936;
   --sidebar-ring: #4F46E5;
 }
 
@@ -106,8 +106,16 @@
   * {
     @apply border-border;
   }
+  /* Pin html + body to dark background unconditionally.
+     This prevents any white flash during SSR, before JS hydrates,
+     or while the WebGL canvas is initializing. */
+  html,
   body {
-    @apply bg-background text-foreground min-h-screen font-sans antialiased;
+    background-color: #08090D !important;
+  }
+  body {
+    @apply text-foreground min-h-screen font-sans antialiased;
+    background-color: #08090D !important;
   }
   ::selection {
     background-color: rgba(79, 70, 229, 0.28);
@@ -146,6 +154,12 @@
 }
 
 
+/* GridDistortionBackground orb animations */
+@keyframes orb-breathe {
+  0%, 100% { transform: scale(1) translate(0, 0); }
+  33%       { transform: scale(1.08) translate(-20px, 15px); }
+  66%       { transform: scale(0.96) translate(15px, -10px); }
+}
 
 /* Scrollbars */
 ::-webkit-scrollbar {
@@ -162,3 +176,82 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* ── BLUEPRINT DARK BACKGROUND REDESIGN ── */
+.dashboard-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: #08090D;
+  background-image:
+    radial-gradient(rgba(79, 70, 229, 0.12) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+}
+
+/* Vignette — keeps edges dark, focuses on center */
+.dashboard-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 85% 80% at 50% 50%,
+    transparent 30%,
+    rgba(8, 9, 13, 0.7) 70%,
+    rgba(8, 9, 13, 1) 100%
+  );
+  pointer-events: none;
+}
+
+/* Depth Haze Layer light sources */
+.depth-haze-primary {
+  position: fixed;
+  top: 20%;
+  left: 15%;
+  width: 700px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.05) 0%, transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.depth-haze-secondary {
+  position: fixed;
+  top: -100px;
+  right: 10%;
+  width: 500px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.04) 0%, transparent 70%);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Dashboard Card glassmorphic lift effect */
+.dashboard-card {
+  position: relative;
+  z-index: 10; /* Above WebGL canvas (z-index: 2) */
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.dashboard-card:hover {
+  border-color: rgba(99, 102, 241, 0.25);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.1), 0 8px 32px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Score Ring Pulse Keyframes (75% to 85% filled of a 565.48px circumference) */
+@keyframes score-ring-pulse {
+  0%, 100% {
+    stroke-dashoffset: 141.37;
+  }
+  50% {
+    stroke-dashoffset: 84.82;
+  }
+}
+

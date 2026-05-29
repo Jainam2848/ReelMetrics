@@ -97,17 +97,28 @@ export default function AccountsPage() {
   };
 
   const linkDemoSandbox = async () => {
+    console.log("[linkDemoSandbox] Starting sandbox seeding...");
     setDemoLoading(true);
     try {
-      const res = await fetch("/api/accounts/demo", { method: "POST" });
+      console.log("[linkDemoSandbox] Sending POST request to /api/accounts/demo...");
+      const res = await fetch("/api/accounts/demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ niche: "tech", goal: "retention" }),
+      });
+      console.log("[linkDemoSandbox] Response status:", res.status);
       const data = await res.json();
+      console.log("[linkDemoSandbox] Response JSON:", data);
       if (data.success) {
         toast.success("Sandbox Demo Account connected!");
-        await mutate();
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       } else {
-        toast.error("Failed to claim demo sandbox.");
+        toast.error(data.error?.message || "Failed to claim demo sandbox.");
       }
     } catch (err) {
+      console.error("[linkDemoSandbox] Error:", err);
       toast.error("Error setting up demo sandbox.");
     } finally {
       setDemoLoading(false);
@@ -362,9 +373,17 @@ export default function AccountsPage() {
               </p>
               <button
                 onClick={linkDemoSandbox}
-                className="px-6 py-2 bg-brand-primary text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-glow active:scale-95"
+                disabled={demoLoading}
+                className="px-6 py-2 bg-brand-primary text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-glow active:scale-95 flex items-center justify-center gap-2"
               >
-                Explore Demo Sandbox
+                {demoLoading ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Seeding Sandbox...</span>
+                  </>
+                ) : (
+                  <span>Explore Demo Sandbox</span>
+                )}
               </button>
             </div>
           )}

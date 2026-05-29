@@ -40,10 +40,14 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} h-full antialiased dark`}
+      style={{ backgroundColor: "#08090D" }}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground relative">
+      <body
+        className="min-h-full flex flex-col bg-[#08090D] text-foreground relative"
+        style={{ backgroundColor: "#08090D" }}
+      >
         <NeuralBackground />
         <Providers>
           {children}
@@ -52,4 +56,3 @@ export default function RootLayout({
     </html>
   );
 }
-

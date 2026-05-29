@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/shared/toast";
 import { m } from "framer-motion";
@@ -28,6 +28,15 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        router.push(redirectTo);
+      }
+    });
+  }, [router, redirectTo]);
 
   const validate = (): FieldErrors => {
     const next: FieldErrors = {};

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { LazyMotion, domAnimation } from "framer-motion";
+import { LazyMotion, domMax } from "framer-motion";
 
 interface MotionProviderProps {
   children: React.ReactNode;
@@ -9,12 +9,12 @@ interface MotionProviderProps {
 
 /**
  * MotionProvider wraps the app or layout using Framer Motion's LazyMotion.
- * This guarantees that only the lightweight domAnimation subset (transforms and opacity)
- * is loaded, preventing synchronous bundling of heavy features like drag, gestures, or layout layout animations.
+ * Upgraded to domMax to support interactive drag and dynamic gestures
+ * (e.g. for the scrubbing retention curve and testimonial swipe features).
  */
 export function MotionProvider({ children }: MotionProviderProps) {
   return (
-    <LazyMotion features={domAnimation} strict>
+    <LazyMotion features={domMax} strict>
       {children}
     </LazyMotion>
   );

@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/shared/toast";
 import { m } from "framer-motion";
@@ -25,6 +25,15 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [checkInbox, setCheckInbox] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        router.push("/dashboard");
+      }
+    });
+  }, [router]);
 
   const validate = (): FieldErrors => {
     const next: FieldErrors = {};
@@ -73,7 +82,7 @@ export default function SignupPage() {
       // disabled. Otherwise we should tell the user to verify before logging in.
       if (data.session) {
         toast.success(`Welcome to Trendoraa, ${fullName.trim()}!`);
-        router.push("/");
+        router.push("/dashboard");
         router.refresh();
       } else {
         setCheckInbox(true);

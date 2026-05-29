@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
 import {
   LayoutDashboard,
@@ -18,19 +17,55 @@ import {
   X,
   ChevronRight,
   LogOut,
+  Zap,
+  TrendingUp,
 } from "lucide-react";
-
 
 import { AccountSwitcher } from "@/components/shared/account-switcher";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { m, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/shared/toast";
+import dynamic from "next/dynamic";
+import { RetentionArc } from "@/components/dashboard/RetentionArc";
+import { ScoreRing } from "@/components/dashboard/ScoreRing";
+
+const DashboardBackground = dynamic(
+  () => import("@/components/dashboard/DashboardBackground"),
+  { ssr: false }
+);
+
 
 interface SidebarItem {
   label: string;
   href: string;
   icon: React.ReactNode;
+  badge?: string;
 }
+
+const NAV_GROUPS: { title: string; items: SidebarItem[] }[] = [
+  {
+    title: "Core",
+    items: [
+      { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="w-[18px] h-[18px]" /> },
+      { label: "My Reels", href: "/posts", icon: <Film className="w-[18px] h-[18px]" /> },
+      { label: "Strategy", href: "/strategy", icon: <TrendingUp className="w-[18px] h-[18px]" />, badge: "AI" },
+    ],
+  },
+  {
+    title: "Insights",
+    items: [
+      { label: "Analytics", href: "/analytics", icon: <BarChart2 className="w-[18px] h-[18px]" /> },
+      { label: "Accounts", href: "/accounts", icon: <Users className="w-[18px] h-[18px]" /> },
+    ],
+  },
+  {
+    title: "Account",
+    items: [
+      { label: "Billing", href: "/billing", icon: <CreditCard className="w-[18px] h-[18px]" /> },
+      { label: "Settings", href: "/settings", icon: <Settings className="w-[18px] h-[18px]" /> },
+    ],
+  },
+];
 
 export default function DashboardLayout({
   children,
@@ -41,14 +76,16 @@ export default function DashboardLayout({
   const router = useRouter();
   const toast = useToast();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  // Auth Guard
+  // Auth Guard + fetch user
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         router.push("/login");
+      } else {
+        setUserEmail(session.user.email ?? null);
       }
     });
 
@@ -68,25 +105,13 @@ export default function DashboardLayout({
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    toast.success("Disconnected successfully.");
+    toast.success("Signed out successfully.");
   };
 
-  // 1. Sidebar Items definitions
-  const sidebarItems: SidebarItem[] = [
-    { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-    { label: "My Posts", href: "/posts", icon: <Film className="w-5 h-5" /> },
-    { label: "Strategy", href: "/strategy", icon: <Calendar className="w-5 h-5" /> },
-    { label: "Analytics", href: "/analytics", icon: <BarChart2 className="w-5 h-5" /> },
-    { label: "Accounts", href: "/accounts", icon: <Users className="w-5 h-5" /> },
-    { label: "Billing", href: "/billing", icon: <CreditCard className="w-5 h-5" /> },
-    { label: "Settings", href: "/settings", icon: <Settings className="w-5 h-5" /> },
-  ];
-
-  // 2. Mobile Primary Navigation items (4 items fit perfectly on 375px screens)
   const mobilePrimaryItems = [
     { label: "Home", href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-    { label: "Posts", href: "/posts", icon: <Film className="w-5 h-5" /> },
-    { label: "Strategy", href: "/strategy", icon: <Calendar className="w-5 h-5" /> },
+    { label: "Reels", href: "/posts", icon: <Film className="w-5 h-5" /> },
+    { label: "Strategy", href: "/strategy", icon: <TrendingUp className="w-5 h-5" /> },
   ];
 
   const getBreadcrumbTitle = () => {
@@ -98,171 +123,231 @@ export default function DashboardLayout({
     return firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1);
   };
 
+  const userInitial = userEmail?.charAt(0).toUpperCase() || "U";
+
   const handleNotificationClick = () => {
-    toast.info("No new strategic notifications. You are riding peak commuter trend waves!");
+    toast.info("No new notifications. You're on top of your game!");
   };
 
   return (
-    <div className="min-h-screen flex bg-background text-foreground relative pb-20 md:pb-0">
+    <div className="min-h-screen flex bg-transparent text-foreground relative pb-20 md:pb-0">
+      {/* ── REDESIGNED DARK BLUEPRINT BACKGROUND STACK ──────────────── */}
+      {/* z-index stack:
+         0  — .dashboard-bg (CSS dot grid, position: fixed)
+         1  — .depth-haze (CSS radial gradients, position: fixed)
+         1  — RetentionArc SVG (position: fixed, top-right)
+         1  — ScoreRing SVG (position: fixed, bottom-left)
+         2  — DashboardBackground canvas (Three.js, position: fixed)
+         10 — Dashboard card components (glassmorphic, z: 10)
+         20 — Sidebar / navigation (z: 20)
+         30 — Modals / tooltips (z: 30)
+      */}
+      <div className="dashboard-bg" />
+      <div className="depth-haze-primary" />
+      <div className="depth-haze-secondary" />
+      <RetentionArc />
+      <ScoreRing />
+      <DashboardBackground />
 
-      {/* ── DESKTOP COLLAPSIBLE SIDEBAR (Hidden on mobile) ──────────────── */}
-      <aside className="hidden md:flex flex-col w-64 border-r border-glass bg-glass backdrop-blur-xl shrink-0 p-5 z-40 select-none">
+      {/* ── DESKTOP SIDEBAR ──────────────────────────────────────────── */}
+      <aside className="hidden md:flex flex-col w-60 shrink-0 border-r border-white/[0.06] bg-[#0c0d12]/80 backdrop-blur-2xl z-40 relative select-none">
+
         {/* Brand Header */}
-        <div className="flex items-center gap-3 pb-6 border-b border-white/5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-primary to-brand-accent flex items-center justify-center font-display font-black text-white text-lg shadow-glow">
-            T
+        <div className="flex items-center gap-3 px-5 h-16 border-b border-white/[0.06] shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
+            <Zap className="w-4 h-4 text-white fill-white" />
           </div>
-          <span className="font-display font-extrabold text-xl tracking-tight text-white">
+          <span className="font-black text-[15px] tracking-tight text-white" style={{ fontFamily: "var(--font-outfit, sans-serif)" }}>
             Trendoraa
           </span>
         </div>
 
-        {/* Sidebar Navigation */}
-        <nav className="flex-grow flex flex-col gap-1.5 mt-8">
-          {sidebarItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`min-h-[44px] flex items-center gap-3 px-4 rounded-xl font-semibold text-sm transition-all active:scale-95 ${
-                  isActive
-                    ? "bg-brand-primary text-white shadow-glow"
-                    : "text-muted-foreground hover:text-white hover:bg-white/5"
-                }`}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+        {/* Nav Groups */}
+        <nav className="flex-grow flex flex-col gap-5 mt-5 px-3 overflow-y-auto">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.title}>
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/25 px-3 mb-2">
+                {group.title}
+              </p>
+              <div className="flex flex-col gap-0.5">
+                {group.items.map((item) => {
+                  const isActive =
+                    pathname === item.href ||
+                    (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`group relative min-h-[40px] flex items-center gap-3 px-3 rounded-xl text-sm font-medium transition-all duration-150 ${
+                        isActive
+                          ? "bg-indigo-600/15 text-white"
+                          : "text-white/45 hover:text-white/80 hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      {/* Active indicator bar */}
+                      {isActive && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-indigo-500" />
+                      )}
+                      <span className={isActive ? "text-indigo-400" : "text-white/30 group-hover:text-white/50 transition-colors"}>
+                        {item.icon}
+                      </span>
+                      <span className="flex-grow">{item.label}</span>
+                      {item.badge && (
+                        <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-400 border border-indigo-500/20">
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
-        {/* Sidebar Footer details */}
-        <div className="mt-auto pt-4 border-t border-white/5 flex flex-col gap-4">
+        {/* Sidebar Footer — user profile + sign out */}
+        <div className="mt-auto px-3 pb-4 pt-3 border-t border-white/[0.06] flex flex-col gap-2 shrink-0">
+          {/* User avatar row */}
+          <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-600 flex items-center justify-center text-[11px] font-black text-white shrink-0">
+              {userInitial}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[11px] font-bold text-white truncate leading-tight">
+                {userEmail ?? "Loading…"}
+              </span>
+              <span className="text-[9px] text-white/30 font-semibold uppercase tracking-widest leading-tight">
+                Beta Member
+              </span>
+            </div>
+          </div>
+          {/* Sign out */}
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-2 rounded-xl text-muted-foreground hover:text-white hover:bg-white/5 active:scale-95 transition-all w-full text-left font-semibold text-sm"
+            className="flex items-center gap-3 px-3 py-2 rounded-xl text-white/35 hover:text-red-400 hover:bg-red-500/[0.07] active:scale-95 transition-all w-full text-left text-sm font-medium"
           >
-            <LogOut className="w-5 h-5" />
+            <LogOut className="w-[18px] h-[18px] shrink-0" />
             <span>Sign Out</span>
           </button>
-          <div className="text-[10px] text-gray-600 font-bold uppercase tracking-wider select-none text-center">
-            MVP Rolling Beta v1.0
-          </div>
         </div>
       </aside>
 
-      {/* ── MAIN CONTENT SHIELD AREA ───────────────────────────────────── */}
-      <div className="flex-grow flex flex-col min-w-0">
-        
-        {/* ── TOP HEADER BAR ───────────────────────────────────────────── */}
-        <header className="min-h-[72px] flex items-center justify-between px-6 border-b border-glass bg-glass/30 backdrop-blur-md sticky top-0 z-30 select-none">
-          {/* Left: Breadcrumbs info */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">
+      {/* ── MAIN CONTENT ─────────────────────────────────────────────── */}
+      <div className="flex-grow flex flex-col min-w-0 relative z-10">
+
+        {/* ── TOP HEADER BAR ──────────────────────────────────────────── */}
+        <header className="h-16 flex items-center justify-between px-5 border-b border-white/[0.06] bg-[#0a0b10]/60 backdrop-blur-xl sticky top-0 z-30 shrink-0">
+          {/* Left: Breadcrumb */}
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[11px] text-white/25 font-bold uppercase tracking-widest hidden sm:block">
               Workspace
             </span>
-            <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
-            <h1 className="text-sm font-bold tracking-wide text-white font-heading">
+            <ChevronRight className="w-3.5 h-3.5 text-white/20 hidden sm:block shrink-0" />
+            <h1 className="text-sm font-bold tracking-wide text-white/90" style={{ fontFamily: "var(--font-outfit, sans-serif)" }}>
               {getBreadcrumbTitle()}
             </h1>
           </div>
 
-          {/* Right: Switchers and notifications */}
-          <div className="flex items-center gap-4">
-            {/* Context active social account switcher dropdown */}
+          {/* Right: Controls */}
+          <div className="flex items-center gap-3 shrink-0">
             <AccountSwitcher />
 
-            {/* Notifications Bell */}
+            {/* Notifications */}
             <button
               onClick={handleNotificationClick}
-              className="min-w-[44px] min-h-[44px] rounded-xl border border-glass bg-glass hover:bg-white/5 flex items-center justify-center text-gray-400 hover:text-white transition-colors cursor-pointer active:scale-95 relative"
+              className="relative w-9 h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.07] flex items-center justify-center text-white/40 hover:text-white/80 transition-all active:scale-95"
               aria-label="View notifications"
             >
-              <Bell className="w-5 h-5" />
-              <div className="absolute top-3 right-3.5 w-2 h-2 rounded-full bg-brand-accent animate-ping" />
-              <div className="absolute top-3 right-3.5 w-2 h-2 rounded-full bg-brand-accent" />
+              <Bell className="w-4 h-4" />
+              {/* Notification pulse dot */}
+              <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-fuchsia-500">
+                <span className="absolute inset-0 rounded-full bg-fuchsia-500 animate-ping opacity-75" />
+              </span>
             </button>
           </div>
         </header>
 
-        {/* ── CONTENT PORT ────────────────────────────────────────────── */}
-        <main className="flex-grow p-6 md:p-8 overflow-y-auto">
+        {/* ── PAGE CONTENT ─────────────────────────────────────────────── */}
+        <main className="flex-grow p-5 md:p-7 overflow-y-auto">
           <ErrorBoundary>
-            <React.Suspense fallback={<div className="animate-pulse h-96 bg-glass/20 rounded-2xl border border-glass" />}>
+            <React.Suspense
+              fallback={
+                <div className="animate-pulse h-96 rounded-2xl border border-white/[0.06] bg-white/[0.02]" />
+              }
+            >
               {children}
             </React.Suspense>
           </ErrorBoundary>
         </main>
       </div>
 
-      {/* ── MOBILE BOTTOM BAR NAVIGATION (Hidden on Desktop, optimized for 375px) ── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-16 border-t border-glass bg-glass/85 backdrop-blur-xl px-4 flex justify-between items-center select-none shadow-glow">
+      {/* ── MOBILE BOTTOM NAV ────────────────────────────────────────── */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 h-[60px] border-t border-white/[0.08] bg-[#0a0b10]/90 backdrop-blur-2xl px-4 flex justify-between items-center select-none">
         {mobilePrimaryItems.map((item) => {
-          const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/dashboard" && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center flex-grow h-full gap-1 active:scale-95 transition-all ${
-                isActive ? "text-brand-primary font-bold" : "text-muted-foreground"
+              className={`flex flex-col items-center justify-center flex-grow h-full gap-1 active:scale-90 transition-all ${
+                isActive ? "text-indigo-400" : "text-white/35"
               }`}
             >
               {item.icon}
-              <span className="text-[10px] tracking-wider uppercase font-semibold">{item.label}</span>
+              <span className="text-[9px] tracking-wider uppercase font-bold">
+                {item.label}
+              </span>
             </Link>
           );
         })}
 
-        {/* More slide-up drawer trigger */}
+        {/* More drawer trigger */}
         <button
           onClick={() => setIsMoreOpen(true)}
-          className={`flex flex-col items-center justify-center flex-grow h-full gap-1 active:scale-95 transition-all text-muted-foreground`}
-          aria-label="Open More Menu Options"
+          className="flex flex-col items-center justify-center flex-grow h-full gap-1 active:scale-90 transition-all text-white/35"
+          aria-label="Open navigation menu"
         >
           <Menu className="w-5 h-5" />
-          <span className="text-[10px] tracking-wider uppercase font-semibold">More</span>
+          <span className="text-[9px] tracking-wider uppercase font-bold">More</span>
         </button>
       </nav>
 
-      {/* ── MOBILE "MORE" GLASS DRAWER OVERLAY ───────────────────────── */}
+      {/* ── MOBILE MORE DRAWER ───────────────────────────────────────── */}
       <AnimatePresence>
         {isMoreOpen && (
           <>
-            {/* Backdrop blur */}
             <m.div
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMoreOpen(false)}
               className="md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
             />
 
-            {/* Bottom Drawer container */}
             <m.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ type: "spring", stiffness: 350, damping: 30 }}
-              className="md:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border-t border-glass bg-glass backdrop-blur-2xl p-6 flex flex-col gap-6 shadow-glow"
-              style={{ willChange: "transform" }}
+              transition={{ type: "spring", stiffness: 400, damping: 32 }}
+              className="md:hidden fixed bottom-0 inset-x-0 z-50 rounded-t-2xl border-t border-white/[0.08] bg-[#0d0e15]/95 backdrop-blur-2xl p-5 flex flex-col gap-5"
             >
-              <div className="flex justify-between items-center select-none">
-                <span className="font-display font-black text-sm uppercase tracking-widest text-muted-foreground">
-                  Navigation Matrix
+              {/* Drawer header */}
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] font-black uppercase tracking-[0.14em] text-white/30">
+                  More
                 </span>
                 <button
                   onClick={() => setIsMoreOpen(false)}
-                  className="p-1 rounded-lg border border-glass bg-white/5 text-gray-400 hover:text-white"
-                  aria-label="Close menu drawer"
+                  className="w-7 h-7 rounded-lg border border-white/[0.08] bg-white/[0.04] text-white/40 hover:text-white flex items-center justify-center"
+                  aria-label="Close menu"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Grid of drawer sub items */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: "Analytics", href: "/analytics", icon: <BarChart2 className="w-5 h-5" /> },
                   { label: "Accounts", href: "/accounts", icon: <Users className="w-5 h-5" /> },
@@ -275,10 +360,10 @@ export default function DashboardLayout({
                       key={item.href}
                       href={item.href}
                       onClick={() => setIsMoreOpen(false)}
-                      className={`min-h-[48px] flex items-center gap-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider border border-glass transition-colors ${
+                      className={`min-h-[52px] flex items-center gap-3 px-4 rounded-xl font-semibold text-sm border transition-colors ${
                         isActive
-                          ? "bg-brand-primary border-brand-primary text-white shadow-glow"
-                          : "bg-white/5 text-gray-300 hover:text-white hover:bg-white/10"
+                          ? "bg-indigo-600/20 border-indigo-500/30 text-indigo-300"
+                          : "bg-white/[0.03] border-white/[0.07] text-white/60 hover:text-white hover:bg-white/[0.06]"
                       }`}
                     >
                       {item.icon}
@@ -286,17 +371,31 @@ export default function DashboardLayout({
                     </Link>
                   );
                 })}
+
                 <button
                   onClick={() => {
                     setIsMoreOpen(false);
                     handleLogout();
                   }}
-                  className="col-span-2 min-h-[48px] flex justify-center items-center gap-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider border border-red-500/20 transition-colors bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 active:scale-95 shadow-glow"
+                  className="col-span-2 min-h-[52px] flex justify-center items-center gap-3 px-4 rounded-xl font-semibold text-sm border border-red-500/15 bg-red-500/[0.07] text-red-400 hover:bg-red-500/[0.12] active:scale-95 transition-all"
                 >
-                  <LogOut className="w-5 h-5" />
+                  <LogOut className="w-4 h-4" />
                   <span>Sign Out</span>
                 </button>
               </div>
+
+              {/* User info at bottom of drawer */}
+              {userEmail && (
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-600 flex items-center justify-center text-[11px] font-black text-white shrink-0">
+                    {userInitial}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-white truncate">{userEmail}</p>
+                    <p className="text-[9px] text-white/30 font-semibold uppercase tracking-widest">Beta Member</p>
+                  </div>
+                </div>
+              )}
             </m.div>
           </>
         )}
