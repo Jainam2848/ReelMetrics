@@ -19,7 +19,10 @@
     "shadcn:add": "npx shadcn@latest add",
     "eval:llm": "tsx scripts/eval-llm-routing.ts",
     "eval:llm:fallback": "tsx scripts/eval-llm-fallback.ts",
-    "test:service:branching": "tsx scripts/test-service-branching.ts"
+    "test:service:branching": "tsx scripts/test-service-branching.ts",
+    "queue:worker": "tsx lib/queue/worker.ts",
+    "queue:process": "tsx scripts/process-once.ts",
+    "queue:heal": "tsx scripts/re-score-sandbox.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

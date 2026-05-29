@@ -127,7 +127,7 @@ export function usePostDetail(postId: string) {
       const res = await fetch(`/api/reels/${postId}/score`);
       const json = await res.json();
 
-      if (json.success && json.data && json.data.source === "database") {
+      if (json.success && json.data && (json.data.source === "ai" || json.data.source === "heuristic")) {
         setIsScoring(false);
         stopPolling();
         mutateScore(json.data, false);

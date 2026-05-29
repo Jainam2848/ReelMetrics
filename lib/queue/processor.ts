@@ -53,7 +53,27 @@ export async function claimNextJob(workerId: string) {
   `);
 
   if (result.length === 0) return null;
-  return result[0] as unknown as typeof jobQueue.$inferSelect;
+  const raw = result[0] as any;
+  return {
+    id: raw.id,
+    jobType: raw.job_type,
+    payload: raw.payload,
+    status: raw.status,
+    priority: raw.priority,
+    maxRetries: raw.max_retries,
+    retryCount: raw.retry_count,
+    lockedAt: raw.locked_at ? new Date(raw.locked_at) : null,
+    lockedBy: raw.locked_by,
+    lastHeartbeatAt: raw.last_heartbeat_at ? new Date(raw.last_heartbeat_at) : null,
+    scheduledAt: raw.scheduled_at ? new Date(raw.scheduled_at) : null,
+    completedAt: raw.completed_at ? new Date(raw.completed_at) : null,
+    failedAt: raw.failed_at ? new Date(raw.failed_at) : null,
+    errorMessage: raw.error_message,
+    deadLetter: Boolean(raw.dead_letter),
+    idempotencyKey: raw.idempotency_key,
+    createdAt: raw.created_at ? new Date(raw.created_at) : null,
+    updatedAt: raw.updated_at ? new Date(raw.updated_at) : null,
+  } as unknown as typeof jobQueue.$inferSelect;
 }
 
 async function completeJob(jobId: string) {
