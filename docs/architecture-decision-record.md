@@ -22,7 +22,7 @@ flowchart TB
         FE["Frontend SPA<br/>Next.js · shadcn/ui"]
         API["API Routes<br/>OAuth · Sync · Webhooks · Cron"]
         Worker["Queue Processor<br/>lib/queue/processor.ts"]
-        DB[("PostgreSQL<br/>instagram_accounts · reels<br/>stories · account_insights_daily<br/>audience_history · reel_scores · job_queue")]
+        DB[("PostgreSQL<br/>instagram_accounts · reels<br/>stories · account_insights_daily<br/>audience_history · reel_scores · trend_signals · job_queue")]
     end
 
     subgraph External["External"]
@@ -334,6 +334,16 @@ erDiagram
         uuid account_id PK_FK
         text hour_bucket PK
         int call_count
+    }
+    TREND_SIGNALS {
+        uuid id PK
+        text niche
+        text platform
+        text signal_type
+        text day_key UK
+        jsonb signal_data
+        text source
+        timestamp created_at
     }
 ```
 
