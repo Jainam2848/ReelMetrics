@@ -43,6 +43,13 @@
       "when": 1779762617042,
       "tag": "0005_strange_nehzno",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780168403269,
+      "tag": "0006_parallel_magneto",
+      "breakpoints": true
     }
   ]
 }

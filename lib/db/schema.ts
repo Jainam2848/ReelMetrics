@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, integer, boolean, decimal, customType, jsonb, primaryKey, unique } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, integer, boolean, decimal, customType, jsonb, primaryKey, unique, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import type { TrendPillar, SoundRecommendation, HookMutation, ActionableBlueprint } from '@/lib/ai/prompts/trends';
 
@@ -295,6 +295,21 @@ export const nicheTrendsFeed = pgTable('niche_trends_feed', {
   trendSignals: text('trend_signals').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// 13b. trend_signals
+export const trendSignals = pgTable('trend_signals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  niche: text('niche').notNull(),
+  platform: text('platform').notNull().default('instagram'),
+  signalType: text('signal_type').notNull(), // 'hashtag' | 'audio' | 'format' | 'editing_pattern' | 'topic'
+  dayKey: text('day_key').notNull().unique(), // e.g. "tech:instagram:audio:Synth-Beats:2026-05-30"
+  signalData: jsonb('signal_data').notNull().$type<Record<string, any>>(),
+  source: text('source').notNull().default('llm'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index('idx_trend_signals_niche_type_created').on(table.niche, table.signalType, table.createdAt),
+]);
 
 // 14. trend_analyses
 export const trendAnalyses = pgTable('trend_analyses', {
