@@ -53,6 +53,10 @@ export type FallbackCallResult<T> =
 export async function callLLMWithFallback<T>(
   params: FallbackCallParams<T>
 ): Promise<FallbackCallResult<T>> {
+  // Test double injection hook
+  if ((global as any).__mockCallLLMWithFallback) {
+    return (global as any).__mockCallLLMWithFallback(params);
+  }
   const {
     operation,
     modelTier = "standard",

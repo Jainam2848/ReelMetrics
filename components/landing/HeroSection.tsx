@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import dynamic from "next/dynamic";
 import { m } from "framer-motion";
 import { CTAButton } from "./CTAButton";
-import { useScrambleText } from "@/hooks/useScrambleText";
+import { FlipWords } from "@/components/ui/flip-words";
 import { HeroStats } from "./HeroStats";
 import { SimulatorSkeleton } from "./SimulatorSkeleton";
 import { useAnalysisState } from "@/lib/contexts/AnalysisStateContext";
@@ -18,26 +18,6 @@ export function HeroSection({ hasSession = false }: { hasSession?: boolean }) {
   // Analysis state is now managed via shared context
   const { analysisState, setAnalysisState } = useAnalysisState();
 
-  const [triggerKey, setTriggerKey] = useState(0);
-
-  const handleHoverScramble = () => {
-    setTriggerKey((prev) => prev + 1);
-  };
-
-  const line1 = useScrambleText({
-    text: "Engineer Viral.",
-    duration: 0.8,
-    delay: 0.4,
-    triggerKey,
-  });
-
-  const line2 = useScrambleText({
-    text: "Not Hope.",
-    duration: 0.6,
-    delay: 0.7,
-    triggerKey,
-  });
-
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
@@ -50,6 +30,10 @@ export function HeroSection({ hasSession = false }: { hasSession?: boolean }) {
         
         .font-cabinet {
           font-family: 'Cabinet Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .font-outfit {
+          font-family: var(--font-outfit), 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
         
         @keyframes shimmer-sweep {
@@ -98,30 +82,35 @@ export function HeroSection({ hasSession = false }: { hasSession?: boolean }) {
           
           {/* Left Column: Headline and CTAs */}
           <div className="lg:col-span-7 flex flex-col items-start text-left">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-accent/30 bg-brand-accent/10 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-brand-accent select-none">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-accent/30 bg-brand-accent/10 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-brand-accent select-none font-outfit">
               <span className="h-1.5 w-1.5 rounded-full bg-brand-accent animate-pulse" />
-              Strategy Engine Active
+              Creator Engine Active
             </div>
             
             <h1 
-              onMouseEnter={handleHoverScramble}
               style={{ 
-                fontSize: "clamp(3.2rem, 5vw, 5.5rem)",
-                textShadow: "0 0 40px rgba(79,70,229,0.4)",
+                fontSize: "clamp(2.8rem, 4.5vw, 4.8rem)",
+                textShadow: "0 0 40px rgba(79,70,229,0.3)",
               }}
-              className="mb-6 font-cabinet font-bold tracking-tighter text-white leading-[1.05] select-none text-left max-w-6xl w-full"
+              className="mb-6 font-outfit font-black tracking-tight text-white leading-[1.1] select-none text-left max-w-6xl w-full"
             >
-              <span className="block">{line1}</span>
-              <span className="block text-brand-secondary">{line2}</span>
+              <span className="block min-h-[1.25em] flex items-center flex-wrap">
+                Engineer
+                <FlipWords 
+                  words={["Viral Hooks", "Reel Growth", "Massive Views", "Super Fans"]} 
+                  className="text-brand-secondary px-2" 
+                />
+              </span>
+              <span className="block text-white/90">Not Hope.</span>
             </h1>
             
             <m.p 
               initial={{ opacity: 0, y: 15, filter: "blur(6px)" }}
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
               transition={{ delay: 0.9, duration: 0.8 }}
-              className="mb-8 max-w-xl text-lg md:text-xl text-gray-400 font-medium leading-relaxed"
+              className="mb-8 max-w-xl text-lg md:text-xl text-gray-400 font-medium leading-relaxed font-outfit"
             >
-              Trendoraa evaluates retention triggers and pacing patterns, revealing exactly why your Reels capture the feed — or die in the first 3 seconds.
+              Stop guessing why your Reels get stuck at 200 views. Trendoraa scans your video in seconds to show you exactly how to hook your audience and keep them watching—so you can scale your reach without the creative burnout.
             </m.p>
             
             {/* Primary CTA and Secondary Link */}

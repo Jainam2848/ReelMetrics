@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { AccountSwitcher } from "@/components/shared/account-switcher";
+import { useActiveAccount } from "@/components/shared/active-account-context";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { m, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/shared/toast";
@@ -77,6 +78,32 @@ export default function DashboardLayout({
   const toast = useToast();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  const { activeAccount, mutate } = useActiveAccount();
+  const [quittingDemo, setQuittingDemo] = useState(false);
+
+  const handleQuitSandboxDemo = async () => {
+    if (!activeAccount || activeAccount.username !== "alice_reels") return;
+    if (!confirm("Are you sure you want to quit the Sandbox Demo? This will purge all simulated reels, scores, and strategy reports, returning you to the onboarding cockpit.")) return;
+
+    setQuittingDemo(true);
+    try {
+      const res = await fetch(`/api/accounts/${activeAccount.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Sandbox Demo purged successfully!");
+        await mutate();
+      } else {
+        toast.error("Failed to quit Sandbox Demo.");
+      }
+    } catch {
+      toast.error("An unexpected error occurred.");
+    } finally {
+      setQuittingDemo(false);
+    }
+  };
 
   // Auth Guard + fetch user
   useEffect(() => {
@@ -207,6 +234,36 @@ export default function DashboardLayout({
 
         {/* Sidebar Footer — user profile + sign out */}
         <div className="mt-auto px-3 pb-4 pt-3 border-t border-white/[0.06] flex flex-col gap-2 shrink-0">
+          {/* Sandbox Indicator Sidebar Widget */}
+          {activeAccount?.username === "alice_reels" && (
+            <div className="p-3.5 rounded-xl border border-indigo-500/25 bg-indigo-500/5 backdrop-blur-xl relative overflow-hidden group select-none mb-1">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/10 rounded-full blur-lg" />
+              <div className="flex flex-col gap-2.5">
+                <div>
+                  <div className="flex items-center gap-1.5 text-indigo-400 font-extrabold text-[10px] uppercase tracking-widest">
+                    <Zap className="w-3.5 h-3.5 animate-pulse" />
+                    <span>Sandbox Mode</span>
+                  </div>
+                  <p className="text-[10px] text-white/50 leading-relaxed font-semibold mt-1">
+                    Viewing demo analytics. Ready to link your live profile?
+                  </p>
+                </div>
+                <button
+                  onClick={handleQuitSandboxDemo}
+                  disabled={quittingDemo}
+                  className="w-full py-1.5 px-3 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 active:scale-95 text-[10px] font-bold text-red-400 hover:text-white tracking-wide uppercase transition-all shrink-0 cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  {quittingDemo ? (
+                    <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <LogOut className="w-3 h-3" />
+                  )}
+                  <span>Quit Sandbox Demo</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* User avatar row */}
           <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.05]">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-600 flex items-center justify-center text-[11px] font-black text-white shrink-0">
@@ -250,6 +307,31 @@ export default function DashboardLayout({
 
           {/* Right: Controls */}
           <div className="flex items-center gap-3 shrink-0">
+            {activeAccount?.username === "alice_reels" && (
+              <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-xl border border-indigo-500/25 bg-indigo-500/5 text-indigo-400 text-xs font-black uppercase tracking-wider select-none shrink-0 shadow-glow-sm">
+                <div className="flex items-center gap-1.5">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
+                  </span>
+                  <span>Sandbox Active</span>
+                </div>
+                <div className="h-4 w-px bg-white/10" />
+                <button
+                  onClick={handleQuitSandboxDemo}
+                  disabled={quittingDemo}
+                  className="text-[10px] font-black uppercase tracking-wider text-red-400 hover:text-red-300 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                >
+                  {quittingDemo ? (
+                    <span className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <LogOut className="w-3 h-3" />
+                  )}
+                  <span>Quit</span>
+                </button>
+              </div>
+            )}
+
             <AccountSwitcher />
 
             {/* Notifications */}
@@ -371,6 +453,20 @@ export default function DashboardLayout({
                     </Link>
                   );
                 })}
+
+                {activeAccount?.username === "alice_reels" && (
+                  <button
+                    onClick={() => {
+                      setIsMoreOpen(false);
+                      handleQuitSandboxDemo();
+                    }}
+                    disabled={quittingDemo}
+                    className="col-span-2 min-h-[52px] flex justify-center items-center gap-3 px-4 rounded-xl font-semibold text-sm border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-white active:scale-95 transition-all"
+                  >
+                    <Zap className="w-4 h-4 text-indigo-400 animate-pulse" />
+                    <span>Quit Sandbox Demo</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => {

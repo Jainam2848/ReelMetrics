@@ -7,6 +7,7 @@ import { useAnalytics } from "@/hooks/use-analytics";
 import { usePosts } from "@/hooks/use-posts";
 import { useSubscription } from "@/hooks/use-subscription";
 import { MetricCard } from "@/components/dashboard/metric-card";
+import { ContentMomentumCard } from "@/components/dashboard/content-momentum-card";
 const TrendChart = dynamic(
   () => import("@/components/dashboard/trend-chart").then((mod) => mod.TrendChart),
   {
@@ -37,6 +38,8 @@ import {
   LineChart,
   CalendarDays,
   RefreshCw,
+  Clock,
+  LogOut,
 } from "lucide-react";
 import { useToast } from "@/components/shared/toast";
 import Link from "next/link";
@@ -222,6 +225,54 @@ export default function DashboardHome() {
     return NICHE_STRATEGY_TEMPLATES[key];
   })();
 
+  const topPostingWindows = React.useMemo(() => {
+    if (!posts || posts.length < 10) return [];
+
+    const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const groups: { [key: string]: { sumER: number; count: number; day: string; hour: number } } = {};
+
+    posts.forEach((post) => {
+      const d = new Date(post.timestamp);
+      if (Number.isNaN(d.getTime())) return;
+
+      const dayIdx = d.getDay();
+      const dayName = DAY_NAMES[dayIdx]!;
+      const hour = d.getHours();
+      
+      const key = `${dayIdx}|${hour}`;
+      if (!groups[key]) {
+        groups[key] = { sumER: 0, count: 0, day: dayName, hour };
+      }
+      groups[key].sumER += Number(post.engagementRate) || 0;
+      groups[key].count += 1;
+    });
+
+    const flat = Object.values(groups).map((g) => ({
+      day: g.day,
+      hour: g.hour,
+      avgER: g.count > 0 ? g.sumER / g.count : 0,
+      count: g.count,
+    }));
+
+    return flat.sort((a, b) => b.avgER - a.avgER).slice(0, 3);
+  }, [posts]);
+
+  const formatHourRange = (hour: number) => {
+    const startHour = hour;
+    const endHour = (hour + 1) % 24;
+    const startM = startHour >= 12 ? "pm" : "am";
+    const endM = endHour >= 12 ? "pm" : "am";
+    
+    const startVal = startHour > 12 ? startHour - 12 : (startHour === 0 ? 12 : startHour);
+    const endVal = endHour > 12 ? endHour - 12 : (endHour === 0 ? 12 : endHour);
+    
+    if (startM === endM) {
+      return `${startVal}–${endVal}${startM}`;
+    } else {
+      return `${startVal}${startM}–${endVal}${endM}`;
+    }
+  };
+
   // ── Block Wrapper ───────────────────────────────────────────────────────────
   const wrapBlock = useCallback(
     (blockId: string, index: number, content: React.ReactNode, className = "") => {
@@ -282,6 +333,63 @@ export default function DashboardHome() {
     <div className="flex flex-col gap-8 relative">
       <StrategyMatrix3D />
       <OAuthErrorBanner />
+
+      {/* Global Sandbox Demo Status Banner */}
+      {activeAccount?.username === "alice_reels" && (
+        <m.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="border border-indigo-500/20 bg-indigo-500/5 backdrop-blur-xl rounded-2xl p-5 shadow-glow flex flex-col md:flex-row justify-between items-start md:items-center gap-4 select-none relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl -z-10" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+              <Zap className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <h4 className="font-display font-extrabold text-sm text-white flex items-center gap-2">
+                <span>Sandbox Demo Mode Active</span>
+                <span className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/30 rounded-full text-[8px] font-bold text-indigo-300 uppercase tracking-wider">
+                  Live Preview
+                </span>
+              </h4>
+              <p className="text-xs text-muted-foreground mt-0.5 font-semibold">
+                You are currently exploring Trendoraa using mock creator analytics. Link a real social profile when you are ready!
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={async () => {
+              if (!confirm("Are you sure you want to quit the Sandbox Demo? This will purge all simulated reels, scores, and strategy reports, returning you to the onboarding cockpit.")) return;
+              setDemoLoading(true);
+              try {
+                const res = await fetch(`/api/accounts/${activeAccount.id}`, { method: "DELETE" });
+                const data = await res.json();
+                if (data.success) {
+                  toast.success("Sandbox Demo purged successfully!");
+                  await mutateAccounts();
+                } else {
+                  toast.error("Failed to quit Sandbox Demo.");
+                }
+              } catch {
+                toast.error("An unexpected error occurred.");
+              } finally {
+                setDemoLoading(false);
+              }
+            }}
+            disabled={demoLoading}
+            className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+          >
+            {demoLoading ? (
+              <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <LogOut className="w-4 h-4" />
+            )}
+            <span>Quit Sandbox Demo</span>
+          </button>
+        </m.div>
+      )}
 
       {/* Connection Cockpit Card */}
       {showSyncWarning && (
@@ -570,11 +678,12 @@ export default function DashboardHome() {
           return wrapBlock(
             blockId,
             index,
-            <MotionList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <MotionList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
               {analyticsLoading ? (
                 <LoadingSkeleton variant="metrics" />
               ) : (
                 <>
+                  <ContentMomentumCard />
                   <MetricCard
                     label="Proprietary Hook Retention"
                     value={isInstagram ? hookRetentionAvg : "—"}
@@ -661,11 +770,23 @@ export default function DashboardHome() {
                           {activeNiche ? `${activeNiche} focus` : "Sample"}
                         </span>
                       </div>
-                      <InsightReveal delay={500} text="Below is a sample plan personalized to your niche. Open Strategy to generate a full calendar." className="text-xs text-muted-foreground mb-6" />
-                      <div className="flex flex-col gap-4">
+
+                      {/* Dynamic Progress Meter */}
+                      <div className="mt-2 mb-5">
+                        <div className="flex justify-between items-center text-[10px] font-extrabold text-gray-400 mb-1.5 uppercase tracking-wider">
+                          <span>Active Strategy Progress</span>
+                          <span className="text-brand-accent">2 of 3 scheduled (67%)</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/10">
+                          <div className="h-full bg-gradient-to-r from-brand-primary to-brand-secondary rounded-full" style={{ width: "67%" }} />
+                        </div>
+                      </div>
+
+                      <InsightReveal delay={500} text="Below is a sample plan personalized to your niche. Open Strategy to generate a full calendar." className="text-xs text-muted-foreground mb-4" />
+                      <div className="flex flex-col gap-3.5">
                         {strategyItems.map((item, idx) => (
                           <div key={idx} className="flex gap-4 items-start">
-                            <div className="w-2.5 h-2.5 rounded-full bg-brand-primary mt-1.5 shrink-0" />
+                            <div className="w-2 h-2 rounded-full bg-brand-primary mt-1.5 shrink-0" />
                             <div>
                               <h4 className="font-bold text-xs text-gray-200">
                                 {item.day} • <span className="text-brand-accent">{item.time}</span>
@@ -677,14 +798,60 @@ export default function DashboardHome() {
                           </div>
                         ))}
                       </div>
+
+                      {/* Best Posting Windows Heatmap (Dashboard Preview) */}
+                      <div className="h-px bg-white/10 my-5" />
+                      <div className="flex flex-col gap-3">
+                        <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-brand-secondary" />
+                          <span>Top Optimal Windows</span>
+                        </h4>
+
+                        {posts.length >= 10 ? (
+                          <div className="flex flex-col gap-3.5">
+                            {topPostingWindows.map((window, idx) => {
+                              const maxER = topPostingWindows[0]?.avgER || 1;
+                              const pct = maxER > 0 ? (window.avgER / maxER) * 100 : 0;
+                              return (
+                                <div key={idx} className="flex flex-col gap-1">
+                                  <div className="flex justify-between items-center text-xs font-semibold text-gray-200">
+                                    <span>{window.day} {formatHourRange(window.hour)}</span>
+                                    <span className="text-brand-primary font-black">{window.avgER.toFixed(2)}% ER</span>
+                                  </div>
+                                  <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                    <div 
+                                      className="h-full bg-brand-primary rounded-full" 
+                                      style={{ width: `${pct}%` }} 
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="p-4 rounded-xl bg-white/5 border border-glass text-center select-none">
+                            <p className="text-xs text-muted-foreground font-semibold leading-relaxed">
+                              Post at least 10 times to unlock your optimal windows.
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <Link
-                      href="/strategy"
-                      className="w-full mt-8 min-h-[40px] rounded-xl border border-glass bg-white/5 hover:bg-white/10 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 text-white active:scale-95 transition-all"
-                    >
-                      <span>Explore Planner Matrix</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+
+                    <div className="flex flex-col gap-2.5 mt-6">
+                      <Link
+                        href="/analytics?expand=heatmap"
+                        className="w-full min-h-[40px] rounded-xl border border-glass bg-white/5 hover:bg-white/10 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 text-brand-primary hover:text-white active:scale-95 transition-all"
+                      >
+                        <span>View full posting heatmap →</span>
+                      </Link>
+                      <Link
+                        href="/strategy"
+                        className="w-full min-h-[40px] rounded-xl border border-white/5 bg-transparent hover:bg-white/5 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 text-gray-400 hover:text-white active:scale-95 transition-all"
+                      >
+                        <span>View full strategy →</span>
+                      </Link>
+                    </div>
                   </PremiumCard>
                 </div>
               );
@@ -744,11 +911,23 @@ export default function DashboardHome() {
                           {activeNiche ? `${activeNiche} focus` : "Sample"}
                         </span>
                       </div>
-                      <InsightReveal delay={200} text="Below is a sample plan personalized to your niche. Open Strategy to generate a full calendar." className="text-xs text-muted-foreground mb-6" />
-                      <div className="flex flex-col gap-4">
+
+                      {/* Dynamic Progress Meter */}
+                      <div className="mt-2 mb-5">
+                        <div className="flex justify-between items-center text-[10px] font-extrabold text-gray-400 mb-1.5 uppercase tracking-wider">
+                          <span>Active Strategy Progress</span>
+                          <span className="text-brand-accent">2 of 3 scheduled (67%)</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/10">
+                          <div className="h-full bg-gradient-to-r from-brand-primary to-brand-secondary rounded-full" style={{ width: "67%" }} />
+                        </div>
+                      </div>
+
+                      <InsightReveal delay={200} text="Below is a sample plan personalized to your niche. Open Strategy to generate a full calendar." className="text-xs text-muted-foreground mb-4" />
+                      <div className="flex flex-col gap-3.5">
                         {strategyItems.map((item, idx) => (
                           <div key={idx} className="flex gap-4 items-start">
-                            <div className="w-2.5 h-2.5 rounded-full bg-brand-primary mt-1.5 shrink-0" />
+                            <div className="w-2 h-2 rounded-full bg-brand-primary mt-1.5 shrink-0" />
                             <div>
                               <h4 className="font-bold text-xs text-gray-200">
                                 {item.day} • <span className="text-brand-accent">{item.time}</span>
@@ -760,14 +939,60 @@ export default function DashboardHome() {
                           </div>
                         ))}
                       </div>
+
+                      {/* Best Posting Windows Heatmap (Dashboard Preview) */}
+                      <div className="h-px bg-white/10 my-5" />
+                      <div className="flex flex-col gap-3">
+                        <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-brand-secondary" />
+                          <span>Top Optimal Windows</span>
+                        </h4>
+
+                        {posts.length >= 10 ? (
+                          <div className="flex flex-col gap-3.5">
+                            {topPostingWindows.map((window, idx) => {
+                              const maxER = topPostingWindows[0]?.avgER || 1;
+                              const pct = maxER > 0 ? (window.avgER / maxER) * 100 : 0;
+                              return (
+                                <div key={idx} className="flex flex-col gap-1">
+                                  <div className="flex justify-between items-center text-xs font-semibold text-gray-200">
+                                    <span>{window.day} {formatHourRange(window.hour)}</span>
+                                    <span className="text-brand-primary font-black">{window.avgER.toFixed(2)}% ER</span>
+                                  </div>
+                                  <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                    <div 
+                                      className="h-full bg-brand-primary rounded-full" 
+                                      style={{ width: `${pct}%` }} 
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="p-4 rounded-xl bg-white/5 border border-glass text-center select-none">
+                            <p className="text-xs text-muted-foreground font-semibold leading-relaxed">
+                              Post at least 10 times to unlock your optimal windows.
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <Link
-                      href="/strategy"
-                      className="w-full mt-8 min-h-[40px] rounded-xl border border-glass bg-white/5 hover:bg-white/10 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 text-white active:scale-95 transition-all"
-                    >
-                      <span>Explore Planner Matrix</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+
+                    <div className="flex flex-col gap-2.5 mt-6">
+                      <Link
+                        href="/analytics?expand=heatmap"
+                        className="w-full min-h-[40px] rounded-xl border border-glass bg-white/5 hover:bg-white/10 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 text-brand-primary hover:text-white active:scale-95 transition-all"
+                      >
+                        <span>View full posting heatmap →</span>
+                      </Link>
+                      <Link
+                        href="/strategy"
+                        className="w-full min-h-[40px] rounded-xl border border-white/5 bg-transparent hover:bg-white/5 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 text-gray-400 hover:text-white active:scale-95 transition-all"
+                      >
+                        <span>View full strategy →</span>
+                      </Link>
+                    </div>
                   </PremiumCard>
 
                   {/* Chart (2/3 width) */}
@@ -808,37 +1033,115 @@ export default function DashboardHome() {
             blockId,
             index,
             <PremiumCard className="p-6 select-none w-full" glowColor="pink">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-display font-extrabold text-white">
-                  Weekly Content Strategy
-                </h3>
-                <span className="px-2 py-0.5 border border-white/10 bg-white/5 text-[10px] font-bold text-gray-400 rounded-full uppercase tracking-wider">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <div>
+                  <h3 className="text-base font-display font-extrabold text-white">
+                    Weekly Content Strategy
+                  </h3>
+                  <InsightReveal delay={200} text="Below is a sample plan personalized to your niche. Open Strategy to generate a full calendar." className="text-xs text-muted-foreground mt-0.5" />
+                </div>
+                <span className="px-2 py-0.5 border border-white/10 bg-white/5 text-[10px] font-bold text-gray-400 rounded-full uppercase tracking-wider shrink-0">
                   {activeNiche ? `${activeNiche} focus` : "Sample"}
                 </span>
               </div>
-              <InsightReveal delay={200} text="Below is a sample plan personalized to your niche. Open Strategy to generate a full calendar." className="text-xs text-muted-foreground mb-6" />
-              <MotionList className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                {strategyItems.map((item, idx) => (
-                  <div key={idx} className="flex gap-4 items-start p-4 rounded-xl bg-white/5 border border-white/5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-brand-primary mt-1.5 shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-xs text-gray-200">
-                        {item.day} • <span className="text-brand-accent">{item.time}</span>
-                      </h4>
-                      <p className="text-xs text-muted-foreground font-semibold mt-0.5">
-                        {item.topic} ({item.format})
-                      </p>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Col 1 & 2: Active Strategy Progress & Weekly Content Items */}
+                <div className="lg:col-span-2 flex flex-col justify-between">
+                  <div>
+                    {/* Dynamic Progress Meter */}
+                    <div className="mb-6">
+                      <div className="flex justify-between items-center text-[10px] font-extrabold text-gray-400 mb-1.5 uppercase tracking-wider">
+                        <span>Active Strategy Progress</span>
+                        <span className="text-brand-accent">2 of 3 scheduled (67%)</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/10">
+                        <div className="h-full bg-gradient-to-r from-brand-primary to-brand-secondary rounded-full" style={{ width: "67%" }} />
+                      </div>
                     </div>
+
+                    <MotionList className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {strategyItems.map((item, idx) => (
+                        <div key={idx} className="flex gap-3 items-start p-4 rounded-xl bg-white/5 border border-white/5">
+                          <div className="w-2 h-2 rounded-full bg-brand-primary mt-1.5 shrink-0" />
+                          <div>
+                            <h4 className="font-bold text-xs text-gray-200">
+                              {item.day} • <span className="text-brand-accent">{item.time}</span>
+                            </h4>
+                            <p className="text-[11px] text-muted-foreground font-semibold mt-0.5 leading-relaxed">
+                              {item.topic} ({item.format})
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </MotionList>
                   </div>
-                ))}
-              </MotionList>
-              <Link
-                href="/strategy"
-                className="w-fit mt-6 px-6 min-h-[40px] rounded-xl border border-glass bg-white/5 hover:bg-white/10 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 text-white active:scale-95 transition-all"
-              >
-                <span>Explore Planner Matrix</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+
+                  <div className="mt-6">
+                    <Link
+                      href="/strategy"
+                      className="w-fit px-6 min-h-[40px] rounded-xl border border-glass bg-white/5 hover:bg-white/10 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 text-white active:scale-95 transition-all"
+                    >
+                      <span>Explore Planner Matrix</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Col 3: Best Posting Windows */}
+                <div className="border-t lg:border-t-0 lg:border-l border-white/10 pt-6 lg:pt-0 lg:pl-8 flex flex-col justify-between">
+                  <div className="flex flex-col gap-4">
+                    <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-brand-secondary" />
+                      <span>Top Optimal Windows</span>
+                    </h4>
+
+                    {posts.length >= 10 ? (
+                      <div className="flex flex-col gap-3.5">
+                        {topPostingWindows.map((window, idx) => {
+                          const maxER = topPostingWindows[0]?.avgER || 1;
+                          const pct = maxER > 0 ? (window.avgER / maxER) * 100 : 0;
+                          return (
+                            <div key={idx} className="flex flex-col gap-1">
+                              <div className="flex justify-between items-center text-xs font-semibold text-gray-200">
+                                <span>{window.day} {formatHourRange(window.hour)}</span>
+                                <span className="text-brand-primary font-black">{window.avgER.toFixed(2)}% ER</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-brand-primary rounded-full" 
+                                  style={{ width: `${pct}%` }} 
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-xl bg-white/5 border border-glass text-center select-none">
+                        <p className="text-xs text-muted-foreground font-semibold leading-relaxed">
+                          Post at least 10 times to unlock your optimal windows.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2 mt-6">
+                    <Link
+                      href="/analytics?expand=heatmap"
+                      className="w-full min-h-[40px] rounded-xl border border-glass bg-white/5 hover:bg-white/10 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 text-brand-primary hover:text-white active:scale-95 transition-all text-center"
+                    >
+                      <span>View full posting heatmap →</span>
+                    </Link>
+                    <Link
+                      href="/strategy"
+                      className="w-full min-h-[40px] rounded-xl border border-white/5 bg-transparent hover:bg-white/5 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 text-gray-400 hover:text-white active:scale-95 transition-all text-center"
+                    >
+                      <span>View full strategy →</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </PremiumCard>
           );
         }

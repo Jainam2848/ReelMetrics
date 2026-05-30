@@ -44,9 +44,9 @@ export function HowItWorksCards() {
   const steps = [
     {
       num: "1",
-      title: "Connect",
-      description: "Securely link your Instagram account with one-click OAuth. We pull performance data directly from Meta.",
-      badge: "Secure Meta Integration →",
+      title: "Sync Your Feed",
+      description: "Safely sync your creator account in one tap. We pull your performance data directly from Meta with complete security.",
+      badge: "One-Click Safe Sync →",
       icon: (
         <svg className="w-8 h-8 text-indigo-400 group-hover:text-indigo-300 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <m.path 
@@ -62,9 +62,9 @@ export function HowItWorksCards() {
     },
     {
       num: "2",
-      title: "Analyze",
-      description: "Our engine parses retention triggers, visual contrast, micro-pacing, and audio patterns across 9 dimensions.",
-      badge: "9-Dimensional Matrix →",
+      title: "Find retention leaks",
+      description: "Our AI instantly scans your video styling, audio drops, editing pacing, and visual transitions to find exactly why viewers swipe away.",
+      badge: "Smart Retention Audit →",
       icon: (
         <svg className="w-8 h-8 text-indigo-400 group-hover:text-indigo-300 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <m.path 
@@ -80,9 +80,9 @@ export function HowItWorksCards() {
     },
     {
       num: "3",
-      title: "Execute",
-      description: "Receive bespoke pacing timelines, hook alternatives, script recommendations, and auto-scheduled calendar events.",
-      badge: "Bespoke Playbooks →",
+      title: "Boost your reach",
+      description: "Get a personalized creator playbook with fresh hook ideas, high-engagement pacing suggestions, and script tweaks to maximize retention.",
+      badge: "Creator Playbook →",
       icon: (
         <svg className="w-8 h-8 text-indigo-400 group-hover:text-indigo-300 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <m.path 

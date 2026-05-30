@@ -82,6 +82,20 @@ For TikTok: The completion_rate metric is CRITICAL:
 
 For the "improvement" field: be SPECIFIC and directly actionable. Instead of "Improve hook", say something like "Start with a bold text overlay that states the result within 0.5 seconds, and use a fast zoom transition to grab attention." Include exact timing, visual techniques, or copywriting patterns.
 
+Additionally, analyze the post metadata, caption, transcript, and comments to output these two structures:
+1. "hook_checklist": Check these 5 factors:
+   - "visual_motion": boolean indicating if there is detectable visual motion/change in the first frame
+   - "text_overlay_seconds": float number of seconds until first on-screen text overlay appears (optimal is <0.5s)
+   - "spoken_word_seconds": float number of seconds until the first spoken word
+   - "opener_type": "question", "bold-claim", "POV-opener", "problem-statement", "greeting", or "other"
+   - "references_viewer": boolean indicating if the hook references the viewer using "you" or "your"
+2. "comment_sentiment": Segment user comments into four buckets (percentages must sum to exactly 100):
+   - "questions": percentage (0-100) and one representative top question comment text
+   - "reactions": percentage (0-100) and one representative top emotional reaction comment text
+   - "objections": percentage (0-100) and one representative top objection/polarizing comment text
+   - "save_intent": percentage (0-100) and one representative top save-intent comment text (e.g. "bookmarking this", "trying this")
+   - "interpretation": a single concise strategic advice line (e.g. "67% questions — strong demand signal. A follow-up post addressing these directly could outperform this one." or "High objections — this topic is polarizing. Consider a rebuttal post; controversy drives shares.")
+
 Return ONLY valid JSON matching this exact schema:
 {
   "overall_score": <number 1-100>,
@@ -104,7 +118,21 @@ Return ONLY valid JSON matching this exact schema:
   "top_strength": "<string>",
   "biggest_opportunity": "<string>",
   "one_line_summary": "<string>",
-  "virality_potential": "low|medium|high|very_high"
+  "virality_potential": "low|medium|high|very_high",
+  "hook_checklist": {
+    "visual_motion": <boolean>,
+    "text_overlay_seconds": <number>,
+    "spoken_word_seconds": <number>,
+    "opener_type": "question|bold-claim|POV-opener|problem-statement|greeting|other",
+    "references_viewer": <boolean>
+  },
+  "comment_sentiment": {
+    "questions": { "percentage": <number>, "top_comment": "<string>" },
+    "reactions": { "percentage": <number>, "top_comment": "<string>" },
+    "objections": { "percentage": <number>, "top_comment": "<string>" },
+    "save_intent": { "percentage": <number>, "top_comment": "<string>" },
+    "interpretation": "<string>"
+  }
 }
 `;
 

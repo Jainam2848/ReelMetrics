@@ -100,6 +100,48 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
     }
   };
 
+  const triggerQuickSandboxDemo = async () => {
+    setNiche("tech");
+    setGoal("retention");
+    setOnboardingStep(3);
+    setSyncStatus("sandbox_syncing");
+
+    const steps = [
+      "Initializing high-fidelity Sandbox environment...",
+      "Cloning @alice_reels post metrics & indices...",
+      "Synthesizing customized niche content strategies...",
+      "Syncing 3s hook retention timeline curves...",
+      "Injecting developer strategy roadmap..."
+    ];
+
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      if (step) setSyncProgress(step);
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    }
+
+    try {
+      const res = await fetch("/api/accounts/demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ niche: "tech", goal: "retention" }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setSyncStatus("success");
+        toast.success("Sandbox demo account connected! Welcome to Trendoraa.");
+        onComplete();
+      } else {
+        setSyncStatus("error");
+        toast.error(data.error?.message || "Failed to initialize demo sandbox");
+      }
+    } catch {
+      setSyncStatus("error");
+      toast.error("An unexpected error occurred during demo setup.");
+    }
+  };
+
   const activeBackdrop = NICHE_COLORS[niche as keyof typeof NICHE_COLORS] || NICHE_COLORS[""];
 
   return (
@@ -170,6 +212,29 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground text-center mb-1">
               Step 1: Choose Content Niche
             </h3>
+
+            {/* Quick Sandbox Connect Card */}
+            <div className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 backdrop-blur-xl relative overflow-hidden group select-none mb-1">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl -z-10 group-hover:scale-125 transition-transform duration-500" />
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-left">
+                  <h4 className="font-display font-extrabold text-xs text-white flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+                    <span>Quick Exploratory Preview</span>
+                  </h4>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 max-w-[250px] font-semibold leading-relaxed">
+                    Skip setup and instantly spin up a high-fidelity Sandbox profile to test the dashboard cockpit.
+                  </p>
+                </div>
+                <button
+                  onClick={triggerQuickSandboxDemo}
+                  className="px-3.5 py-2 bg-gradient-to-r from-indigo-500 to-fuchsia-500 hover:opacity-90 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shadow-glow active:scale-95 transition-all shrink-0 cursor-pointer"
+                >
+                  ⚡ Launch Demo
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
                 { id: "tech", label: "Tech & Gadgets", icon: "💻" },

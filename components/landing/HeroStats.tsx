@@ -37,11 +37,11 @@ function AnimatedStat({ value, label, delay, isInView, formatter }: StatItemProp
   return (
     <div className="flex flex-col items-start select-none">
       <div className="inline-block border-b-2 border-[#4F46E5] pb-1.5 mb-2">
-        <span className="font-cabinet font-semibold text-white tracking-tight" style={{ fontSize: "clamp(1.8rem, 3vw, 2.4rem)" }}>
+        <span className="font-outfit font-semibold text-white tracking-tight" style={{ fontSize: "clamp(1.8rem, 3vw, 2.4rem)" }}>
           {displayVal}
         </span>
       </div>
-      <span className="text-[13px] font-satoshi font-semibold text-white/55 leading-none">
+      <span className="text-[13px] font-outfit font-semibold text-white/55 leading-none">
         {label}
       </span>
     </div>

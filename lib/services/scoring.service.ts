@@ -143,6 +143,8 @@ async function persistScore(
     oneLineSummary: score.one_line_summary,
     platformRetentionAnalysis: score.platform_retention_analysis,
     viralityPotential: score.virality_potential,
+    hook_checklist: score.hook_checklist,
+    comment_sentiment: score.comment_sentiment,
   };
 
   const values = {

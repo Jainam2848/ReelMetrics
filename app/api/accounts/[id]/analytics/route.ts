@@ -15,6 +15,7 @@ import {
   calculatePostDerivedMetrics,
   calculateFormatBaselines,
   calculateFollowerGrowth,
+  calculateFollowerQuality,
 } from "@/lib/analytics/calculations";
 import { triggerSyncIfStale } from "@/lib/services/ingestion.service";
 
@@ -112,6 +113,9 @@ export const GET = withRateLimit(
     // 4. Compute follower growth metrics
     const growth = await calculateFollowerGrowth(accountId, days);
 
+    // Compute follower quality score (Change 2)
+    const followerQuality = await calculateFollowerQuality(accountId);
+
     // 5. Aggregate metrics
     const totalViews = stats?.totalDisplayViews
       ? parseInt(stats.totalDisplayViews, 10)
@@ -208,6 +212,7 @@ export const GET = withRateLimit(
       },
       baselines,
       growth,
+      followerQuality,
       stories: storyRows,
       dailyInsights: dailyInsightsRows,
       content,

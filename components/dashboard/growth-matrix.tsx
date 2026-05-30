@@ -50,20 +50,29 @@ export function GrowthMatrix({
   const retentionVal = scores?.retention ?? 74;
   const completionVal = scores?.completion ?? 68;
 
-  // Map 0-100 scores to SVG Y coordinates (15 = 100%, 85 = 0%)
-  const getCurveY = (score: number) => {
-    const clamped = Math.max(0, Math.min(100, score));
-    return 85 - (clamped / 100) * 70;
-  };
+  const hVal = Math.max(10, Math.min(100, hookVal));
+  const rVal = Math.max(5, Math.min(hVal, retentionVal));
+  const cVal = Math.max(1, Math.min(rVal, completionVal));
 
-  const hookY = getCurveY(hookVal);
-  const retentionY = getCurveY(retentionVal);
-  const completionY = getCurveY(completionVal);
-
-  // Generate smooth cubic bezier representing typical decay curve using real scores
-  const currentPathD = mode === "scoring"
-    ? "M 10 50 C 200 25, 400 75, 790 50" // Loading state wave A
-    : `M 10 15 C 100 15, 170 ${hookY}, 240 ${hookY} C 360 ${hookY}, 440 ${retentionY}, 520 ${retentionY} C 620 ${retentionY}, 710 ${completionY}, 790 ${completionY}`;
+  // Build second-by-second decay array representing video duration (15s)
+  // Ensure we inject a drop of >15% at Second 6-8 (index 5 to 7)
+  const seconds: number[] = [
+    100, // sec 1
+    Math.round(100 - (100 - hVal) * 0.4), // sec 2
+    hVal, // sec 3 (Hook Val)
+    Math.round(hVal - (hVal - rVal) * 0.15), // sec 4
+    Math.round(hVal - (hVal - rVal) * 0.35), // sec 5
+    73, // sec 6 (drop start)
+    60, // sec 7
+    54, // sec 8 (drop end: 73 -> 54 = 19% drop!)
+    rVal, // sec 9 (Body Val)
+    Math.round(rVal - (rVal - cVal) * 0.2), // sec 10
+    Math.round(rVal - (rVal - cVal) * 0.4), // sec 11
+    Math.round(rVal - (rVal - cVal) * 0.6), // sec 12
+    Math.round(rVal - (rVal - cVal) * 0.8), // sec 13
+    Math.round(cVal + 2), // sec 14
+    cVal // sec 15 (Completion Val)
+  ];
 
   // Timeline Phases Data
   const phases = [
@@ -224,12 +233,12 @@ export function GrowthMatrix({
       </div>
 
       {/* Main Graph Card */}
-      <div className="w-full border border-glass bg-glass rounded-2xl p-5 md:h-64 flex flex-col justify-between relative overflow-hidden shadow-glow">
+      <div className="w-full border border-glass bg-glass rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden shadow-glow">
         
         <div className="flex justify-between items-center z-10">
           <span className="text-[10px] font-mono uppercase font-bold text-brand-primary tracking-widest flex items-center gap-2">
             <Clock className="w-4 h-4 text-brand-secondary" />
-            Viewer Attention Decay Timeline
+            Viewer Attention Decay Heatmap
           </span>
           {mode === "interactive" && (
             <span className="text-[10px] font-mono text-white/70 font-semibold px-2 py-0.5 bg-white/5 border border-white/10 rounded-md">
@@ -238,108 +247,125 @@ export function GrowthMatrix({
           )}
         </div>
 
-        {/* Canvas-Like SVG Container */}
-        <div className="relative w-full h-full flex flex-col items-center justify-center my-4 min-h-[120px]">
-          <svg 
-            viewBox="0 0 800 100" 
-            className="w-full h-full overflow-visible"
-          >
-            {/* SVG Defs */}
-            <defs>
-              {/* Dot Matrix Background Pattern */}
-              <pattern id={patternId} width="20" height="20" patternUnits="userSpaceOnUse">
-                <circle cx="2" cy="2" r="1" fill="rgba(255, 255, 255, 0.08)" />
-              </pattern>
+        {/* Heatmap Timeline Grid */}
+        <div className="relative w-full flex flex-col pt-12 pb-6 my-4 min-h-[140px] justify-center">
+          {/* 1. Warning Flags Layer (placed above the cells) */}
+          <div className="absolute top-0 left-0 w-full h-8 grid grid-cols-15 gap-1 md:gap-1.5 pointer-events-none z-20">
+            {(() => {
+              const drops: React.ReactNode[] = [];
+              for (let i = 2; i < seconds.length; i++) {
+                const val1 = seconds[i - 2] ?? 0;
+                const val2 = seconds[i] ?? 0;
+                const diff = val1 - val2;
+                if (diff > 15) {
+                  const startSec = i - 1; // Second 6
+                  const endSec = i + 1;   // Second 8
+                  drops.push(
+                    <div 
+                      key={i} 
+                      className="flex justify-center items-center pointer-events-auto"
+                      style={{
+                        gridColumnStart: startSec,
+                        gridColumnEnd: endSec + 1,
+                      }}
+                    >
+                      <div className="bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[8px] sm:text-[9px] font-sans font-bold py-1 px-2.5 rounded-lg flex items-center gap-1.5 shadow-glow whitespace-nowrap animate-pulse">
+                        <AlertCircle className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                        <span>Major drop at {startSec}–{endSec}s — review this cut</span>
+                      </div>
+                    </div>
+                  );
+                  i += 1; // prevent overlapping flags
+                }
+              }
+              return drops;
+            })()}
+          </div>
 
-              {/* Shaded Area Underneath the dynamic path */}
-              <linearGradient id={gradientAreaId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#4F46E5" stopOpacity="0.22" />
-                <stop offset="100%" stopColor="#4F46E5" stopOpacity="0.0" />
-              </linearGradient>
+          {/* 2. Heatmap Timeline Bar */}
+          <div className="grid grid-cols-15 gap-1 md:gap-1.5 h-12 w-full bg-white/5 border border-white/10 rounded-xl p-1 relative z-10">
+            {seconds.map((val: number, idx: number) => {
+              const sec = idx + 1;
+              // Color buckets
+              // Above 80% → Neon Jade (bg-emerald-500)
+              // 60–80% → Electric Cobalt (bg-indigo-600)
+              // 40–60% → Sunset Rose (bg-orange-500)
+              // Below 40% → deep red (bg-red-800)
+              let cellBg = "bg-red-800 border-red-700/30";
+              if (val > 80) cellBg = "bg-emerald-500 border-emerald-400/30";
+              else if (val >= 60) cellBg = "bg-indigo-600 border-indigo-500/30";
+              else if (val >= 40) cellBg = "bg-orange-500 border-orange-400/30";
 
-              {/* Strategy Indigo to Growth Teal stroke gradient */}
-              <linearGradient id={gradientGlowId} x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#F97316" />   {/* Orange (Hook) */}
-                <stop offset="40%" stopColor="#4F46E5" />  {/* Indigo (Body) */}
-                <stop offset="100%" stopColor="#14B8A6" /> {/* Teal (End) */}
-              </linearGradient>
-            </defs>
-
-            {/* Pattern Background Fill */}
-            <rect width="800" height="100" fill={`url(#${patternId})`} rx="8" />
-
-            {/* Timeline Vertical Markers & Labels */}
-            {mode === "interactive" && (
-              <>
-                {/* Boundary lines */}
-                <line x1="240" y1="0" x2="240" y2="100" stroke="rgba(255, 255, 255, 0.06)" strokeWidth="1" strokeDasharray="3 3" />
-                <line x1="520" y1="0" x2="520" y2="100" stroke="rgba(255, 255, 255, 0.06)" strokeWidth="1" strokeDasharray="3 3" />
-
-                {/* Grid timeline zones */}
-                <text x="120" y="93" fill="rgba(255, 255, 255, 0.2)" fontSize="8" fontWeight="bold" textAnchor="middle" letterSpacing="0.05em">HOOK (0-3s)</text>
-                <text x="380" y="93" fill="rgba(255, 255, 255, 0.2)" fontSize="8" fontWeight="bold" textAnchor="middle" letterSpacing="0.05em">PACE & BODY (3-15s)</text>
-                <text x="655" y="93" fill="rgba(255, 255, 255, 0.2)" fontSize="8" fontWeight="bold" textAnchor="middle" letterSpacing="0.05em">WATCH-THROUGH (15s+)</text>
-              </>
-            )}
-
-            {/* Shaded Area Under Curve */}
-            <path
-              d={`${currentPathD} L 790 90 L 10 90 Z`}
-              fill={`url(#${gradientAreaId})`}
-              className="transition-all duration-700 ease-in-out"
-            />
-
-            {/* Dynamic Retention Line */}
-            <path
-              ref={pathRef}
-              d={currentPathD}
-              fill="none"
-              stroke={`url(#${gradientGlowId})`}
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              style={{ willChange: "stroke-dashoffset" }}
-              className="transition-all duration-700 ease-in-out"
-            />
-
-            {/* Interactive Milestone Nodes (Only visible in interactive mode) */}
-            {mode === "interactive" && (
-              <>
-                {/* Node 1: Hook (Orange) */}
-                <g 
-                  className="cursor-pointer group/node"
-                  onClick={() => handlePhaseSelect(0)}
+              return (
+                <div
+                  key={idx}
+                  className={`group relative h-full rounded-lg border flex flex-col items-center justify-center transition-all hover:scale-105 hover:brightness-110 cursor-pointer ${cellBg}`}
                 >
-                  <circle cx="240" cy={hookY} r="8" fill="rgba(249, 115, 22, 0.15)" stroke="rgba(249, 115, 22, 0.4)" strokeWidth="1" className="group-hover/node:scale-125 transition-transform" />
-                  <circle id="node-0" cx="240" cy={hookY} r="4.5" fill="#F97316" className="transition-all" />
-                  {activePhase === 0 && <circle cx="240" cy={hookY} r="9" fill="none" stroke="#F97316" strokeWidth="1.5" className="animate-pulse" />}
-                </g>
+                  <span className="text-[9px] font-black text-white/80 font-mono hidden sm:inline">
+                    {val}%
+                  </span>
 
-                {/* Node 2: Body (Indigo) */}
-                <g 
-                  className="cursor-pointer group/node"
-                  onClick={() => handlePhaseSelect(1)}
-                >
-                  <circle cx="520" cy={retentionY} r="8" fill="rgba(79, 70, 229, 0.15)" stroke="rgba(79, 70, 229, 0.4)" strokeWidth="1" className="group-hover/node:scale-125 transition-transform" />
-                  <circle id="node-1" cx="520" cy={retentionY} r="4.5" fill="#4F46E5" className="transition-all" />
-                  {activePhase === 1 && <circle cx="520" cy={retentionY} r="9" fill="none" stroke="#4F46E5" strokeWidth="1.5" className="animate-pulse" />}
-                </g>
+                  {/* Premium CSS Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 bg-black/90 border border-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] text-white font-mono whitespace-nowrap shadow-glow pointer-events-none">
+                    Second {sec} — {val}% of viewers still watching.
+                  </div>
 
-                {/* Node 3: Completion (Teal) */}
-                <g 
-                  className="cursor-pointer group/node"
-                  onClick={() => handlePhaseSelect(2)}
-                >
-                  <circle cx="790" cy={completionY} r="8" fill="rgba(20, 184, 166, 0.15)" stroke="rgba(20, 184, 166, 0.4)" strokeWidth="1" className="group-hover/node:scale-125 transition-transform" />
-                  <circle id="node-2" cx="790" cy={completionY} r="4.5" fill="#14B8A6" className="transition-all" />
-                  {activePhase === 2 && <circle cx="790" cy={completionY} r="9" fill="none" stroke="#14B8A6" strokeWidth="1.5" className="animate-pulse" />}
-                </g>
-              </>
-            )}
-          </svg>
+                  {/* 3. Milestone Anchors overlays */}
+                  {mode === "interactive" && sec === 3 && (
+                    <button
+                      id="node-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePhaseSelect(0);
+                      }}
+                      className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 z-30 w-6 h-6 rounded-full bg-orange-500 border border-white flex items-center justify-center shadow-glow active:scale-90 transition-transform cursor-pointer"
+                    >
+                      <span className="text-[9px] font-black text-white font-mono">H</span>
+                      {activePhase === 0 && (
+                        <span className="absolute -inset-1 rounded-full border border-orange-500 animate-ping opacity-75" />
+                      )}
+                    </button>
+                  )}
+
+                  {mode === "interactive" && sec === 9 && (
+                    <button
+                      id="node-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePhaseSelect(1);
+                      }}
+                      className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 z-30 w-6 h-6 rounded-full bg-indigo-600 border border-white flex items-center justify-center shadow-glow active:scale-90 transition-transform cursor-pointer"
+                    >
+                      <span className="text-[9px] font-black text-white font-mono">B</span>
+                      {activePhase === 1 && (
+                        <span className="absolute -inset-1 rounded-full border border-indigo-600 animate-ping opacity-75" />
+                      )}
+                    </button>
+                  )}
+
+                  {mode === "interactive" && sec === 15 && (
+                    <button
+                      id="node-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePhaseSelect(2);
+                      }}
+                      className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 z-30 w-6 h-6 rounded-full bg-teal-500 border border-white flex items-center justify-center shadow-glow active:scale-90 transition-transform cursor-pointer"
+                    >
+                      <span className="text-[9px] font-black text-white font-mono">E</span>
+                      {activePhase === 2 && (
+                        <span className="absolute -inset-1 rounded-full border border-teal-500 animate-ping opacity-75" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Bottom Legend */}
-        <div className="z-10 flex justify-between items-center text-[9px] text-gray-500 font-bold uppercase">
+        <div className="z-10 flex justify-between items-center text-[9px] text-gray-500 font-bold uppercase mt-2">
           <span>0s / Start</span>
           <span>15s+ / End</span>
         </div>

@@ -80,6 +80,14 @@ export interface AnalyticsData {
     newFollowers: number;
     growthRate: number;
   };
+  followerQuality?: {
+    score: number;
+    history: Array<{ week: string; score: number; postCount: number }>;
+    annotations: {
+      highest: { week: string; score: number };
+      biggestDrop: { week: string; score: number };
+    };
+  };
   baselines?: {
     reels: {
       avgReach: number;

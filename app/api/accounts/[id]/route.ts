@@ -96,7 +96,29 @@ export const DELETE = withRateLimit(
       return apiError("RESOURCE_NOT_FOUND", "Account not found");
     }
 
-    // Disconnect: nullify token, keep history
+    // If it's a Sandbox Demo account (alice_reels), purge it completely!
+    if (existing.username === "alice_reels") {
+      await db.delete(instagramAccounts).where(eq(instagramAccounts.id, id));
+
+      await AuthService.logAudit({
+        userId: request.user.id,
+        action: "social.account_deleted",
+        resourceType: "instagram_account",
+        resourceId: id,
+        metadata: {
+          username: existing.username,
+          message: "Sandbox Demo account fully purged.",
+        },
+        ipAddress,
+      });
+
+      return apiSuccess({
+        message: "Sandbox Demo disconnected and purged successfully.",
+        accountId: id,
+      });
+    }
+
+    // Disconnect: nullify token, keep history (regular accounts)
     await db
       .update(instagramAccounts)
       .set({

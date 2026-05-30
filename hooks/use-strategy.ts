@@ -33,6 +33,9 @@ export interface StrategyData {
     contentCalendar: CalendarItem[];
     summary?: string;
     source?: "ai" | "heuristic";
+    winningTemplate?: any;
+    nicheGaps?: any;
+    experimentQueue?: any;
   };
   periodStart: string;
   periodEnd: string;

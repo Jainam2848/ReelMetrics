@@ -13,8 +13,8 @@ export function LoadingSkeleton({ variant, count = 3 }: SkeletonProps) {
 
   if (variant === "metrics") {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-        {Array.from({ length: 4 }).map((_, idx) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 w-full">
+        {Array.from({ length: 5 }).map((_, idx) => (
           <div
             key={idx}
             className="p-6 rounded-2xl border border-glass bg-white/5 animate-pulse min-h-[120px] flex flex-col justify-between"

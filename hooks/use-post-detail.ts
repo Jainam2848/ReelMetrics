@@ -22,6 +22,7 @@ export interface PostDetailData {
   engagementRate: number;
   overallScore: number | null;
   platform: "instagram" | "tiktok";
+  reach: number;
 }
 
 export interface ScoreData {

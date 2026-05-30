@@ -3,11 +3,34 @@ import Link from "next/link";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { InfiniteTicker } from "@/components/landing/InfiniteTicker";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
-import { BentoFeatureGrid } from "@/components/landing/BentoFeatureGrid";
-import { BeforeAfterSplit } from "@/components/landing/before-after-split";
 import { FeatureTicker } from "@/components/landing/FeatureTicker";
-import { TestimonialCarousel } from "@/components/landing/TestimonialCarousel";
-import { PricingSection } from "@/components/landing/PricingSection";
+import dynamic from "next/dynamic";
+import {
+  BentoFeatureGridSkeleton,
+  BeforeAfterSplitSkeleton,
+  TestimonialCarouselSkeleton,
+  PricingSectionSkeleton,
+} from "@/components/landing/SectionSkeletons";
+
+const BentoFeatureGrid = dynamic(
+  () => import("@/components/landing/BentoFeatureGrid").then((m) => m.BentoFeatureGrid),
+  { loading: () => <BentoFeatureGridSkeleton /> }
+);
+
+const BeforeAfterSplit = dynamic(
+  () => import("@/components/landing/before-after-split").then((m) => m.BeforeAfterSplit),
+  { loading: () => <BeforeAfterSplitSkeleton /> }
+);
+
+const TestimonialCarousel = dynamic(
+  () => import("@/components/landing/TestimonialCarousel").then((m) => m.TestimonialCarousel),
+  { loading: () => <TestimonialCarouselSkeleton /> }
+);
+
+const PricingSection = dynamic(
+  () => import("@/components/landing/PricingSection").then((m) => m.PricingSection),
+  { loading: () => <PricingSectionSkeleton /> }
+);
 import { CinematicFooter } from "@/components/ui/motion-footer";
 import { GridDistortionProvider } from "@/lib/contexts/GridDistortionContext";
 import { AnalysisStateProvider } from "@/lib/contexts/AnalysisStateContext";

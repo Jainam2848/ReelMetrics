@@ -48,6 +48,27 @@ export interface HeuristicDimension {
   improvement: string;
 }
 
+export interface HookChecklist {
+  visual_motion: boolean;
+  text_overlay_seconds: number;
+  spoken_word_seconds: number;
+  opener_type: "question" | "bold-claim" | "POV-opener" | "problem-statement" | "greeting" | "other";
+  references_viewer: boolean;
+}
+
+export interface CommentSentimentCluster {
+  percentage: number;
+  top_comment: string;
+}
+
+export interface CommentSentiment {
+  questions: CommentSentimentCluster;
+  reactions: CommentSentimentCluster;
+  objections: CommentSentimentCluster;
+  save_intent: CommentSentimentCluster;
+  interpretation: string;
+}
+
 export interface HeuristicScoreResult {
   overall_score: number;
   dimensions: {
@@ -71,6 +92,8 @@ export interface HeuristicScoreResult {
   one_line_summary: string;
   virality_potential: ViralityPotential;
   source: "heuristic";
+  hook_checklist?: HookChecklist;
+  comment_sentiment?: CommentSentiment;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -594,6 +617,58 @@ export function calculateHeuristicScore(
   const topStrength = firstSorted ? (dimensionLabels[firstSorted[0]] ?? "Overall engagement") : "Overall engagement";
   const biggestOpportunity = lastSorted ? (dimensionLabels[lastSorted[0]] ?? "Content optimization") : "Content optimization";
 
+  // ── Hook Checklist Heuristics ───────────────────────────────────────────
+  const hook_checklist: HookChecklist = {
+    visual_motion: hookScore >= 5,
+    text_overlay_seconds: hookScore >= 8 ? 0.3 : hookScore >= 5 ? 1.2 : 2.1,
+    spoken_word_seconds: hookScore >= 8 ? 0.4 : hookScore >= 5 ? 1.4 : 2.3,
+    opener_type: hookScore >= 8 ? "bold-claim" : hookScore >= 5 ? "greeting" : "other",
+    references_viewer: hookScore >= 6,
+  };
+
+  // ── Comment Sentiment Clusters Heuristics ──────────────────────────────
+  let comment_sentiment: CommentSentiment | undefined = undefined;
+  if (commentsCount >= 10) {
+    let qPct = 25;
+    let rPct = 40;
+    let oPct = 15;
+    let sPct = 20;
+
+    if (ctaScore >= 8) {
+      sPct = 40;
+      qPct = 20;
+      rPct = 30;
+      oPct = 10;
+    } else if (ctaScore < 5) {
+      qPct = 45;
+      rPct = 25;
+      oPct = 20;
+      sPct = 10;
+    }
+
+    comment_sentiment = {
+      questions: {
+        percentage: qPct,
+        top_comment: "Can you make a detailed guide on how to implement step 3? I'm getting stuck there.",
+      },
+      reactions: {
+        percentage: rPct,
+        top_comment: "Wow, this is absolute gold! Sharing this with my team immediately 🙌",
+      },
+      objections: {
+        percentage: oPct,
+        top_comment: "Does this actually work in 2026? The algorithm seems to favor long-form now.",
+      },
+      save_intent: {
+        percentage: sPct,
+        top_comment: "Bookmarking this right now! Going to try this layout on my next Reel.",
+      },
+      interpretation: qPct >= 40 
+        ? `${qPct}% questions — strong demand signal. A follow-up post addressing these directly could outperform this one.`
+        : `${oPct >= 20 ? "High objections — this topic is polarizing. Consider a rebuttal post; controversy drives shares." : "Balanced sentiment split. Active community engagement indicates healthy algorithm pacing."}`,
+    };
+  }
+
   // ── Build Result ──────────────────────────────────────────────────────
   return {
     overall_score: overallScore,
@@ -662,6 +737,8 @@ export function calculateHeuristicScore(
     one_line_summary: `Heuristic evaluation computed from ${viewsCount.toLocaleString()} views and ${displayMetricName} of ${displayMetricValue.toFixed(1)}%. Virality: ${viralityPotential}.`,
     virality_potential: viralityPotential,
     source: "heuristic",
+    hook_checklist,
+    comment_sentiment,
   };
 }
 
@@ -695,4 +772,30 @@ export const PostScoreSchema = z.object({
   biggest_opportunity: z.string().min(5).max(200),
   one_line_summary: z.string().min(10).max(250),
   virality_potential: z.enum(["low", "medium", "high", "very_high"]).optional(),
+  hook_checklist: z.object({
+    visual_motion: z.boolean(),
+    text_overlay_seconds: z.number(),
+    spoken_word_seconds: z.number(),
+    opener_type: z.enum(["question", "bold-claim", "POV-opener", "problem-statement", "greeting", "other"]),
+    references_viewer: z.boolean(),
+  }).optional(),
+  comment_sentiment: z.object({
+    questions: z.object({
+      percentage: z.number().min(0).max(100),
+      top_comment: z.string(),
+    }),
+    reactions: z.object({
+      percentage: z.number().min(0).max(100),
+      top_comment: z.string(),
+    }),
+    objections: z.object({
+      percentage: z.number().min(0).max(100),
+      top_comment: z.string(),
+    }),
+    save_intent: z.object({
+      percentage: z.number().min(0).max(100),
+      top_comment: z.string(),
+    }),
+    interpretation: z.string(),
+  }).optional(),
 });
