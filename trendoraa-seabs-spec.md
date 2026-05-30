@@ -667,6 +667,7 @@ CREATE INDEX idx_strategies_user_id ON strategies(user_id);
 
 -- Query patterns & performance
 CREATE INDEX idx_posts_timestamp ON posts(account_id, timestamp DESC);
+CREATE INDEX idx_trend_signals_niche_type_created ON trend_signals(niche, signal_type, created_at DESC);
 CREATE INDEX idx_job_queue_pending ON job_queue(status, scheduled_at)
     WHERE status = 'pending';
 CREATE INDEX idx_job_queue_locked ON job_queue(locked_at)
@@ -679,6 +680,7 @@ CREATE INDEX idx_audit_log_created_at ON audit_log(created_at); -- GDPR export s
 -- Uniqueness constraints
 CREATE UNIQUE INDEX idx_posts_platform_media ON posts(platform, platform_media_id);
 CREATE UNIQUE INDEX idx_social_accounts_platform_user ON social_accounts(platform, platform_user_id);
+CREATE UNIQUE INDEX idx_trend_signals_day_key ON trend_signals(day_key);
 CREATE UNIQUE INDEX idx_job_queue_idempotency ON job_queue(idempotency_key)
     WHERE idempotency_key IS NOT NULL;
 CREATE UNIQUE INDEX idx_processed_events_id ON processed_events(event_id);

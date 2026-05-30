@@ -11,6 +11,7 @@
 > | `social_accounts` | `instagram_accounts` |
 > | `posts` | `reels` |
 > | `post_scores` | `reel_scores` |
+> | `trend_signals` | `trend_signals` (Zod structured JSONB schema, `day_key` composite unique constraint, and composite index scan) |
 > | `GET /api/accounts/:id/posts` | `GET /api/accounts/:id/reels` |
 > | `GET\|POST /api/posts/:id/score` | `GET\|POST /api/reels/:id/score` |
 > | OAuth initiation | `POST /api/auth/social/instagram` → `{ authUrl }` + CSRF cookie |
@@ -266,10 +267,11 @@ As a Creator, I want to receive a weekly content strategy based on my historical
 * **Acceptance Criterion 1:** The strategy system compiles all metrics from the last 7 days for all active accounts, evaluates the top-performing formats per platform, and saves a weekly strategy record in the `strategies` table.
 * **Acceptance Criterion 2:** The user dashboard displays the latest weekly strategy showing a text summary, identified platform-specific strengths, and clear improvement recommendations.
 
-#### Story 9: Trend Detection Insights
-As a Pro User, I want to access a monthly trend detection report so that I can align my content with current high-performing patterns.
-* **Acceptance Criterion 1:** The system aggregates metrics from the user's historical posts and isolates formatting trends, listing hook types that yield high retention or low skip rates.
-* **Acceptance Criterion 2:** The Trend page renders a list showing at least 3 concrete trend insights backed by exact media references from their profile.
+#### Story 9: Structured Trend Ingestion, Decay-Aware Scoring, & Resilient Caching
+As a Pro User, I want the system to ingest daily structured trend signals, weigh them based on freshness decay, and fall back gracefully during API outages so that my content recommendations are highly relevant, precise, and always available.
+* **Acceptance Criterion 1 (Zod Ingest & Sanitize):** The daily ingestion cron enqueues a standard tier LLM call, parses its structured output using Zod schemas (`TrendIngestionSchema`) defaulting missing elements gracefully, sanitizes names (lower-casing, colons-to-dashes, and spaces-to-dashes), and batch upserts signals into the `trend_signals` table under unique `day_key` keys.
+* **Acceptance Criterion 2 (Time Decay & Retrieval):** When calculating content alignment strategies, the service enqueues active structured `trend_signals`, calculates a time-decay factor `getTrendPower(signal) = max(0, 1 - (hoursSinceIngested / timeSensitivityHours))`, weeds out expired signals, and ranks the active signals in descending order using the composite database index scan (`idx_trend_signals_niche_type_created`).
+* **Acceptance Criterion 3 (Smart Fallback & Telemetry):** During LLM provider outages, the pipeline executes a fail-safe historical cache routine querying recent signals from the last 72 hours, maps them to today's date with `stale: true` and `source: 'fallback'`, and records the operational status in structured telemetry logs (`niche`, `source`, `inserted`, `updated`, `total`).
 
 ---
 

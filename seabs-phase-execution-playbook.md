@@ -1664,12 +1664,15 @@ TASK: Create these files:
 
 14. FILE: lib/services/trends.service.ts
     Service layer that orchestrates AI trend analysis:
-    - runAnalysis(userId, accountId): aggregates metrics, checks usage budget, queries cached trends feed, calls generator, increments usage metrics, and caches output to Postgres database.
+    - runAnalysis(userId, accountId): aggregates metrics, checks usage budget, enqueues active structured signals from `trend_signals` table, weighs signals using time-decay calculations `getTrendPower(signal) = max(0, 1 - (hoursSinceIngested / timeSensitivityHours))`, filters expired signals, sorts them by decay power descending, formats active structured overlays, runs dynamic prompt analysis, and saves the output to the database.
     - getLatestAnalysis(userId, accountId): fetches the latest cached Trend Analysis.
-    - refreshGlobalTrendsFeed(): daily cron helper that queries cheap Gemini/OpenAI models to scout for trending topics/hashtags and updates `niche_trends_feed` table.
+    - refreshGlobalTrendsFeed(): daily cron helper that queries standard LLM models for structured JSON, validates it against `TrendIngestionSchema`, sanitizes unique names to merge consecutive dashes, and batch upserts signals into the `trend_signals` table under unique composite `day_key` keys. Integrates a 72-hour historical cache query fail-open routine and telemetry metrics logging.
 
 15. FILE: scripts/test-trends.ts
-    Evaluation test harness that validates Zod boundary schema constraints, heuristic fallbacks, and pure generator execution.
+    Evaluation test harness that validates Zod boundary schema constraints, heuristic fallbacks, daily upsert unique constraints, and dynamic freshness decay mathematics.
+
+16. FILE: scripts/verify-qa.ts
+    Programmatic QA verification test suite that queries Postgres information schema columns, composite index scans, and validates sanitization and Zod array fallbacks.
 
 REGISTER QUEUE HANDLERS:
 Update lib/queue/handlers.ts to register real handlers:
