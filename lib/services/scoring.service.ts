@@ -1,11 +1,13 @@
 import { db } from "@/lib/db";
-import { reels, reelScores, instagramAccounts } from "@/lib/db/schema";
+import { reels, reelScores, instagramAccounts, nicheTrendsFeed } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
+
 import {
   calculateHeuristicScore,
   PostScoreSchema,
+  computeTrendOverlapScore,
 } from "@/lib/ai/scoring-engine";
-import { buildScoringPrompt } from "@/lib/ai/prompt-builder";
+import { buildScoringPrompt, extractTopTrendingSounds } from "@/lib/ai/prompt-builder";
 import { callLLMWithFallback } from "@/lib/ai/llm-with-fallback";
 import { isAnyLlmProviderConfigured } from "@/lib/ai/model-router";
 import {
@@ -145,6 +147,7 @@ async function persistScore(
     viralityPotential: score.virality_potential,
     hook_checklist: score.hook_checklist,
     comment_sentiment: score.comment_sentiment,
+    trend_overlap_details: score.trend_overlap_details,
   };
 
   const values = {
@@ -206,8 +209,41 @@ async function runScoringPipeline(
     aiCallCap.allowed &&
     isAnyLlmProviderConfigured();
 
+  // Load trends feed once to be reused in both LLM and Heuristic branches
+  let trendsFeedRecord: typeof nicheTrendsFeed.$inferSelect | null = null;
+  try {
+    const [row] = await db
+      .select()
+      .from(nicheTrendsFeed)
+      .where(eq(nicheTrendsFeed.niche, account.niche || "tech"))
+      .limit(1);
+    if (row) {
+      trendsFeedRecord = row;
+    }
+  } catch (err) {
+    console.error("[scoring-service] Failed to fetch niche trends feed:", err);
+  }
+
   if (canUseLlm) {
     const { modelTier } = await getUserPlanContext(userId);
+
+    let nicheTrends: string | null = null;
+    let trendingSounds: string | null = null;
+    let trendOverlapHints: string | null = null;
+
+    if (trendsFeedRecord) {
+      nicheTrends = trendsFeedRecord.trendSignals;
+      const trendingSoundsList = extractTopTrendingSounds(nicheTrends);
+      if (trendingSoundsList.length > 0) {
+        trendingSounds = trendingSoundsList.map((s, i) => `${i + 1}. ${s}`).join("\n");
+      }
+      if (trendsFeedRecord.semanticTags && trendsFeedRecord.semanticTags.length > 0) {
+        const hintsList = computeTrendOverlapScore(reel.caption, trendsFeedRecord.semanticTags);
+        if (hintsList.length > 0) {
+          trendOverlapHints = hintsList.map(h => `- "${h.trend}" (Pre-computed overlap: ${h.score.toFixed(2)})`).join("\n");
+        }
+      }
+    }
 
     const prompt = buildScoringPrompt({
       platform: "instagram",
@@ -226,6 +262,12 @@ async function runScoringPipeline(
       followersCount: account.followersCount,
       avgEngagementRate: baselines.avgEngagementRate,
       avgSkipRate: baselines.avgSkipRate,
+      visualMotion: true,
+      textOverlaySeconds: 0.8,
+      avgPacingCutInterval: 2.3,
+      nicheTrends,
+      trendingSounds,
+      trendOverlapHints,
     });
 
     const fallbackResult = await callLLMWithFallback({
@@ -262,9 +304,12 @@ async function runScoringPipeline(
       saves_count: reel.savesCount || 0,
       skip_rate: reel.skipRate ? parseFloat(reel.skipRate.toString()) : undefined,
       posted_at: reel.timestamp,
+      caption: reel.caption,
     },
     baselines.avgEngagementRate,
-    account.followersCount
+    account.followersCount,
+    trendsFeedRecord ? [trendsFeedRecord] : undefined,
+    account.niche || "tech"
   );
 
   return {

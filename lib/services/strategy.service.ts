@@ -5,7 +5,7 @@ import { buildStrategyPrompt } from "@/lib/ai/prompt-builder";
 import { StrategyOutputSchema, type StrategyOutput } from "@/lib/ai/strategy-schema";
 import { callLLMWithFallback } from "@/lib/ai/llm-with-fallback";
 import { isAnyLlmProviderConfigured } from "@/lib/ai/model-router";
-import { computeTimeDecayFactor } from "@/lib/ai/scoring-engine";
+import { computeTimeDecayFactor, buildHeuristicStrategy, DIMENSION_KEYS } from "@/lib/ai/scoring-engine";
 import {
   checkUsageLimit,
   getUserPlanContext,
@@ -21,21 +21,7 @@ export class StrategyServiceError extends Error {
     super(message);
     this.name = "StrategyServiceError";
   }
-}
-
-const DIMENSION_KEYS = [
-  "hook",
-  "retention_metric",
-  "retention_proxy",
-  "cta",
-  "visual",
-  "audio",
-  "trend",
-  "caption",
-  "timing",
-] as const;
-
-function mapStrategyToContent(output: StrategyOutput, source: "ai" | "heuristic") {
+}function mapStrategyToContent(output: StrategyOutput, source: "ai" | "heuristic") {
   return {
     focus: output.content_pillars.map((p) => p.theme).join(", "),
     keyInsight: output.key_insight,
@@ -59,124 +45,6 @@ function mapStrategyToContent(output: StrategyOutput, source: "ai" | "heuristic"
     source,
   };
 }
-
-function buildHeuristicStrategy(
-  accountReels: Array<{
-    caption: string | null;
-    engagementRate: string | null;
-    viewsCount: number;
-    skipRate: string | null;
-    timestamp: Date;
-  }>,
-  scores: Array<{
-    hookScore: number | null;
-    skipRateScore: number | null;
-    retentionScore: number | null;
-    ctaScore: number | null;
-    visualScore: number | null;
-    audioScore: number | null;
-    trendScore: number | null;
-    captionScore: number | null;
-    timingScore: number | null;
-  }>
-): StrategyOutput {
-  const sorted = [...accountReels].sort((a, b) => {
-    const erA = a.engagementRate ? parseFloat(a.engagementRate) : 0;
-    const erB = b.engagementRate ? parseFloat(b.engagementRate) : 0;
-    return erB - erA;
-  });
-
-  const best = sorted[0];
-  const worst = sorted[sorted.length - 1] ?? best;
-  const avgEr =
-    sorted.reduce((sum, r) => sum + (r.engagementRate ? parseFloat(r.engagementRate) : 0), 0) /
-    Math.max(sorted.length, 1);
-
-  const dimAvgs = DIMENSION_KEYS.map((key) => {
-    const fieldMap: Record<(typeof DIMENSION_KEYS)[number], keyof (typeof scores)[0]> = {
-      hook: "hookScore",
-      retention_metric: "skipRateScore",
-      retention_proxy: "retentionScore",
-      cta: "ctaScore",
-      visual: "visualScore",
-      audio: "audioScore",
-      trend: "trendScore",
-      caption: "captionScore",
-      timing: "timingScore",
-    };
-    const field = fieldMap[key];
-    const values = scores.map((s) => s[field] ?? 0);
-    const avg = values.reduce((a, b) => a + b, 0) / Math.max(values.length, 1);
-    return { key, avg };
-  });
-
-  dimAvgs.sort((a, b) => b.avg - a.avg);
-  const strongest = dimAvgs[0] ?? { key: "hook", avg: 5 };
-  const weakest = dimAvgs[dimAvgs.length - 1] ?? { key: "hook", avg: 5 };
-
-  return {
-    summary: `Based on ${sorted.length} recent reels (avg ER ${avgEr.toFixed(1)}%), focus on ${strongest.key.replace("_", " ")} while improving ${weakest.key.replace("_", " ")}.`,
-    key_insight: best
-      ? `Your top reel (${(best.engagementRate ? parseFloat(best.engagementRate) : 0).toFixed(1)}% ER) outperformed the account average. Replicate its hook pattern and posting window.`
-      : "Publish consistently for 2 weeks to unlock data-driven strategy recommendations.",
-    content_pillars: [
-      {
-        theme: "High-performing formats",
-        percentage: 50,
-        rationale: `Double down on themes from your best reel: "${(best?.caption ?? "Educational tips").slice(0, 80)}..."`,
-      },
-      {
-        theme: "Retention optimization",
-        percentage: 30,
-        rationale: `Improve ${weakest.key.replace("_", " ")} — currently your weakest dimension at ${weakest.avg.toFixed(1)}/10.`,
-      },
-      {
-        theme: "Consistent cadence",
-        percentage: 20,
-        rationale: "Post 3x per week in your best-performing time windows.",
-      },
-    ],
-    content_calendar: [
-      {
-        day: "Monday",
-        time: "9:00 AM",
-        content_type: "Educational Tip",
-        topic: best?.caption?.slice(0, 60) || "Quick tip in your niche",
-        hook_suggestion: "Open with a bold claim in the first second",
-        caption_direction: "2-line caption + save CTA",
-        audio_suggestion: "Trending niche audio",
-        hashtags: ["#reels", "#tips"],
-        estimated_engagement: "high",
-        reasoning: "Mirrors your highest ER content pattern",
-      },
-      {
-        day: "Wednesday",
-        time: "12:00 PM",
-        content_type: "How-To",
-        topic: "Step-by-step walkthrough",
-        hook_suggestion: "Show the end result first, then explain how",
-        caption_direction: "Numbered steps in caption",
-        audio_suggestion: "Upbeat instrumental",
-        hashtags: ["#howto"],
-        estimated_engagement: "medium",
-        reasoning: "Mid-week educational content balances reach and saves",
-      },
-      {
-        day: "Friday",
-        time: "5:00 PM",
-        content_type: "Behind-the-Scenes",
-        topic: worst?.caption?.slice(0, 60) || "Personal story or BTS",
-        hook_suggestion: "Start mid-action — no static intro",
-        caption_direction: "Story-driven caption with question CTA",
-        audio_suggestion: "Chill lo-fi",
-        hashtags: ["#bts"],
-        estimated_engagement: "medium",
-        reasoning: "Reframe underperforming topics with stronger hooks",
-      },
-    ],
-  };
-}
-
 async function loadAccountReelsWithScores(accountId: string, since: Date) {
   const accountReels = await db
     .select()

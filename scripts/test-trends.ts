@@ -135,7 +135,7 @@ async function runTests() {
     
     const audioSig = signals.find(s => s.signalType === "audio");
     assert(audioSig !== undefined, "Trending audio signal exists in the database");
-    assert(audioSig?.dayKey.includes("sarcastic-laugh-track"), `Sanitize helper successfully parsed delimiter spacing (got ${audioSig?.dayKey})`);
+    assert(!!audioSig?.dayKey?.includes("sarcastic-laugh-track"), `Sanitize helper successfully parsed delimiter spacing (got ${audioSig?.dayKey})`);
     assert(audioSig?.signalData.surge_percentage === 155.2, "Signal JSONB data elements preserved accurately");
 
     console.log("  Running refresh again to test 24h deduplication...");

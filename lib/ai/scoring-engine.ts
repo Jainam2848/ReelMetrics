@@ -21,6 +21,7 @@
  */
 
 import { z } from "zod";
+import type { StrategyOutput } from "./strategy-schema";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -40,6 +41,7 @@ export interface PostMetricsInput {
   posted_at?: Date | string;   // For time-decay calculation
   video_length?: number;       // Optional video length in seconds
   views_momentum?: number;     // Optional view velocity ratio (recent_views / avg_views)
+  caption?: string | null;     // Optional post caption for semantic trend matching
 }
 
 export interface HeuristicDimension {
@@ -276,19 +278,196 @@ function scoreRetentionProxy(
 }
 
 /**
+ * Calculates the Visual Quality score using a weighted engagement density model.
+ *
+ * Multiplier constant calibrations:
+ * - Saves weight (3.0): High-intent action representing a viewer's intent to rewatch, which is a very strong proxy for visual appeal and educational/aesthetic value.
+ * - Reposts weight (2.5): Public grid/story endorsement, demonstrating that the user proudly associates with the video's visual style.
+ * - Comments weight (1.5): Action requiring cognitive effort, indicating that the visual composition provoked an active viewer response.
+ * - Likes weight (1.0): Passive appreciation representing standard, low-barrier viewer engagement.
+ * - Base offset (4.0): Ensures a standard quality floor so standard-performing content maps appropriately within the [1, 10] range.
+ * - Density multiplier (40.0): Scaling factor that converts the weighted engagement rate into the heuristic [1, 10] range.
+ */
+export function scoreVisualQuality(
+  savesCount: number,
+  repostsCount: number,
+  commentsCount: number,
+  likesCount: number,
+  viewsCount: number
+): number {
+  if (viewsCount === 0) return 5; // Baseline default for unviewed videos
+
+  const saves = safeNum(savesCount);
+  const reposts = safeNum(repostsCount);
+  const comments = safeNum(commentsCount);
+  const likes = safeNum(likesCount);
+  const views = safeNum(viewsCount);
+
+  if (saves + reposts + comments + likes === 0) {
+    return 1;
+  }
+
+  const visual_weighted = (saves * 3 + reposts * 2.5 + comments * 1.5 + likes * 1) / views;
+  return clampScore(4 + visual_weighted * 40);
+}
+
+/**
+ * Proximity helper to check if a post's creation time is within 7 days of a trending audio signal in the trends feed.
+ */
+export function isAudioTrending(
+  postCreatedAt: Date | string | undefined | null,
+  nicheTrendsFeed: Array<{ niche: string; trendSignals: string; updatedAt: Date | string }> | undefined | null,
+  niches: string[] | string | undefined | null
+): boolean {
+  if (!postCreatedAt || !nicheTrendsFeed || !niches) {
+    return false;
+  }
+
+  const postDate = typeof postCreatedAt === "string" ? new Date(postCreatedAt) : postCreatedAt;
+  if (isNaN(postDate.getTime())) {
+    return false;
+  }
+
+  const nichesArray = Array.isArray(niches)
+    ? niches.map((n) => n.toLowerCase())
+    : [niches.toLowerCase()];
+
+  for (const entry of nicheTrendsFeed) {
+    if (!nichesArray.includes(entry.niche.toLowerCase())) {
+      continue;
+    }
+
+    const signalsText = entry.trendSignals || "";
+    const hasAudioSignal =
+      signalsText.toLowerCase().includes("audio") ||
+      signalsText.toLowerCase().includes("sound") ||
+      signalsText.toLowerCase().includes("-- audios --");
+
+    if (!hasAudioSignal) {
+      continue;
+    }
+
+    const trendDate = typeof entry.updatedAt === "string" ? new Date(entry.updatedAt) : entry.updatedAt;
+    if (isNaN(trendDate.getTime())) {
+      continue;
+    }
+
+    const diffDays = Math.abs(postDate.getTime() - trendDate.getTime()) / (1000 * 60 * 60 * 24);
+    if (diffDays <= 7) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Calculates the Audio Strategy score using a share rate proxy and a trending audio bonus.
+ *
+ * Multiplier constant calibrations:
+ * - Base offset (4.0): Baseline strategy score assuming standard, non-trending audio.
+ * - Share rate multiplier (200.0): Scaler to convert share rate to the [1, 10] range, as audio/sounds are primarily distributed organically through direct sharing.
+ * - Trending audio bonus (+1.5): Rewarding factor for utilizing audio aligned with niche trends in a timely manner (within a 7-day window).
+ */
+export function scoreAudioStrategy(
+  sharesCount: number,
+  viewsCount: number,
+  postCreatedAt?: Date | string,
+  nicheTrendsFeed?: Array<{ niche: string; trendSignals: string; updatedAt: Date | string }>,
+  niches?: string[] | string
+): number {
+  const views = safeNum(viewsCount);
+  const shares = safeNum(sharesCount);
+  const shareRate = views > 0 ? shares / views : 0;
+
+  let rawScore = 4 + shareRate * 200;
+
+  if (postCreatedAt && nicheTrendsFeed && niches) {
+    if (isAudioTrending(postCreatedAt, nicheTrendsFeed, niches)) {
+      rawScore += 1.5;
+    }
+  }
+
+  return clampScore(rawScore);
+}
+
+/**
  * Score trend alignment by comparing post ER vs account average.
  * Posts significantly outperforming baseline score higher on trend alignment.
+ *
+ * Multiplier constant calibrations:
+ * - Outperformance ratio (2.0): A ratio >= 2.0 indicates the post ER is more than double the average, representing exceptional trend alignment, deserving a maximum score of 10.
+ * - Outperformance ratio (1.5): An ER >= 1.5x average is a strong indicator of riding a trend, yielding a 7-9 score.
+ * - Average performance ratio (1.0): An ER matching the average yields a mid-scale score of 5, scaling up linearly to 7.
+ * - Below-average performance ratio (0.5): An ER between 0.5x and 1.0x yields a score of 3-5.
+ * - Zero views baseline (3.0): Neutral trend score given to unviewed posts, as no trend performance can be measured.
  */
-function scoreTrendAlignment(
+export interface TrendOverlapHint {
+  trend: string;
+  score: number;
+}
+
+export function computeTrendOverlapScore(
+  postCaption: string | null | undefined,
+  semanticTags: string[] | null | undefined
+): TrendOverlapHint[] {
+  if (!postCaption || !semanticTags || semanticTags.length === 0) {
+    return [];
+  }
+
+  // Tokenise caption & hashtags (lowercase, strip punctuation)
+  const captionTokens = new Set(
+    postCaption
+      .toLowerCase()
+      .replace(/[^\w\s]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean)
+  );
+
+  return semanticTags.map(tag => {
+    const tagTokens = tag
+      .toLowerCase()
+      .replace(/[^\w\s]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+
+    let overlapCount = 0;
+    tagTokens.forEach(t => {
+      if (captionTokens.has(t)) {
+        overlapCount++;
+      }
+    });
+
+    const score = tagTokens.length > 0 ? overlapCount / tagTokens.length : 0;
+    return {
+      trend: tag,
+      score: parseFloat(score.toFixed(2)),
+    };
+  });
+}
+
+export function scoreTrendAlignment(
   totalEngagements: number,
   viewsCount: number,
-  avgEngagementRate: number
+  avgEngagementRate: number,
+  postCaption?: string | null,
+  semanticTags?: string[] | null
 ): number {
   if (viewsCount === 0) return 3;
 
   const postER = (totalEngagements / viewsCount) * 100;
   const safeAvgER = avgEngagementRate > 0 ? avgEngagementRate : 2.0;
-  const ratio = postER / safeAvgER;
+  let ratio = postER / safeAvgER;
+
+  // Add trend_alignment_bonus = max(overlap_hints) * 2 to ratio
+  if (postCaption && semanticTags && semanticTags.length > 0) {
+    const overlapHints = computeTrendOverlapScore(postCaption, semanticTags);
+    if (overlapHints.length > 0) {
+      const maxOverlap = Math.max(...overlapHints.map(h => h.score));
+      const trend_alignment_bonus = maxOverlap * 2;
+      ratio += trend_alignment_bonus;
+    }
+  }
 
   // More aggressive mapping for trend (outperformance is stronger signal)
   if (ratio >= 2.0) return 10;
@@ -469,7 +648,9 @@ export function calculateHeuristicScore(
   platform: Platform,
   postMetrics: PostMetricsInput,
   avgEngagementRate: number,
-  followerCount?: number
+  followerCount?: number,
+  nicheTrendsFeed?: Array<{ niche: string; trendSignals: string; semanticTags?: string[] | null; updatedAt: Date | string }>,
+  niches?: string[] | string
 ): HeuristicScoreResult {
   // ── Input Validation ───────────────────────────────────────────────────
   const viewsCount = safeNum(postMetrics.views_count);
@@ -481,6 +662,7 @@ export function calculateHeuristicScore(
   const safeAvgER = safeNum(avgEngagementRate, 2.0) || 2.0;
 
   const totalEngagements = likesCount + commentsCount + sharesCount + savesCount + publicReposts;
+  const shareRate = viewsCount > 0 ? sharesCount / viewsCount : 0;
 
   // ── 1. Retention Metric Score (platform-specific piecewise function with follower tier scaling) ──
   let retentionMetricScore: number;
@@ -520,16 +702,30 @@ export function calculateHeuristicScore(
   const ctaScore = scoreCtaEffectiveness(savesCount, sharesCount, publicReposts, viewsCount);
 
   // ── 5. Visual Quality ─────────────────────────────────────────────────
-  const visualScore = viewsCount > 0
-    ? clampScore(4 + (totalEngagements / viewsCount) * 30)
-    : 5;
+  const visualScore = scoreVisualQuality(savesCount, publicReposts, commentsCount, likesCount, viewsCount);
 
   // ── 6. Audio Strategy ─────────────────────────────────────────────────
-  const shareRate = viewsCount > 0 ? sharesCount / viewsCount : 0;
-  const audioScore = clampScore(4 + shareRate * 200);
+  const audioScore = scoreAudioStrategy(sharesCount, viewsCount, postMetrics.posted_at, nicheTrendsFeed, niches);
 
   // ── 7. Trend Alignment ────────────────────────────────────────────────
-  const trendScore = scoreTrendAlignment(totalEngagements, viewsCount, safeAvgER);
+  let matchedSemanticTags: string[] | null = null;
+  if (nicheTrendsFeed && niches) {
+    const nicheList = Array.isArray(niches) ? niches : [niches];
+    for (const n of nicheList) {
+      const feed = nicheTrendsFeed.find(f => f.niche === n);
+      if (feed && feed.semanticTags) {
+        matchedSemanticTags = feed.semanticTags;
+        break;
+      }
+    }
+  }
+  const trendScore = scoreTrendAlignment(
+    totalEngagements,
+    viewsCount,
+    safeAvgER,
+    postMetrics.caption,
+    matchedSemanticTags
+  );
 
   // ── 8. Caption Quality ────────────────────────────────────────────────
   const captionScore = scoreCaptionQuality(likesCount, commentsCount);
@@ -798,4 +994,145 @@ export const PostScoreSchema = z.object({
     }),
     interpretation: z.string(),
   }).optional(),
+  trend_overlap_details: z.array(
+    z.object({
+      trend_name: z.string(),
+      overlap_score: z.number().min(0).max(1),
+      overlapping_aspect: z.enum(["caption", "format", "hashtag", "none"]),
+      rationale: z.string(),
+    })
+  ).optional(),
 });
+
+export type PostScore = z.infer<typeof PostScoreSchema>;
+
+export interface Post {
+  caption: string | null;
+  engagementRate: string | null;
+  viewsCount: number;
+  skipRate: string | null;
+  timestamp: Date;
+}
+
+export const DIMENSION_KEYS = [
+  "hook",
+  "retention_metric",
+  "retention_proxy",
+  "cta",
+  "visual",
+  "audio",
+  "trend",
+  "caption",
+  "timing",
+] as const;
+
+export function buildHeuristicStrategy(
+  accountReels: Post[],
+  scores: Array<{
+    hookScore: number | null;
+    skipRateScore: number | null;
+    retentionScore: number | null;
+    ctaScore: number | null;
+    visualScore: number | null;
+    audioScore: number | null;
+    trendScore: number | null;
+    captionScore: number | null;
+    timingScore: number | null;
+  }>
+): StrategyOutput {
+  const sorted = [...accountReels].sort((a, b) => {
+    const erA = a.engagementRate ? parseFloat(a.engagementRate) : 0;
+    const erB = b.engagementRate ? parseFloat(b.engagementRate) : 0;
+    return erB - erA;
+  });
+
+  const best = sorted[0];
+  const worst = sorted[sorted.length - 1] ?? best;
+  const avgEr =
+    sorted.reduce((sum, r) => sum + (r.engagementRate ? parseFloat(r.engagementRate) : 0), 0) /
+    Math.max(sorted.length, 1);
+
+  const dimAvgs = DIMENSION_KEYS.map((key) => {
+    const fieldMap: Record<(typeof DIMENSION_KEYS)[number], keyof (typeof scores)[0]> = {
+      hook: "hookScore",
+      retention_metric: "skipRateScore",
+      retention_proxy: "retentionScore",
+      cta: "ctaScore",
+      visual: "visualScore",
+      audio: "audioScore",
+      trend: "trendScore",
+      caption: "captionScore",
+      timing: "timingScore",
+    };
+    const field = fieldMap[key];
+    const values = scores.map((s) => s[field] ?? 0);
+    const avg = values.reduce((a, b) => a + b, 0) / Math.max(values.length, 1);
+    return { key, avg };
+  });
+
+  dimAvgs.sort((a, b) => b.avg - a.avg);
+  const strongest = dimAvgs[0] ?? { key: "hook", avg: 5 };
+  const weakest = dimAvgs[dimAvgs.length - 1] ?? { key: "hook", avg: 5 };
+
+  return {
+    summary: `Based on ${sorted.length} recent reels (avg ER ${avgEr.toFixed(1)}%), focus on ${strongest.key.replace("_", " ")} while improving ${weakest.key.replace("_", " ")}.`,
+    key_insight: best
+      ? `Your top reel (${(best.engagementRate ? parseFloat(best.engagementRate) : 0).toFixed(1)}% ER) outperformed the account average. Replicate its hook pattern and posting window.`
+      : "Publish consistently for 2 weeks to unlock data-driven strategy recommendations.",
+    content_pillars: [
+      {
+        theme: "High-performing formats",
+        percentage: 50,
+        rationale: `Double down on themes from your best reel: "${(best?.caption ?? "Educational tips").slice(0, 80)}..."`,
+      },
+      {
+        theme: "Retention optimization",
+        percentage: 30,
+        rationale: `Improve ${weakest.key.replace("_", " ")} — currently your weakest dimension at ${weakest.avg.toFixed(1)}/10.`,
+      },
+      {
+        theme: "Consistent cadence",
+        percentage: 20,
+        rationale: "Post 3x per week in your best-performing time windows.",
+      },
+    ],
+    content_calendar: [
+      {
+        day: "Monday",
+        time: "9:00 AM",
+        content_type: "Educational Tip",
+        topic: best?.caption?.slice(0, 60) || "Quick tip in your niche",
+        hook_suggestion: "Open with a bold claim in the first second",
+        caption_direction: "2-line caption + save CTA",
+        audio_suggestion: "Trending niche audio",
+        hashtags: ["#reels", "#tips"],
+        estimated_engagement: "high",
+        reasoning: "Mirrors your highest ER content pattern",
+      },
+      {
+        day: "Wednesday",
+        time: "12:00 PM",
+        content_type: "How-To",
+        topic: "Step-by-step walkthrough",
+        hook_suggestion: "Show the end result first, then explain how",
+        caption_direction: "Numbered steps in caption",
+        audio_suggestion: "Upbeat instrumental",
+        hashtags: ["#howto"],
+        estimated_engagement: "medium",
+        reasoning: "Mid-week educational content balances reach and saves",
+      },
+      {
+        day: "Friday",
+        time: "5:00 PM",
+        content_type: "Behind-the-Scenes",
+        topic: worst?.caption?.slice(0, 60) || "Personal story or BTS",
+        hook_suggestion: "Start mid-action — no static intro",
+        caption_direction: "Story-driven caption with question CTA",
+        audio_suggestion: "Chill lo-fi",
+        hashtags: ["#bts"],
+        estimated_engagement: "medium",
+        reasoning: "Reframe underperforming topics with stronger hooks",
+      },
+    ],
+  };
+}

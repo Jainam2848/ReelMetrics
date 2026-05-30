@@ -23,6 +23,10 @@ import {
   truncateCaption,
   type PostMetricsInput,
   type Platform,
+  scoreVisualQuality,
+  scoreAudioStrategy,
+  scoreTrendAlignment,
+  isAudioTrending,
 } from "../lib/ai/scoring-engine";
 
 // ── Test Infrastructure ────────────────────────────────────────────────────
@@ -345,6 +349,45 @@ const resOffHour = calculateHeuristicScore("instagram", {
 
 assert(resPeakHour.dimensions.timing.score > resOffHour.dimensions.timing.score,
   "Peak hours post gets timing score boost over graveyard shift post");
+
+// Test 11: Unit Tests for Exported Pure Sub-formulas
+console.log("\n🧪 Test: Exported Pure Sub-formulas");
+
+// A: scoreVisualQuality
+const visualScore1 = scoreVisualQuality(10, 20, 30, 100, 1000);
+assert(visualScore1 === 10, `scoreVisualQuality high engagement: expected 10, got ${visualScore1}`);
+const visualScore2 = scoreVisualQuality(0, 0, 0, 1, 1000);
+assert(visualScore2 === 4, `scoreVisualQuality baseline likes: expected 4, got ${visualScore2}`);
+const visualScoreZeroViews = scoreVisualQuality(0, 0, 0, 0, 0);
+assert(visualScoreZeroViews === 5, `scoreVisualQuality zero views defaults to 5: got ${visualScoreZeroViews}`);
+
+// B: isAudioTrending
+const postDate = "2026-05-30T12:00:00Z";
+const activeTrendFeed = [
+  { niche: "tech", trendSignals: "-- AUDIOS --\n- Synth-Beats", updatedAt: "2026-05-28T12:00:00Z" }
+];
+const staleTrendFeed = [
+  { niche: "tech", trendSignals: "-- AUDIOS --\n- Synth-Beats", updatedAt: "2026-05-20T12:00:00Z" }
+];
+assert(isAudioTrending(postDate, activeTrendFeed, "tech") === true, "isAudioTrending active trend within 7 days: expected true");
+assert(isAudioTrending(postDate, staleTrendFeed, "tech") === false, "isAudioTrending stale trend > 7 days: expected false");
+assert(isAudioTrending(postDate, activeTrendFeed, "fitness") === false, "isAudioTrending different niche: expected false");
+assert(isAudioTrending(undefined, activeTrendFeed, "tech") === false, "isAudioTrending missing date: expected false");
+
+// C: scoreAudioStrategy
+const audioScoreBase = scoreAudioStrategy(10, 1000);
+assert(audioScoreBase === 6, `scoreAudioStrategy base without trend: expected 6, got ${audioScoreBase}`);
+const audioScoreTrending = scoreAudioStrategy(10, 1000, postDate, activeTrendFeed, "tech");
+assert(audioScoreTrending === 8, `scoreAudioStrategy with trend (+1.5): expected 8 (6 + 1.5 = 7.5 rounded to 8), got ${audioScoreTrending}`);
+const audioScoreStale = scoreAudioStrategy(10, 1000, postDate, staleTrendFeed, "tech");
+assert(audioScoreStale === 6, `scoreAudioStrategy with stale trend: expected 6, got ${audioScoreStale}`);
+
+// D: scoreTrendAlignment
+const trendScoreHigh = scoreTrendAlignment(50, 1000, 2.0); // ER = 5.0%, avgER = 2.0% -> ratio = 2.5
+assert(trendScoreHigh === 10, `scoreTrendAlignment outperforming (ratio 2.5): expected 10, got ${trendScoreHigh}`);
+const trendScoreAvg = scoreTrendAlignment(20, 1000, 2.0); // ER = 2.0%, avgER = 2.0% -> ratio = 1.0
+assert(trendScoreAvg === 5, `scoreTrendAlignment average (ratio 1.0): expected 5, got ${trendScoreAvg}`);
+
 
 // Test 4-9: Scoring Scenarios
 for (const scenario of SCENARIOS) {

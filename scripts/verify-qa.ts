@@ -46,23 +46,26 @@ async function runQA() {
   // Step 1: Composite Index for Trend Retrieval
   console.log("--- Step 1: Composite Index for Trend Retrieval ---");
   try {
-    const indexQuery = await db.execute(sql`
+    const indexQuery = (await db.execute(sql`
       SELECT indexname, indexdef
       FROM pg_indexes
       WHERE tablename = 'trend_signals'
         AND indexname = 'idx_trend_signals_niche_type_created';
-    `);
+    `)) as any[];
     
     if (indexQuery.length > 0) {
-      const indexName = indexQuery[0].indexname;
-      const indexDef = indexQuery[0].indexdef;
-      console.log(`  ✅ [PASS] Index '${indexName}' exists in database.`);
-      console.log(`         Definition: ${indexDef}`);
-      if (indexDef.toLowerCase().includes("desc")) {
-        console.log("         - Verified DESC order on created_at column.");
-        step1Passed = true;
-      } else {
-        console.warn("         - [WARNING] created_at DESC order not explicitly detected in index definition.");
+      const firstRow = indexQuery[0];
+      if (firstRow) {
+        const indexName = firstRow.indexname;
+        const indexDef = firstRow.indexdef as string;
+        console.log(`  ✅ [PASS] Index '${indexName}' exists in database.`);
+        console.log(`         Definition: ${indexDef}`);
+        if (indexDef.toLowerCase().includes("desc")) {
+          console.log("         - Verified DESC order on created_at column.");
+          step1Passed = true;
+        } else {
+          console.warn("         - [WARNING] created_at DESC order not explicitly detected in index definition.");
+        }
       }
     } else {
       console.log("  ❌ [FAIL] Index idx_trend_signals_niche_type_created was not found in database.");
@@ -104,35 +107,37 @@ async function runQA() {
   // Step 3: Platform Column Presence and Default
   console.log("\n--- Step 3: Platform Column Presence and Default ---");
   try {
-    const platformQuery = await db.execute(sql`
+    const platformQuery = (await db.execute(sql`
       SELECT column_name, data_type, is_nullable, column_default
       FROM information_schema.columns
       WHERE table_name = 'trend_signals' AND column_name = 'platform';
-    `);
+    `)) as any[];
 
     if (platformQuery.length > 0) {
       const col = platformQuery[0];
-      console.log(`  ✅ [PASS] Column 'platform' exists in 'trend_signals' table.`);
-      console.log(`         Type: ${col.data_type}`);
-      console.log(`         Default: ${col.column_default}`);
-      console.log(`         Is Nullable: ${col.is_nullable}`);
+      if (col) {
+        console.log(`  ✅ [PASS] Column 'platform' exists in 'trend_signals' table.`);
+        console.log(`         Type: ${col.data_type}`);
+        console.log(`         Default: ${col.column_default}`);
+        console.log(`         Is Nullable: ${col.is_nullable}`);
+      }
       
-      const dayKeyQuery = await db.execute(sql`
+      const dayKeyQuery = (await db.execute(sql`
         SELECT day_key FROM trend_signals ORDER BY created_at DESC LIMIT 1;
-      `);
+      `)) as any[];
       
       // If table is currently empty, seed a test row to verify default column behavior and day_key mapping
-      let sampleDayKey = dayKeyQuery[0]?.day_key;
+      let sampleDayKey: string | undefined = dayKeyQuery[0]?.day_key as string | undefined;
       if (!sampleDayKey) {
         console.log("         - Seeding temporary row to test day_key platform mapping...");
         await db.execute(sql`
           INSERT INTO trend_signals (niche, platform, signal_type, day_key, signal_data)
           VALUES ('tech', 'instagram', 'audio', 'tech:instagram:audio:qa-verification-beats:2026-05-30', '{"name": "verification"}');
         `);
-        const newDayKeyQuery = await db.execute(sql`
+        const newDayKeyQuery = (await db.execute(sql`
           SELECT day_key FROM trend_signals WHERE day_key LIKE '%qa-verification%';
-        `);
-        sampleDayKey = newDayKeyQuery[0]?.day_key;
+        `)) as any[];
+        sampleDayKey = newDayKeyQuery[0]?.day_key as string | undefined;
         // Clean up immediately
         await db.execute(sql`
           DELETE FROM trend_signals WHERE day_key LIKE '%qa-verification%';

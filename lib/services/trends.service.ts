@@ -7,6 +7,7 @@ import { callLLMWithFallback } from "@/lib/ai/llm-with-fallback";
 import { z } from "zod";
 import { type ErrorCode } from "@/lib/api/response";
 import { TrendIngestionSchema, type TrendIngestionOutput } from "@/lib/validators/trend-schema";
+import { buildSemanticTags } from "@/lib/ai/prompt-builder";
 
 export class TrendServiceError extends Error {
   constructor(
@@ -17,6 +18,7 @@ export class TrendServiceError extends Error {
     this.name = "TrendServiceError";
   }
 }
+
 
 export class TrendService {
   /**
@@ -296,17 +298,22 @@ Return ONLY a valid JSON object matching this schema:
           }
         }
 
+        const fallbackObjForTags = !trendData ? getHeuristicTrendFallback(niche) : null;
+        const semanticTags = buildSemanticTags(trendData, fallbackObjForTags);
+
         await db
           .insert(nicheTrendsFeed)
           .values({
             niche,
             trendSignals: legacyText,
+            semanticTags,
             updatedAt: new Date(),
           })
           .onConflictDoUpdate({
             target: nicheTrendsFeed.niche,
             set: {
               trendSignals: legacyText,
+              semanticTags,
               updatedAt: new Date(),
             },
           });

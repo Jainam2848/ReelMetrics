@@ -293,6 +293,7 @@ export const nicheTrendsFeed = pgTable('niche_trends_feed', {
   id: uuid('id').primaryKey().defaultRandom(),
   niche: text('niche').notNull().unique(),
   trendSignals: text('trend_signals').notNull(),
+  semanticTags: text('semantic_tags').array(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
