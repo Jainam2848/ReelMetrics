@@ -473,3 +473,12 @@ export const auditLogRelations = relations(auditLog, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// 15. waitlist
+export const waitlist = pgTable('waitlist', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  email: text('email').notNull().unique(),
+  instagramHandle: text('instagram_handle'),
+  followersCount: text('followers_count'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});

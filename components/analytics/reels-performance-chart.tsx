@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { motion, useMotionValue, useSpring } from "framer-motion";
+import { m, useMotionValue, useSpring } from "framer-motion";
 import {
   ResponsiveContainer,
   LineChart,
@@ -225,7 +225,7 @@ export function ReelsPerformanceChart({ data }: ReelsPerformanceChartProps) {
 
         {/* Custom Interactive Spring Glassmorphic Tooltip */}
         {tooltipActive && hoveredData && (
-          <motion.div
+          <m.div
             style={{
               position: "absolute",
               left: 0,
@@ -249,7 +249,7 @@ export function ReelsPerformanceChart({ data }: ReelsPerformanceChartProps) {
                 {compareLabel}: <strong className="text-white">{formatValue(hoveredData[compareMetric])}</strong>
               </span>
             )}
-          </motion.div>
+          </m.div>
         )}
       </div>
     </div>

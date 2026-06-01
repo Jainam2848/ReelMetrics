@@ -60,10 +60,12 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
     
+    /* 
     if (isRoot && user) {
       const dashboardUrl = new URL("/dashboard", request.url);
       return NextResponse.redirect(dashboardUrl);
     }
+    */
   }
 
   // 4. Inject HTTP Security Headers (spec §11.9)
