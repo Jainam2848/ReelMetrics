@@ -30,6 +30,7 @@ export const metadata: Metadata = {
 
 import { Providers } from "@/app/providers";
 import { NeuralBackground } from "@/components/visual/NeuralBackground";
+import Script from "next/script";
 
 export default function RootLayout({
   children,
@@ -48,6 +49,19 @@ export default function RootLayout({
         className="min-h-full flex flex-col bg-[#08090D] text-foreground relative"
         style={{ backgroundColor: "#08090D" }}
       >
+        {/* Google Analytics (gtag.js) */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-RY10KD8ZC6"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-RY10KD8ZC6');
+          `}
+        </Script>
         <NeuralBackground />
         <Providers>
           {children}
