@@ -19,7 +19,7 @@ const TESTIMONIALS: Testimonial[] = [
     rating: 5,
     quote: (
       <>
-        Our 3-second hook skip rate was killing our organic reach. After running Trendoraa's diagnostics, we{" "}
+        Our 3-second hook skip rate was killing our organic reach. After running Trendoraa&apos;s diagnostics, we{" "}
         <strong className="text-[#4F46E5] font-bold">went from 8% to 31% retention</strong> in under a week. Our views exploded!
       </>
     ),
@@ -43,7 +43,7 @@ const TESTIMONIALS: Testimonial[] = [
     rating: 5,
     quote: (
       <>
-        As a power creator, guessing what hook works is a recipe for creative burnout. Trendoraa's{" "}
+        As a power creator, guessing what hook works is a recipe for creative burnout. Trendoraa&apos;s{" "}
         <strong className="text-[#4F46E5] font-bold">94% hook score accuracy</strong> gives us the exact formula before posting. We scaled to 2M followers.
       </>
     ),

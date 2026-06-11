@@ -154,15 +154,7 @@ export default function StrategyMatrix3D() {
     isRunningRef.current = true;
 
     const animate = () => {
-      // ── Tab Visibility Guard ──────────────────────────────────────────────
-      // Pause the loop entirely when the user switches to another browser tab.
-      // This prevents burning CPU/GPU cycles for invisible pixels, which would
-      // otherwise throttle other tabs and drain laptop battery.
-      if (document.hidden) {
-        // Re-schedule to check again on next frame (browser throttles hidden tabs)
-        requestRef.current = requestAnimationFrame(animate);
-        return;
-      }
+      if (!isRunningRef.current) return;
 
       const currentTime = performance.now();
       const delta = Math.min(0.1, (currentTime - lastTime) / 1000);
@@ -272,7 +264,24 @@ export default function StrategyMatrix3D() {
       renderer.setSize(w, h);
     };
 
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        isRunningRef.current = false;
+        if (requestRef.current) {
+          cancelAnimationFrame(requestRef.current);
+          requestRef.current = null;
+        }
+      } else {
+        if (!isRunningRef.current) {
+          isRunningRef.current = true;
+          lastTime = performance.now();
+          requestRef.current = requestAnimationFrame(animate);
+        }
+      }
+    };
+
     window.addEventListener("resize", handleResize);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     // Initial loop execution
     requestRef.current = requestAnimationFrame(animate);
@@ -283,6 +292,7 @@ export default function StrategyMatrix3D() {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("resize", handleResize);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
 
       // Clean up DOM
       if (container.contains(renderer.domElement)) {

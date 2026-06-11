@@ -4,12 +4,66 @@ import React, { useRef, useMemo, useEffect, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
-interface Particle {
-  x: number;
-  y: number;
-  z: number;
-  size: number;
-  opacity: number;
+const particleCount = 40;
+const maxLines = 6;
+
+// Pre-allocated typed arrays for lines to enforce zero-allocation rendering loops
+const LINE_POSITIONS_BUFFER = new Float32Array(maxLines * 2 * 3);
+const LINE_COLORS_BUFFER = new Float32Array(maxLines * 2 * 3);
+
+// Particles data structures defined globally to avoid ref accesses and impure calls during render
+const PARTICLES_DATA: Particle[] = [];
+const VELOCITIES_DATA: { x: number; y: number }[] = [];
+
+function ensureParticlesInitialized() {
+  if (PARTICLES_DATA.length > 0) return;
+  const cols = 8;
+  const rows = 5;
+  const cellWidth = 20 / cols; // Spanning X bounds roughly [-10, 10]
+  const cellHeight = 12 / rows; // Spanning Y bounds roughly [-6, 6]
+
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      // Center cell coordinate
+      const centerX = -10 + c * cellWidth + cellWidth / 2;
+      const centerY = -6 + r * cellHeight + cellHeight / 2;
+
+      // ±15% Jitter bounds from the grid center
+      const jitterX = (Math.random() - 0.5) * cellWidth * 0.3;
+      const jitterY = (Math.random() - 0.5) * cellHeight * 0.3;
+
+      const x = centerX + jitterX;
+      const y = centerY + jitterY;
+
+      const index = c * rows + r;
+      let z = 0;
+      let opacity = 0.25;
+      let size = 1.5;
+
+      // z-depth groups for dynamic parallax layering
+      if (index < 14) {
+        z = -6; // Far particles
+        opacity = 0.15;
+        size = 1.0;
+      } else if (index < 30) {
+        z = -3; // Mid particles
+        opacity = 0.25;
+        size = 1.5;
+      } else {
+        z = 0; // Near particles
+        opacity = 0.35;
+        size = 2.0;
+      }
+
+      PARTICLES_DATA.push({ x, y, z, size, opacity });
+
+      // Muted slow drift velocities (max 0.008 units/frame)
+      VELOCITIES_DATA.push({
+        x: (Math.random() - 0.5) * 0.004,
+        y: (Math.random() - 0.5) * 0.004,
+      });
+    }
+  }
 }
 
 function SceneContent({ isVisibleRef }: { isVisibleRef: React.RefObject<boolean> }) {
@@ -20,6 +74,20 @@ function SceneContent({ isVisibleRef }: { isVisibleRef: React.RefObject<boolean>
   const mouseRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0 });
 
   useEffect(() => {
+    ensureParticlesInitialized();
+
+    // Apply colors to particles on mount
+    if (instancedMeshRef.current) {
+      const baseColor = new THREE.Color("#6366F1");
+      for (let i = 0; i < particleCount; i++) {
+        const finalColor = baseColor.clone().multiplyScalar(PARTICLES_DATA[i]!.opacity);
+        instancedMeshRef.current.setColorAt(i, finalColor);
+      }
+      if (instancedMeshRef.current.instanceColor) {
+        instancedMeshRef.current.instanceColor.needsUpdate = true;
+      }
+    }
+
     const handleMouseMove = (e: MouseEvent) => {
       mouseRef.current.targetX = (e.clientX / window.innerWidth) * 2 - 1;
       mouseRef.current.targetY = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -28,71 +96,11 @@ function SceneContent({ isVisibleRef }: { isVisibleRef: React.RefObject<boolean>
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  const particleCount = 40;
-
-  // 1. Grid positions & z-depth scaling groups
-  const [particles, velocities] = useMemo(() => {
-    const parts: Particle[] = [];
-    const vels: { x: number; y: number }[] = [];
-
-    const cols = 8;
-    const rows = 5;
-    const cellWidth = 20 / cols; // Spanning X bounds roughly [-10, 10]
-    const cellHeight = 12 / rows; // Spanning Y bounds roughly [-6, 6]
-
-    for (let c = 0; c < cols; c++) {
-      for (let r = 0; r < rows; r++) {
-        // Center cell coordinate
-        const centerX = -10 + c * cellWidth + cellWidth / 2;
-        const centerY = -6 + r * cellHeight + cellHeight / 2;
-
-        // ±15% Jitter bounds from the grid center
-        const jitterX = (Math.random() - 0.5) * cellWidth * 0.3;
-        const jitterY = (Math.random() - 0.5) * cellHeight * 0.3;
-
-        const x = centerX + jitterX;
-        const y = centerY + jitterY;
-
-        const index = c * rows + r;
-        let z = 0;
-        let opacity = 0.25;
-        let size = 1.5;
-
-        // z-depth groups for dynamic parallax layering
-        if (index < 14) {
-          z = -6; // Far particles
-          opacity = 0.15;
-          size = 1.0;
-        } else if (index < 30) {
-          z = -3; // Mid particles
-          opacity = 0.25;
-          size = 1.5;
-        } else {
-          z = 0; // Near particles
-          opacity = 0.35;
-          size = 2.0;
-        }
-
-        parts.push({ x, y, z, size, opacity });
-
-        // Muted slow drift velocities (max 0.008 units/frame)
-        vels.push({
-          x: (Math.random() - 0.5) * 0.004,
-          y: (Math.random() - 0.5) * 0.004,
-        });
-      }
-    }
-    return [parts, vels] as [Particle[], { x: number; y: number }[]];
-  }, []);
-
-  // 2. Pre-allocated typed arrays for lines to enforce zero-allocation rendering loops
-  const maxLines = 6;
-  const linePositions = useMemo(() => new Float32Array(maxLines * 2 * 3), []);
-  const lineColors = useMemo(() => new Float32Array(maxLines * 2 * 3), []);
-
   useFrame((state) => {
     // Fully bypass frames if user tab is out of focus (observability limits)
     if (!isVisibleRef.current) return;
+
+    if (PARTICLES_DATA.length === 0) return;
 
     const { viewport, camera } = state;
 
@@ -117,8 +125,8 @@ function SceneContent({ isVisibleRef }: { isVisibleRef: React.RefObject<boolean>
 
     // Drift particles, perform boundary soft reversal, and populate instanced matrices
     for (let i = 0; i < particleCount; i++) {
-      const p = particles[i]!;
-      const v = velocities[i]!;
+      const p = PARTICLES_DATA[i]!;
+      const v = VELOCITIES_DATA[i]!;
 
       // Update positions by velocity
       p.x += v.x;
@@ -180,27 +188,27 @@ function SceneContent({ isVisibleRef }: { isVisibleRef: React.RefObject<boolean>
       const alpha = (1.0 - dist / 3.5) * 0.20;
 
       // Vertices Point 1: Particle
-      linePositions[vertexpos++] = p.x;
-      linePositions[vertexpos++] = p.y;
-      linePositions[vertexpos++] = p.z;
+      LINE_POSITIONS_BUFFER[vertexpos++] = p.x;
+      LINE_POSITIONS_BUFFER[vertexpos++] = p.y;
+      LINE_POSITIONS_BUFFER[vertexpos++] = p.z;
 
       // Vertices Point 2: Mouse
-      linePositions[vertexpos++] = mouse3D.x;
-      linePositions[vertexpos++] = mouse3D.y;
-      linePositions[vertexpos++] = mouse3D.z;
+      LINE_POSITIONS_BUFFER[vertexpos++] = mouse3D.x;
+      LINE_POSITIONS_BUFFER[vertexpos++] = mouse3D.y;
+      LINE_POSITIONS_BUFFER[vertexpos++] = mouse3D.z;
 
       // Brand Indigo (#6366F1) RGB values
       const r = 99 / 255;
       const g = 102 / 255;
       const b = 241 / 255;
 
-      lineColors[colorpos++] = r * alpha;
-      lineColors[colorpos++] = g * alpha;
-      lineColors[colorpos++] = b * alpha;
+      LINE_COLORS_BUFFER[colorpos++] = r * alpha;
+      LINE_COLORS_BUFFER[colorpos++] = g * alpha;
+      LINE_COLORS_BUFFER[colorpos++] = b * alpha;
 
-      lineColors[colorpos++] = r * alpha;
-      lineColors[colorpos++] = g * alpha;
-      lineColors[colorpos++] = b * alpha;
+      LINE_COLORS_BUFFER[colorpos++] = r * alpha;
+      LINE_COLORS_BUFFER[colorpos++] = g * alpha;
+      LINE_COLORS_BUFFER[colorpos++] = b * alpha;
 
       linesCount++;
     });
@@ -216,19 +224,6 @@ function SceneContent({ isVisibleRef }: { isVisibleRef: React.RefObject<boolean>
       linesRef.current.geometry.setDrawRange(0, linesCount * 2);
     }
   });
-
-  // Apply colors to particles on mount based on opacity multipliers
-  useEffect(() => {
-    if (!instancedMeshRef.current) return;
-    const baseColor = new THREE.Color("#6366F1");
-    for (let i = 0; i < particleCount; i++) {
-      const finalColor = baseColor.clone().multiplyScalar(particles[i]!.opacity);
-      instancedMeshRef.current.setColorAt(i, finalColor);
-    }
-    if (instancedMeshRef.current.instanceColor) {
-      instancedMeshRef.current.instanceColor.needsUpdate = true;
-    }
-  }, [particles]);
 
   return (
     <group>
@@ -250,11 +245,11 @@ function SceneContent({ isVisibleRef }: { isVisibleRef: React.RefObject<boolean>
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            args={[linePositions, 3]}
+            args={[LINE_POSITIONS_BUFFER, 3]}
           />
           <bufferAttribute
             attach="attributes-color"
-            args={[lineColors, 3]}
+            args={[LINE_COLORS_BUFFER, 3]}
           />
         </bufferGeometry>
         <lineBasicMaterial

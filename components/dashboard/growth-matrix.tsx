@@ -260,6 +260,9 @@ export function GrowthMatrix({
                 if (diff > 15) {
                   const startSec = i - 1; // Second 6
                   const endSec = i + 1;   // Second 8
+                  const dropPhase = startSec <= 3 ? phases[0] : (startSec <= 15 ? phases[1] : phases[2]);
+                  const phaseColor = dropPhase?.accentColor ?? "#F97316";
+                  
                   drops.push(
                     <div 
                       key={i} 
@@ -269,8 +272,15 @@ export function GrowthMatrix({
                         gridColumnEnd: endSec + 1,
                       }}
                     >
-                      <div className="bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[8px] sm:text-[9px] font-sans font-bold py-1 px-2.5 rounded-lg flex items-center gap-1.5 shadow-glow whitespace-nowrap animate-pulse">
-                        <AlertCircle className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                      <div 
+                        className="text-[8px] sm:text-[9px] font-sans font-bold py-1 px-2.5 rounded-lg flex items-center gap-1.5 shadow-glow whitespace-nowrap animate-pulse border"
+                        style={{
+                          backgroundColor: `${phaseColor}1a`, // 10% opacity
+                          borderColor: `${phaseColor}4d`,     // 30% opacity
+                          color: phaseColor,
+                        }}
+                      >
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" style={{ color: phaseColor }} />
                         <span>Major drop at {startSec}–{endSec}s — review this cut</span>
                       </div>
                     </div>

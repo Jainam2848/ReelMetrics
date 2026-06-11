@@ -34,12 +34,10 @@ const SAVES_RATE_THRESHOLD = 1.0; // 1% saves rate
 
 export function ConsistencyScatterMap({ posts }: ConsistencyScatterMapProps) {
   const [hoveredNode, setHoveredNode] = React.useState<string | null>(null);
+  const [thirtyDaysAgo] = React.useState(() => Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   // Normalize data for scatter plotting
   const chartPoints = useMemo(() => {
-    const now = Date.now();
-    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-
     return posts.map((post) => {
       const views = Math.max(1, post.views);
       const saves = post.saves || 0;

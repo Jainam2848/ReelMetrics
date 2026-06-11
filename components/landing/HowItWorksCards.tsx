@@ -112,7 +112,7 @@ export function HowItWorksCards() {
       // Simulates card interaction action
       const targetId = stepTitle.toLowerCase() === "connect" ? "/login" : "#transformation";
       if (typeof window !== "undefined") {
-        window.location.hash = targetId;
+        window.location.assign(targetId);
       }
     }
   };

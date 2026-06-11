@@ -109,7 +109,7 @@ function RetentionCurveWithNarrative() {
         transition={{ delay: 0.4, duration: 0.3 }}
         className="text-[13px] text-gray-400 font-outfit text-center mt-1 select-none"
       >
-        Trendoraa shows you this for every post you've published.
+        Trendoraa shows you this for every post you&apos;ve published.
       </m.div>
     </div>
   );
@@ -387,7 +387,7 @@ function WaitlistContent() {
                         </svg>
                       </div>
                       <h3 className="text-base font-bold text-white font-outfit uppercase tracking-wider">
-                        You're in.
+                        You&apos;re in.
                       </h3>
                       <p className="text-[14px] text-gray-400 max-w-sm font-outfit leading-relaxed">
                         Wait for the email on launch day.
@@ -674,7 +674,7 @@ function WaitlistContent() {
                     
                     <div className="bg-black/60 border border-white/5 p-3 rounded-lg backdrop-blur-md text-left">
                       <p className="text-[10px] text-gray-300 font-outfit leading-relaxed">
-                        <strong className="text-white uppercase tracking-wider text-brand-primary">Automated Scheduling:</strong> Identifies your account's peak organic watch hours, generates structured copywriting hooks, and provides daily niche trend alerts.
+                        <strong className="text-white uppercase tracking-wider text-brand-primary">Automated Scheduling:</strong> Identifies your account&apos;s peak organic watch hours, generates structured copywriting hooks, and provides daily niche trend alerts.
                       </p>
                     </div>
                   </m.div>

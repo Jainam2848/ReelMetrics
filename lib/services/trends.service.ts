@@ -62,7 +62,7 @@ export class TrendService {
     const today = new Date().toISOString().slice(0, 10);
 
     for (const niche of niches) {
-      let upsertResults: Array<{ status: 'inserted' | 'updated' | 'skipped' }> = [];
+      const upsertResults: Array<{ status: 'inserted' | 'updated' | 'skipped' }> = [];
       let success = false;
       let trendData: TrendIngestionOutput | null = null;
       let modelId = "heuristic";

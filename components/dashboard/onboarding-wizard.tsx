@@ -61,16 +61,35 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
     setOnboardingStep(3);
   };
 
+  const getDynamicSteps = (selectedNiche: string, selectedGoal: string) => {
+    const nicheLabel = {
+      tech: "Tech & Gadgets",
+      comedy: "Comedy & Skits",
+      finance: "Business & Finance",
+      education: "Education & How-to",
+      lifestyle: "Lifestyle & Vlogs",
+      fashion: "Fashion & Beauty"
+    }[selectedNiche] || "Creator";
+
+    const goalLabel = {
+      retention: "Audience Retention focus",
+      engagement: "Engagement Rate metrics",
+      followers: "Active Follower schedules"
+    }[selectedGoal] || "Core parameters";
+
+    return [
+      `Initializing high-fidelity Sandbox environment for ${nicheLabel}...`,
+      `Connecting to Trendoraa AI ingestion pipeline...`,
+      `Cloning demo profile metrics & indices for ${nicheLabel}...`,
+      `Syncing 3s hook retention timeline curves matching ${goalLabel}...`,
+      `Compiling customized niche content strategies...`,
+    ];
+  };
+
   const triggerSandboxSeeding = async () => {
     setSyncStatus("sandbox_syncing");
 
-    const steps = [
-      "Creating virtual sandbox environment...",
-      "Connecting to Trendoraa AI ingestion pipeline...",
-      "Syncing last 30 posts from demo profile...",
-      "Calculating AI Engagement Moat Index...",
-      "Compiling weekly content strategy calendar...",
-    ];
+    const steps = getDynamicSteps(niche, goal);
 
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
@@ -106,13 +125,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
     setOnboardingStep(3);
     setSyncStatus("sandbox_syncing");
 
-    const steps = [
-      "Initializing high-fidelity Sandbox environment...",
-      "Cloning @alice_reels post metrics & indices...",
-      "Synthesizing customized niche content strategies...",
-      "Syncing 3s hook retention timeline curves...",
-      "Injecting developer strategy roadmap..."
-    ];
+    const steps = getDynamicSteps("tech", "retention");
 
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
