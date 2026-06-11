@@ -209,14 +209,16 @@ export function GrowthMatrix({
   return (
     <div className="flex flex-col gap-6 w-full select-none font-sans">
       {/* Visual Header */}
-      <div className="flex justify-between items-center bg-white/5 border border-glass rounded-2xl p-4">
-        <div className="flex items-center gap-2.5">
-          <Activity className="w-5 h-5 text-brand-primary animate-pulse" />
+      <div className="flex justify-between items-center bg-white/5 border border-white/10 rounded-2xl p-4">
+        <div className="flex items-center gap-3">
+          <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+            <Activity className="w-4 h-4 text-indigo-400" />
+          </div>
           <div>
-            <h4 className="text-sm font-heading font-extrabold text-white">
+            <h4 className="text-sm font-bold text-white tracking-tight">
               {mode === "scoring" ? "Calculating Video Strategy Profile" : "Scroll Retention Curve Analyzer"}
             </h4>
-            <p className="text-[10px] text-muted-foreground font-medium">
+            <p className="text-[11px] text-gray-400 mt-0.5">
               {mode === "scoring" ? "Simulating scroll drop-offs and exit velocity..." : "Select milestones along the curve to inspect strategic optimization advice."}
             </p>
           </div>
@@ -233,11 +235,11 @@ export function GrowthMatrix({
       </div>
 
       {/* Main Graph Card */}
-      <div className="w-full border border-glass bg-glass rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden shadow-glow">
+      <div className="w-full border border-white/10 bg-white/[0.02] rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden">
         
         <div className="flex justify-between items-center z-10">
-          <span className="text-[10px] font-mono uppercase font-bold text-brand-primary tracking-widest flex items-center gap-2">
-            <Clock className="w-4 h-4 text-brand-secondary" />
+          <span className="text-[11px] uppercase font-bold text-indigo-400 tracking-wider flex items-center gap-2">
+            <Clock className="w-3.5 h-3.5 text-indigo-400/70" />
             Viewer Attention Decay Heatmap
           </span>
           {mode === "interactive" && (
@@ -273,7 +275,7 @@ export function GrowthMatrix({
                       }}
                     >
                       <div 
-                        className="text-[8px] sm:text-[9px] font-sans font-bold py-1 px-2.5 rounded-lg flex items-center gap-1.5 shadow-glow whitespace-nowrap animate-pulse border"
+                        className="text-[9px] font-bold py-1.5 px-3 rounded-md flex items-center gap-1.5 whitespace-nowrap border"
                         style={{
                           backgroundColor: `${phaseColor}1a`, // 10% opacity
                           borderColor: `${phaseColor}4d`,     // 30% opacity
@@ -311,13 +313,13 @@ export function GrowthMatrix({
                   key={idx}
                   className={`group relative h-full rounded-lg border flex flex-col items-center justify-center transition-all hover:scale-105 hover:brightness-110 cursor-pointer ${cellBg}`}
                 >
-                  <span className="text-[9px] font-black text-white/80 font-mono hidden sm:inline">
+                  <span className="text-[10px] font-bold text-white/90 hidden sm:inline">
                     {val}%
                   </span>
 
                   {/* Premium CSS Tooltip */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 bg-black/90 border border-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] text-white font-mono whitespace-nowrap shadow-glow pointer-events-none">
-                    Second {sec} — {val}% of viewers still watching.
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 bg-gray-900 border border-white/10 backdrop-blur-md px-3 py-2 rounded-lg text-[11px] text-gray-200 shadow-xl pointer-events-none">
+                    <span className="font-bold text-white">Sec {sec}</span> — {val}% watching
                   </div>
 
                   {/* 3. Milestone Anchors overlays */}
@@ -441,20 +443,20 @@ export function GrowthMatrix({
               {activePhaseInfo.desc}
             </p>
 
-            <div className="border-t border-white/5 pt-4">
-              <span className="text-[10px] font-mono font-black uppercase tracking-widest text-brand-primary mb-3.5 block flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-brand-secondary" />
-                Actionable Growth Recommendations:
+            <div className="border-t border-white/5 pt-5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 mb-4 flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                Actionable Growth Recommendations
               </span>
 
-              <ul className="flex flex-col gap-2.5">
+              <ul className="flex flex-col gap-3">
                 {activePhaseInfo.suggestions.map((tip, index) => (
                   <li key={index} className="flex items-start gap-3">
                     <span 
                       className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" 
                       style={{ backgroundColor: activePhaseInfo.accentColor }} 
                     />
-                    <p className="text-[10px] text-gray-400 leading-normal font-semibold">
+                    <p className="text-[11px] text-gray-300 leading-relaxed">
                       {tip}
                     </p>
                   </li>

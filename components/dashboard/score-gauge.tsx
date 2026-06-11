@@ -64,20 +64,20 @@ export function ScoreGauge({
     if (val > 70) {
       return {
         stroke: "url(#green-gradient)",
-        text: "text-emerald-400",
+        text: "text-emerald-500",
         label: "Excellent",
       };
     }
     if (val > 40) {
       return {
         stroke: "url(#yellow-gradient)",
-        text: "text-yellow-400",
+        text: "text-amber-500",
         label: "Average",
       };
     }
     return {
       stroke: "url(#red-gradient)",
-      text: "text-destructive",
+      text: "text-red-500",
       label: "Critical",
     };
   };
@@ -98,21 +98,21 @@ export function ScoreGauge({
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
-        className="rotate-[-90deg] drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]"
+        className="rotate-[-90deg]"
       >
         {/* SVG Gradients for beautiful visual premium gradients */}
         <defs>
           <linearGradient id="green-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#00B894" />
-            <stop offset="100%" stopColor="#55EFC4" />
+            <stop offset="0%" stopColor="#10B981" />
+            <stop offset="100%" stopColor="#059669" />
           </linearGradient>
           <linearGradient id="yellow-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#FDCB6E" />
-            <stop offset="100%" stopColor="#FFEAA7" />
+            <stop offset="0%" stopColor="#F59E0B" />
+            <stop offset="100%" stopColor="#D97706" />
           </linearGradient>
           <linearGradient id="red-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#E17055" />
-            <stop offset="100%" stopColor="#FAB1A0" />
+            <stop offset="0%" stopColor="#EF4444" />
+            <stop offset="100%" stopColor="#DC2626" />
           </linearGradient>
         </defs>
 
@@ -122,7 +122,8 @@ export function ScoreGauge({
           cy={size / 2}
           r={radius}
           fill="transparent"
-          stroke="#252530"
+          stroke="#ffffff"
+          strokeOpacity="0.05"
           strokeWidth={strokeWidth}
         />
 
@@ -149,10 +150,10 @@ export function ScoreGauge({
 
       {/* Central Value Indicators */}
       <div className="absolute flex flex-col items-center justify-center text-center">
-        <span className="text-4xl font-bold font-display tracking-tighter text-white">
+        <span className="text-[2.75rem] font-black font-outfit tracking-tight text-white leading-none">
           {displayScore}
         </span>
-        <span className={`text-[9px] uppercase font-bold tracking-widest ${themeColors.text} mt-0.5`}>
+        <span className={`text-[10px] uppercase font-bold tracking-[0.15em] ${themeColors.text} mt-1 opacity-90 font-outfit`}>
           {themeColors.label}
         </span>
       </div>

@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { GridDistortionProvider } from "@/lib/contexts/GridDistortionContext";
 import { AnalysisStateProvider } from "@/lib/contexts/AnalysisStateContext";
-import { GridDistortionBackground } from "@/components/landing/GridDistortionBackgroundClient";
+import { AmbientIntelligenceBackground } from "@/components/shared/AmbientIntelligenceBackground";
 import { FlipWords } from "@/components/ui/flip-words";
 import { HeroStats } from "@/components/landing/HeroStats";
 import { RetentionCurve } from "@/components/landing/RetentionCurve";
@@ -269,8 +269,8 @@ function WaitlistContent() {
       `}} />
 
       <div className="min-h-screen bg-[#08090D] text-[#F8F8FC] dark text-foreground overflow-x-hidden selection:bg-brand-primary/30 relative flex flex-col items-center justify-center px-4 pt-8 sm:pt-16 lg:pt-24 pb-8 sm:pb-16 lg:pb-24">
-        {/* WebGL grid distortion background */}
-        <GridDistortionBackground />
+        {/* Premium ambient intelligence background */}
+        <AmbientIntelligenceBackground />
 
         {/* Floating Navigation */}
         <nav className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-5 bg-background/20 backdrop-blur-md border-b border-white/5">

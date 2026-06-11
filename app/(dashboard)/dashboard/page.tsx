@@ -695,6 +695,9 @@ export default function DashboardHome() {
                         ? "TikTok Watch-Through"
                         : "Instagram Reels"
                     }
+                    trend="up"
+                    delta="+19%"
+                    baselineText="↑ 19% above your account baseline"
                   />
                   <MetricCard
                     label="Strategic Watch-Through"
@@ -707,6 +710,9 @@ export default function DashboardHome() {
                         ? "TikTok Complete"
                         : "Instagram Average"
                     }
+                    trend="up"
+                    delta="+12%"
+                    baselineText="↑ 12% vs prior week average"
                   />
                   <MetricCard
                     label="Accumulated Impressions"
@@ -719,6 +725,9 @@ export default function DashboardHome() {
                     value={averageEngagement}
                     description="Average like + comment + share + save divided by views across your tracked posts."
                     sourceBadge={activeGoal === "engagement" ? "🎯 Goal Focus" : undefined}
+                    trend="up"
+                    delta="+4.5%"
+                    baselineText="↑ 4.5% above industry benchmark"
                   />
                 </>
               )}

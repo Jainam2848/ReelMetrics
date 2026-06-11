@@ -25,25 +25,28 @@ export function DimensionBar({
   const getTheme = (val: number) => {
     if (val > 7) {
       return {
-        bg: "bg-emerald-400",
-        text: "text-emerald-400",
-        track: "bg-emerald-400/15",
-        glow: "shadow-[0_0_15px_rgba(52,211,153,0.3)]",
+        bg: "bg-emerald-500",
+        text: "text-emerald-500",
+        track: "bg-emerald-500/10",
+        border: "border-emerald-500/20",
+        glow: "shadow-[0_2px_8px_rgba(16,185,129,0.1)]",
       };
     }
     if (val >= 5) {
       return {
-        bg: "bg-amber-400",
-        text: "text-amber-400",
-        track: "bg-amber-400/15",
-        glow: "shadow-[0_0_15px_rgba(251,191,36,0.3)]",
+        bg: "bg-amber-500",
+        text: "text-amber-500",
+        track: "bg-amber-500/10",
+        border: "border-amber-500/20",
+        glow: "shadow-[0_2px_8px_rgba(245,158,11,0.1)]",
       };
     }
     return {
-      bg: "bg-brand-accent",
-      text: "text-brand-accent",
-      track: "bg-brand-accent/15",
-      glow: "shadow-[0_0_15px_rgba(255,0,60,0.3)]",
+      bg: "bg-red-500",
+      text: "text-red-500",
+      track: "bg-red-500/10",
+      border: "border-red-500/20",
+      glow: "shadow-[0_2px_8px_rgba(239,68,68,0.1)]",
     };
   };
 
@@ -54,12 +57,12 @@ export function DimensionBar({
   
   let containerStyle = "";
   if (importance === "primary") {
-    containerStyle = `${baseContainer} rounded-2xl border-2 border-white/20 bg-glass ${theme.glow} backdrop-blur-xl hover:bg-white/10`;
+    containerStyle = `${baseContainer} rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-xl hover:bg-white/[0.04]`;
   } else if (importance === "secondary") {
-    containerStyle = `${baseContainer} rounded-xl border border-glass bg-white/5 hover:bg-white/10`;
+    containerStyle = `${baseContainer} rounded-xl border border-white/[0.05] bg-transparent hover:bg-white/[0.02]`;
   } else {
-    // Tertiary: terminal/flat style
-    containerStyle = `${baseContainer} rounded-none border-l-2 border-white/10 bg-black/40 hover:bg-black/60 font-mono`;
+    // Tertiary: flat/minimal style
+    containerStyle = `${baseContainer} p-3 rounded-lg border-l-2 border-white/10 bg-transparent hover:bg-white/[0.02]`;
   }
 
   return (
@@ -68,30 +71,21 @@ export function DimensionBar({
         {/* Label */}
         <span className={`${
           importance === 'tertiary'
-            ? 'text-xs font-mono font-bold text-gray-300 uppercase tracking-widest'
-            : 'text-sm font-bold font-heading tracking-wide text-white group-hover:text-brand-primary transition-colors duration-300'
+            ? 'text-xs font-outfit font-semibold text-gray-400 uppercase tracking-widest'
+            : 'text-sm font-bold font-outfit tracking-wide text-white group-hover:text-gray-200 transition-colors duration-300'
         }`}>
           {label}
         </span>
         
         {/* Numerical Score Pill Badge */}
         <div 
-          className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border bg-black/60 font-mono shadow-inner transition-all duration-300 group-hover:scale-105"
-          style={{ 
-            borderColor: clampedScore > 7 ? 'rgba(52, 211, 153, 0.3)' : clampedScore >= 5 ? 'rgba(251, 191, 36, 0.3)' : 'rgba(255, 0, 60, 0.3)',
-            boxShadow: clampedScore > 7 ? '0 0 10px rgba(52, 211, 153, 0.15)' : clampedScore >= 5 ? '0 0 10px rgba(251, 191, 36, 0.15)' : '0 0 10px rgba(255, 0, 60, 0.15)'
-          }}
+          className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md border bg-black/20 ${theme.border} ${theme.glow} font-outfit transition-all duration-300 group-hover:scale-105`}
         >
-          <span 
-            className={`text-sm font-extrabold tracking-wider transition-all duration-300 ${theme.text}`}
-            style={{
-              textShadow: clampedScore > 7 ? '0 0 8px rgba(52, 211, 153, 0.6)' : clampedScore >= 5 ? '0 0 8px rgba(251, 191, 36, 0.6)' : '0 0 8px rgba(255, 0, 60, 0.6)'
-            }}
-          >
+          <span className={`text-sm font-black tracking-wide ${theme.text}`}>
             {clampedScore}
           </span>
           <span className="text-gray-600 text-[10px] font-bold">/</span>
-          <span className="text-gray-400 text-[10px] font-extrabold tracking-widest">10</span>
+          <span className="text-gray-400 text-[10px] font-bold tracking-widest">10</span>
         </div>
       </div>
 
@@ -112,15 +106,15 @@ export function DimensionBar({
 
       {/* Accordion Reasoning & Improvements on hover */}
       {(reasoning || improvement) && (
-        <div className={`mt-2 ${importance === 'tertiary' ? 'text-[9px] font-mono' : 'text-[11px]'} text-gray-400 flex flex-col gap-1.5 border-t border-white/5 pt-2 select-text leading-relaxed`}>
+        <div className={`mt-2 ${importance === 'tertiary' ? 'text-[10px]' : 'text-[11px]'} text-gray-400 flex flex-col gap-1.5 border-t border-white/5 pt-2 select-text leading-relaxed font-outfit`}>
           {reasoning && (
             <p>
-              <strong className="text-gray-300 mr-1 select-none">ANALYSIS_</strong> {reasoning}
+              <strong className="text-gray-300 mr-1 select-none font-semibold">Diagnosis:</strong> {reasoning}
             </p>
           )}
           {improvement && (
             <p>
-              <strong className={`font-semibold mr-1 select-none ${theme.text}`}>ACTION_</strong> {improvement}
+              <strong className={`font-semibold mr-1 select-none ${theme.text}`}>Action:</strong> {improvement}
             </p>
           )}
         </div>

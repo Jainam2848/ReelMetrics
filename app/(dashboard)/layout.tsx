@@ -26,14 +26,9 @@ import { useActiveAccount } from "@/components/shared/active-account-context";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { m, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/shared/toast";
-import dynamic from "next/dynamic";
 import { RetentionArc } from "@/components/dashboard/RetentionArc";
 import { ScoreRing } from "@/components/dashboard/ScoreRing";
-
-const DashboardBackground = dynamic(
-  () => import("@/components/dashboard/DashboardBackground"),
-  { ssr: false }
-);
+import { AmbientIntelligenceBackground } from "@/components/shared/AmbientIntelligenceBackground";
 
 
 interface SidebarItem {
@@ -160,21 +155,16 @@ export default function DashboardLayout({
     <div className="min-h-screen flex bg-transparent text-foreground relative pb-20 md:pb-0">
       {/* ── REDESIGNED DARK BLUEPRINT BACKGROUND STACK ──────────────── */}
       {/* z-index stack:
-         0  — .dashboard-bg (CSS dot grid, position: fixed)
-         1  — .depth-haze (CSS radial gradients, position: fixed)
+         -1 — AmbientIntelligenceBackground (fixed, handles own CSS/gradients)
          1  — RetentionArc SVG (position: fixed, top-right)
          1  — ScoreRing SVG (position: fixed, bottom-left)
-         2  — DashboardBackground canvas (Three.js, position: fixed)
          10 — Dashboard card components (glassmorphic, z: 10)
          20 — Sidebar / navigation (z: 20)
          30 — Modals / tooltips (z: 30)
       */}
-      <div className="dashboard-bg" />
-      <div className="depth-haze-primary" />
-      <div className="depth-haze-secondary" />
+      <AmbientIntelligenceBackground />
       <RetentionArc />
       <ScoreRing />
-      <DashboardBackground />
 
       {/* ── DESKTOP SIDEBAR ──────────────────────────────────────────── */}
       <aside className="hidden md:flex flex-col w-60 shrink-0 border-r border-white/[0.06] bg-[#0c0d12]/80 backdrop-blur-2xl z-40 relative select-none">

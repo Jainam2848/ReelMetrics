@@ -11,6 +11,7 @@ interface MetricCardProps {
   trend?: "up" | "down" | "neutral";
   description?: string;
   sourceBadge?: string;
+  baselineText?: string;
   isLoading?: boolean;
 }
 
@@ -21,6 +22,7 @@ export function MetricCard({
   trend = "neutral",
   description,
   sourceBadge,
+  baselineText,
   isLoading = false,
 }: MetricCardProps) {
   if (isLoading) {
@@ -69,20 +71,29 @@ export function MetricCard({
           {value}
         </span>
 
-        {/* Delta */}
-        {delta && (
-          <div
-            className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${
-              isUp
-                ? "bg-brand-secondary/10 text-brand-secondary"
-                : isDown
-                ? "bg-destructive/10 text-destructive"
-                : "bg-white/5 text-gray-400"
-            }`}
-          >
-            {isUp && <TrendingUp className="w-3.5 h-3.5" />}
-            {isDown && <TrendingDown className="w-3.5 h-3.5" />}
-            <span>{delta}</span>
+        {/* Delta and Baseline Storytelling */}
+        {(delta || baselineText) && (
+          <div className="flex flex-col items-end gap-1">
+            {delta && (
+              <div
+                className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${
+                  isUp
+                    ? "bg-brand-secondary/10 text-brand-secondary"
+                    : isDown
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-white/5 text-gray-400"
+                }`}
+              >
+                {isUp && <TrendingUp className="w-3.5 h-3.5" />}
+                {isDown && <TrendingDown className="w-3.5 h-3.5" />}
+                <span>{delta}</span>
+              </div>
+            )}
+            {baselineText && (
+              <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">
+                {baselineText}
+              </span>
+            )}
           </div>
         )}
       </div>
