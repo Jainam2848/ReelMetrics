@@ -71,10 +71,11 @@ export async function proxy(request: NextRequest) {
   // 4. Inject HTTP Security Headers (spec §11.9)
   const cspDirectives = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.vercel-insights.com",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.cdninstagram.com https://scontent.cdninstagram.com",
-    "connect-src 'self' https://generativelanguage.googleapis.com https://api.deepseek.com https://api.stripe.com https://graph.instagram.com https://graph.facebook.com https://*.supabase.co wss://*.supabase.co",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.vercel-insights.com https://www.googletagmanager.com",
+    "style-src 'self' 'unsafe-inline' https://api.fontshare.com",
+    "font-src 'self' https://api.fontshare.com https://cdn.fontshare.com data:",
+    "img-src 'self' data: blob: https://*.cdninstagram.com https://scontent.cdninstagram.com https://www.googletagmanager.com",
+    "connect-src 'self' https://generativelanguage.googleapis.com https://api.deepseek.com https://api.stripe.com https://graph.instagram.com https://graph.facebook.com https://*.supabase.co wss://*.supabase.co https://*.google-analytics.com",
     "frame-src 'self' https://js.stripe.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",

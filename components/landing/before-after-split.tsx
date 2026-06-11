@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { m, useInView, useReducedMotion } from "framer-motion";
-import anime from "animejs";
 import { Play, TrendingUp, AlertTriangle, Eye, RefreshCw } from "lucide-react";
 
 export function BeforeAfterSplit() {
@@ -14,59 +13,13 @@ export function BeforeAfterSplit() {
   const [simulating, setSimulating] = useState(false);
   const [isMobileDevice, setIsMobileDevice] = useState(false);
 
+  // Counter states
+  const [viewsCount, setViewsCount] = useState(0);
+  const [engagementCount, setEngagementCount] = useState(68);
+
   useEffect(() => {
     const isMobileQuery = window.matchMedia("(pointer: coarse)");
     setIsMobileDevice(isMobileQuery.matches);
-  }, []);
-
-  // Refs for AnimeJS targets
-  const shakyGridRef = useRef<HTMLDivElement>(null);
-  const viewsCountRef = useRef<HTMLSpanElement>(null);
-  const engagementCountRef = useRef<HTMLSpanElement>(null);
-  const hookRetentionRef = useRef<HTMLDivElement>(null);
-  const skipRateTextRef = useRef<HTMLSpanElement>(null);
-  const retentionCurveRef = useRef<SVGPathElement>(null);
-
-  const shakeAnimationRef = useRef<any>(null);
-
-  // Left Side Shake Animation (IntersectionObserver Paced)
-  useEffect(() => {
-    if (!shakyGridRef.current) return;
-
-    shakeAnimationRef.current = anime({
-      targets: shakyGridRef.current.children,
-      translateX: () => anime.random(-2, 2),
-      translateY: () => anime.random(-2, 2),
-      rotate: () => anime.random(-1, 1),
-      duration: 200,
-      direction: "alternate",
-      loop: true,
-      easing: "easeInOutSine",
-      autoplay: false,
-    });
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry && entry.isIntersecting) {
-          shakeAnimationRef.current?.play();
-        } else if (shakeAnimationRef.current) {
-          shakeAnimationRef.current.pause();
-        }
-      },
-      { threshold: 0.3 }
-    );
-
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
-    }
-
-    return () => {
-      observer.disconnect();
-      if (shakeAnimationRef.current) {
-        shakeAnimationRef.current.pause();
-      }
-    };
   }, []);
 
   const startSimulation = () => {
@@ -78,50 +31,30 @@ export function BeforeAfterSplit() {
       setSequenceStarted(true);
       setSimulating(false);
       
-      // Right Side Animations
-      
-      // 1. Metric Counter
-      anime({
-        targets: [viewsCountRef.current, engagementCountRef.current],
-        innerHTML: [
-          function(el: any) { return el.dataset.start; },
-          function(el: any) { return el.dataset.end; }
-        ],
-        round: 1,
-        easing: "easeOutExpo",
-        duration: 2000,
-        update: function(a) {
-          if (viewsCountRef.current) viewsCountRef.current.innerHTML = (a.animations[0]?.currentValue || 0) + "K";
-          if (engagementCountRef.current) engagementCountRef.current.innerHTML = (a.animations[1]?.currentValue || 0) + "%";
+      // Animate numbers using a simple requestAnimationFrame loop
+      const startTime = performance.now();
+      const duration = 2000;
+
+      const animate = (now: number) => {
+        const progress = Math.min((now - startTime) / duration, 1);
+        // easeOutExpo
+        const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+
+        setViewsCount(Number((easeProgress * 84.5).toFixed(1)));
+        setEngagementCount(Math.round(68 + easeProgress * (87 - 68)));
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
         }
-      });
+      };
 
-      // 2. Retention Curve Draw
-      anime({
-        targets: retentionCurveRef.current,
-        strokeDashoffset: [anime.setDashoffset, 0],
-        easing: "easeInOutSine",
-        duration: 1500,
-        delay: 500
-      });
-
-      // 3. Skip Rate Inversion glow
-      anime({
-        targets: hookRetentionRef.current,
-        backgroundColor: ["rgba(253, 121, 168, 0.1)", "rgba(0, 184, 148, 0.15)"],
-        borderColor: ["rgba(253, 121, 168, 0.3)", "rgba(0, 184, 148, 0.4)"],
-        duration: 1000,
-        delay: 300,
-        easing: "easeOutQuad"
-      });
-      
+      requestAnimationFrame(animate);
     }, 600);
   };
 
   // Trigger on scroll if not clicked
   useEffect(() => {
     if (inView && !sequenceStarted && !simulating) {
-      // Auto start after a short delay when scrolled into view
       const t = setTimeout(() => {
         startSimulation();
       }, 1000);
@@ -155,9 +88,22 @@ export function BeforeAfterSplit() {
             </p>
 
             {/* Messy Grid */}
-            <div ref={shakyGridRef} className="grid grid-cols-2 gap-4 mb-8 flex-1 content-center relative">
+            <div className="grid grid-cols-2 gap-4 mb-8 flex-1 content-center relative">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="aspect-[9/16] bg-[#2A1F1F] border border-red-500/10 rounded-xl relative overflow-hidden flex items-center justify-center opacity-70">
+                <m.div 
+                  key={i} 
+                  animate={shouldReduceMotion ? {} : {
+                    x: [0, -1, 1, -1, 0],
+                    y: [0, 1, -1, 1, 0]
+                  }}
+                  transition={{
+                    duration: 0.5,
+                    repeat: Infinity,
+                    repeatType: "mirror",
+                    delay: i * 0.1
+                  }}
+                  className="aspect-[9/16] bg-[#2A1F1F] border border-red-500/10 rounded-xl relative overflow-hidden flex items-center justify-center opacity-70"
+                >
                   <video 
                     src={`/videos/sample${i === 4 ? 2 : i}.mp4`}
                     className="absolute inset-0 w-full h-full object-cover opacity-50 mix-blend-luminosity"
@@ -168,7 +114,7 @@ export function BeforeAfterSplit() {
                       <div className="text-red-400 text-xs font-mono font-bold">SKIP: 68%</div>
                     </div>
                   )}
-                </div>
+                </m.div>
               ))}
             </div>
 
@@ -247,14 +193,13 @@ export function BeforeAfterSplit() {
               <button 
                 onClick={startSimulation}
                 disabled={sequenceStarted || simulating}
-                data-magnetic
                 className={`px-4 py-2 text-sm font-bold rounded-lg border ${
                   !sequenceStarted && !simulating ? "analysis-pulse-btn" : ""
                 } ${
                   sequenceStarted 
                     ? "border-brand-primary/50 text-brand-primary bg-brand-primary/10" 
                     : "border-white/10 text-white bg-white/5 hover:bg-white/10"
-                } transition-colors flex items-center gap-2 relative z-25`}
+                } transition-colors flex items-center gap-2 relative z-25 cursor-pointer`}
               >
                 {simulating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                 {sequenceStarted ? 'Analysis Complete' : 'Run Analysis'}
@@ -290,20 +235,27 @@ export function BeforeAfterSplit() {
                 <div className="bg-black/30 border border-white/5 rounded-lg p-3">
                   <div className="text-xs text-muted-foreground flex items-center gap-1 mb-1"><Eye className="w-3 h-3"/> Total Views</div>
                   <div className="text-xl font-mono font-bold text-white">
-                    <span ref={viewsCountRef} data-start="0" data-end="84.5">{sequenceStarted ? "84.5K" : "0"}</span>
+                    <span>{sequenceStarted ? `${viewsCount}K` : "0"}</span>
                   </div>
                 </div>
-                <div 
-                  ref={hookRetentionRef}
+                <m.div 
+                  animate={sequenceStarted ? {
+                    backgroundColor: "rgba(0, 184, 148, 0.15)",
+                    borderColor: "rgba(0, 184, 148, 0.4)"
+                  } : {
+                    backgroundColor: "rgba(0, 0, 0, 0.3)",
+                    borderColor: "rgba(255, 255, 255, 0.05)"
+                  }}
+                  transition={{ duration: 1, delay: 0.3 }}
                   className="bg-black/30 border border-white/5 rounded-lg p-3 transition-colors"
                 >
                   <div className="text-xs text-muted-foreground mb-1">
                     {sequenceStarted ? "Hook Retention" : "Skip Rate"}
                   </div>
                   <div className="text-xl font-mono font-bold text-white">
-                    <span ref={engagementCountRef} data-start="68" data-end="87">{sequenceStarted ? "87%" : "68%"}</span>
+                    <span>{sequenceStarted ? `${engagementCount}%` : "68%"}</span>
                   </div>
-                </div>
+                </m.div>
               </div>
 
               {/* SVG Retention Curve */}
@@ -322,14 +274,15 @@ export function BeforeAfterSplit() {
                   />
                   
                   {/* Success Curve (Animated) */}
-                  <path 
-                    ref={retentionCurveRef}
+                  <m.path 
+                    initial={{ pathLength: 0 }}
+                    animate={sequenceStarted ? { pathLength: 1 } : { pathLength: 0 }}
+                    transition={{ duration: 1.5, delay: 0.5, ease: "easeInOut" }}
                     d="M 0 5 Q 20 5, 40 15 T 100 20" 
                     fill="none" 
                     stroke="rgba(0, 184, 148, 1)" 
                     strokeWidth="2.5"
                     strokeLinecap="round"
-                    style={!sequenceStarted ? { strokeDasharray: 200, strokeDashoffset: 200 } : {}}
                   />
                 </svg>
                 

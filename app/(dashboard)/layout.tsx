@@ -183,7 +183,7 @@ export default function DashboardLayout({
         <nav className="flex-grow flex flex-col gap-5 mt-5 px-3 overflow-y-auto">
           {NAV_GROUPS.map((group) => (
             <div key={group.title}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/25 px-3 mb-2">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-white/60 px-3 mb-2">
                 {group.title}
               </p>
               <div className="flex flex-col gap-0.5">
@@ -198,19 +198,19 @@ export default function DashboardLayout({
                       className={`group relative min-h-[40px] flex items-center gap-3 px-3 rounded-xl text-sm font-medium transition-all duration-150 ${
                         isActive
                           ? "bg-indigo-600/15 text-white"
-                          : "text-white/45 hover:text-white/80 hover:bg-white/[0.04]"
+                          : "text-white/70 hover:text-white/80 hover:bg-white/[0.04]"
                       }`}
                     >
                       {/* Active indicator bar */}
                       {isActive && (
                         <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-indigo-500" />
                       )}
-                      <span className={isActive ? "text-indigo-400" : "text-white/30 group-hover:text-white/50 transition-colors"}>
+                      <span className={isActive ? "text-indigo-400" : "text-white/60 group-hover:text-white/80 transition-colors"}>
                         {item.icon}
                       </span>
                       <span className="flex-grow">{item.label}</span>
                       {item.badge && (
-                        <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-400 border border-indigo-500/20">
+                        <span className="text-xs font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-400 border border-indigo-500/20">
                           {item.badge}
                         </span>
                       )}
@@ -230,18 +230,18 @@ export default function DashboardLayout({
               <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/10 rounded-full blur-lg" />
               <div className="flex flex-col gap-2.5">
                 <div>
-                  <div className="flex items-center gap-1.5 text-indigo-400 font-extrabold text-[10px] uppercase tracking-widest">
+                  <div className="flex items-center gap-1.5 text-indigo-400 font-extrabold text-xs uppercase tracking-widest">
                     <Zap className="w-3.5 h-3.5 animate-pulse" />
                     <span>Sandbox Mode</span>
                   </div>
-                  <p className="text-[10px] text-white/50 leading-relaxed font-semibold mt-1">
+                  <p className="text-xs text-white/60 leading-relaxed font-semibold mt-1">
                     Viewing demo analytics. Ready to link your live profile?
                   </p>
                 </div>
                 <button
                   onClick={handleQuitSandboxDemo}
                   disabled={quittingDemo}
-                  className="w-full py-1.5 px-3 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 active:scale-95 text-[10px] font-bold text-red-400 hover:text-white tracking-wide uppercase transition-all shrink-0 cursor-pointer flex items-center justify-center gap-1.5"
+                  className="w-full py-1.5 px-3 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 active:scale-95 text-xs font-bold text-red-400 hover:text-white tracking-wide uppercase transition-all shrink-0 cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   {quittingDemo ? (
                     <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
@@ -256,14 +256,14 @@ export default function DashboardLayout({
 
           {/* User avatar row */}
           <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.05]">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-600 flex items-center justify-center text-[11px] font-black text-white shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-600 flex items-center justify-center text-xs font-black text-white shrink-0">
               {userInitial}
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-[11px] font-bold text-white truncate leading-tight">
+              <span className="text-xs font-bold text-white truncate leading-tight">
                 {userEmail ?? "Loading…"}
               </span>
-              <span className="text-[9px] text-white/30 font-semibold uppercase tracking-widest leading-tight">
+              <span className="text-xs text-white/60 font-semibold uppercase tracking-widest leading-tight">
                 Beta Member
               </span>
             </div>
@@ -271,7 +271,7 @@ export default function DashboardLayout({
           {/* Sign out */}
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2 rounded-xl text-white/35 hover:text-red-400 hover:bg-red-500/[0.07] active:scale-95 transition-all w-full text-left text-sm font-medium"
+            className="flex items-center gap-3 px-3 py-2 rounded-xl text-white/60 hover:text-red-400 hover:bg-red-500/[0.07] active:scale-95 transition-all w-full text-left text-sm font-medium"
           >
             <LogOut className="w-[18px] h-[18px] shrink-0" />
             <span>Sign Out</span>
@@ -286,10 +286,10 @@ export default function DashboardLayout({
         <header className="h-16 flex items-center justify-between px-5 border-b border-white/[0.06] bg-[#0a0b10]/60 backdrop-blur-xl sticky top-0 z-30 shrink-0">
           {/* Left: Breadcrumb */}
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-[11px] text-white/25 font-bold uppercase tracking-widest hidden sm:block">
+            <span className="text-xs text-white/60 font-bold uppercase tracking-widest hidden sm:block">
               Workspace
             </span>
-            <ChevronRight className="w-3.5 h-3.5 text-white/20 hidden sm:block shrink-0" />
+            <ChevronRight className="w-3.5 h-3.5 text-white/60 hidden sm:block shrink-0" />
             <h1 className="text-sm font-bold tracking-wide text-white/90" style={{ fontFamily: "var(--font-outfit, sans-serif)" }}>
               {getBreadcrumbTitle()}
             </h1>
@@ -310,7 +310,7 @@ export default function DashboardLayout({
                 <button
                   onClick={handleQuitSandboxDemo}
                   disabled={quittingDemo}
-                  className="text-[10px] font-black uppercase tracking-wider text-red-400 hover:text-red-300 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  className="text-xs font-black uppercase tracking-wider text-red-400 hover:text-red-300 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
                 >
                   {quittingDemo ? (
                     <span className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
@@ -327,7 +327,7 @@ export default function DashboardLayout({
             {/* Notifications */}
             <button
               onClick={handleNotificationClick}
-              className="relative w-9 h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.07] flex items-center justify-center text-white/40 hover:text-white/80 transition-all active:scale-95"
+              className="relative w-9 h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.07] flex items-center justify-center text-white/60 hover:text-white/80 transition-all active:scale-95"
               aria-label="View notifications"
             >
               <Bell className="w-4 h-4" />
@@ -364,11 +364,11 @@ export default function DashboardLayout({
               key={item.href}
               href={item.href}
               className={`flex flex-col items-center justify-center flex-grow h-full gap-1 active:scale-90 transition-all ${
-                isActive ? "text-indigo-400" : "text-white/35"
+                isActive ? "text-indigo-400" : "text-white/60"
               }`}
             >
               {item.icon}
-              <span className="text-[9px] tracking-wider uppercase font-bold">
+              <span className="text-xs tracking-wider uppercase font-bold">
                 {item.label}
               </span>
             </Link>
@@ -378,11 +378,11 @@ export default function DashboardLayout({
         {/* More drawer trigger */}
         <button
           onClick={() => setIsMoreOpen(true)}
-          className="flex flex-col items-center justify-center flex-grow h-full gap-1 active:scale-90 transition-all text-white/35"
+          className="flex flex-col items-center justify-center flex-grow h-full gap-1 active:scale-90 transition-all text-white/60"
           aria-label="Open navigation menu"
         >
           <Menu className="w-5 h-5" />
-          <span className="text-[9px] tracking-wider uppercase font-bold">More</span>
+          <span className="text-xs tracking-wider uppercase font-bold">More</span>
         </button>
       </nav>
 
@@ -407,12 +407,12 @@ export default function DashboardLayout({
             >
               {/* Drawer header */}
               <div className="flex justify-between items-center">
-                <span className="text-[11px] font-black uppercase tracking-[0.14em] text-white/30">
+                <span className="text-xs font-black uppercase tracking-[0.14em] text-white/60">
                   More
                 </span>
                 <button
                   onClick={() => setIsMoreOpen(false)}
-                  className="w-7 h-7 rounded-lg border border-white/[0.08] bg-white/[0.04] text-white/40 hover:text-white flex items-center justify-center"
+                  className="w-7 h-7 rounded-lg border border-white/[0.08] bg-white/[0.04] text-white/60 hover:text-white flex items-center justify-center"
                   aria-label="Close menu"
                 >
                   <X className="w-4 h-4" />
@@ -473,12 +473,12 @@ export default function DashboardLayout({
               {/* User info at bottom of drawer */}
               {userEmail && (
                 <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05]">
-                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-600 flex items-center justify-center text-[11px] font-black text-white shrink-0">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-600 flex items-center justify-center text-xs font-black text-white shrink-0">
                     {userInitial}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-white truncate">{userEmail}</p>
-                    <p className="text-[9px] text-white/30 font-semibold uppercase tracking-widest">Beta Member</p>
+                    <p className="text-xs font-bold text-white truncate">{userEmail}</p>
+                    <p className="text-xs text-white/60 font-semibold uppercase tracking-widest">Beta Member</p>
                   </div>
                 </div>
               )}

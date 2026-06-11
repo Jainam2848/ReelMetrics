@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useId, useRef, useState } from "react";
-import { useReducedMotion } from "framer-motion";
+import React, { useState, useId } from "react";
+import { m } from "framer-motion";
 import { Activity, Sparkles, AlertCircle, CheckCircle2, TrendingUp, Clock, Target } from "lucide-react";
 
 interface GrowthMatrixProps {
@@ -26,24 +26,9 @@ export function GrowthMatrix({
   scores,
   onCellClick,
 }: GrowthMatrixProps) {
-  const isReducedMotion = useReducedMotion();
   const uid = useId().replace(/:/g, "-");
-  const gradientGlowId = `retention-glow-${uid}`;
-  const gradientAreaId = `retention-area-${uid}`;
-  const patternId = `dot-matrix-${uid}`;
-  const pathRef = useRef<SVGPathElement>(null);
   
   const [activePhase, setActivePhase] = useState<number>(0);
-  const [animeLoaded, setAnimeLoaded] = useState(false);
-  const animeInstance = useRef<any>(null);
-
-  // Dynamic import of AnimeJS to satisfy Next.js SSR boundaries safely
-  useEffect(() => {
-    import("animejs").then((module) => {
-      animeInstance.current = (module as any).default || module;
-      setAnimeLoaded(true);
-    });
-  }, []);
 
   // Timeline values from live scores
   const hookVal = scores?.hook ?? 82;
@@ -131,69 +116,12 @@ export function GrowthMatrix({
     suggestions: string[];
   };
 
-  // 1. Morphing / Wave Animation Loop
-  useEffect(() => {
-    if (!animeLoaded || !animeInstance.current || !pathRef.current || isReducedMotion) return;
-
-    const anime = animeInstance.current;
-    const path = pathRef.current;
-
-    // Reset path dash offsets
-    const pathLength = path.getTotalLength();
-    path.setAttribute("stroke-dasharray", pathLength.toString());
-    path.setAttribute("stroke-dashoffset", pathLength.toString());
-
-    if (mode === "scoring") {
-      // Gentle breathing wave motion for scoring/loading state
-      anime.remove(path);
-      anime({
-        targets: path,
-        d: [
-          { value: "M 10 50 C 200 25, 400 75, 790 50" },
-          { value: "M 10 50 C 200 75, 400 25, 790 50" },
-          { value: "M 10 50 C 200 25, 400 75, 790 50" }
-        ],
-        strokeDashoffset: 0,
-        duration: 4000,
-        easing: "easeInOutSine",
-        loop: true,
-      });
-    } else {
-      // Crisp strategy cockpit reveal
-      anime.remove(path);
-      anime({
-        targets: path,
-        strokeDashoffset: [pathLength, 0],
-        duration: 1600,
-        easing: "easeOutCubic",
-      });
-    }
-
-    const currentPath = pathRef.current;
-    return () => {
-      if (animeInstance.current && currentPath) {
-        animeInstance.current.remove(currentPath);
-      }
-    };
-  }, [mode, animeLoaded, isReducedMotion]);
-
   // Handler for phase click
   const handlePhaseSelect = (idx: number) => {
     setActivePhase(idx);
     const phase = phases[idx];
     if (phase) {
       onCellClick?.(phase.name, phase.score);
-    }
-
-    // Apply soft scale spring animation to selected interactive node
-    if (animeLoaded && animeInstance.current && !isReducedMotion) {
-      const anime = animeInstance.current;
-      anime({
-        targets: `#node-${idx}`,
-        scale: [1, 1.3, 1],
-        duration: 500,
-        easing: "easeOutElastic(1, .6)"
-      });
     }
   };
 
@@ -275,7 +203,7 @@ export function GrowthMatrix({
                       }}
                     >
                       <div 
-                        className="text-[9px] font-bold py-1.5 px-3 rounded-md flex items-center gap-1.5 whitespace-nowrap border"
+                        className="text-xs font-bold py-1.5 px-3 rounded-md flex items-center gap-1.5 whitespace-nowrap border"
                         style={{
                           backgroundColor: `${phaseColor}1a`, // 10% opacity
                           borderColor: `${phaseColor}4d`,     // 30% opacity
@@ -313,62 +241,77 @@ export function GrowthMatrix({
                   key={idx}
                   className={`group relative h-full rounded-lg border flex flex-col items-center justify-center transition-all hover:scale-105 hover:brightness-110 cursor-pointer ${cellBg}`}
                 >
-                  <span className="text-[10px] font-bold text-white/90 hidden sm:inline">
+                  <span className="text-xs font-bold text-white/90 hidden sm:inline">
                     {val}%
                   </span>
 
                   {/* Premium CSS Tooltip */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 bg-gray-900 border border-white/10 backdrop-blur-md px-3 py-2 rounded-lg text-[11px] text-gray-200 shadow-xl pointer-events-none">
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 bg-gray-900 border border-white/10 backdrop-blur-md px-3 py-2 rounded-lg text-xs text-gray-200 shadow-xl pointer-events-none">
                     <span className="font-bold text-white">Sec {sec}</span> — {val}% watching
                   </div>
 
                   {/* 3. Milestone Anchors overlays */}
                   {mode === "interactive" && sec === 3 && (
-                    <button
+                    <m.button
                       id="node-0"
+                      whileHover={{ scale: 1.2 }}
+                      whileTap={{ scale: 0.9 }}
                       onClick={(e) => {
                         e.stopPropagation();
                         handlePhaseSelect(0);
                       }}
-                      className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 z-30 w-6 h-6 rounded-full bg-orange-500 border border-white flex items-center justify-center shadow-glow active:scale-90 transition-transform cursor-pointer"
+                      className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 z-30 w-6 h-6 rounded-full bg-orange-500 border border-white flex items-center justify-center shadow-glow cursor-pointer transition-colors"
                     >
-                      <span className="text-[9px] font-black text-white font-mono">H</span>
+                      <span className="text-xs font-black text-white font-mono">H</span>
                       {activePhase === 0 && (
-                        <span className="absolute -inset-1 rounded-full border border-orange-500 animate-ping opacity-75" />
+                        <m.span 
+                          layoutId="active-ring"
+                          className="absolute -inset-1 rounded-full border border-orange-500 opacity-75"
+                        />
                       )}
-                    </button>
+                    </m.button>
                   )}
 
                   {mode === "interactive" && sec === 9 && (
-                    <button
+                    <m.button
                       id="node-1"
+                      whileHover={{ scale: 1.2 }}
+                      whileTap={{ scale: 0.9 }}
                       onClick={(e) => {
                         e.stopPropagation();
                         handlePhaseSelect(1);
                       }}
-                      className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 z-30 w-6 h-6 rounded-full bg-indigo-600 border border-white flex items-center justify-center shadow-glow active:scale-90 transition-transform cursor-pointer"
+                      className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 z-30 w-6 h-6 rounded-full bg-indigo-600 border border-white flex items-center justify-center shadow-glow cursor-pointer transition-colors"
                     >
-                      <span className="text-[9px] font-black text-white font-mono">B</span>
+                      <span className="text-xs font-black text-white font-mono">B</span>
                       {activePhase === 1 && (
-                        <span className="absolute -inset-1 rounded-full border border-indigo-600 animate-ping opacity-75" />
+                        <m.span 
+                          layoutId="active-ring"
+                          className="absolute -inset-1 rounded-full border border-indigo-600 opacity-75"
+                        />
                       )}
-                    </button>
+                    </m.button>
                   )}
 
                   {mode === "interactive" && sec === 15 && (
-                    <button
+                    <m.button
                       id="node-2"
+                      whileHover={{ scale: 1.2 }}
+                      whileTap={{ scale: 0.9 }}
                       onClick={(e) => {
                         e.stopPropagation();
                         handlePhaseSelect(2);
                       }}
-                      className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 z-30 w-6 h-6 rounded-full bg-teal-500 border border-white flex items-center justify-center shadow-glow active:scale-90 transition-transform cursor-pointer"
+                      className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 z-30 w-6 h-6 rounded-full bg-teal-500 border border-white flex items-center justify-center shadow-glow cursor-pointer transition-colors"
                     >
-                      <span className="text-[9px] font-black text-white font-mono">E</span>
+                      <span className="text-xs font-black text-white font-mono">E</span>
                       {activePhase === 2 && (
-                        <span className="absolute -inset-1 rounded-full border border-teal-500 animate-ping opacity-75" />
+                        <m.span 
+                          layoutId="active-ring"
+                          className="absolute -inset-1 rounded-full border border-teal-500 opacity-75"
+                        />
                       )}
-                    </button>
+                    </m.button>
                   )}
                 </div>
               );
@@ -377,7 +320,7 @@ export function GrowthMatrix({
         </div>
 
         {/* Bottom Legend */}
-        <div className="z-10 flex justify-between items-center text-[9px] text-gray-500 font-bold uppercase mt-2">
+        <div className="z-10 flex justify-between items-center text-xs text-white/50 font-bold uppercase mt-2">
           <span>0s / Start</span>
           <span>15s+ / End</span>
         </div>
@@ -398,14 +341,14 @@ export function GrowthMatrix({
                     : "bg-glass border-glass text-muted-foreground hover:text-white"
                 }`}
               >
-                <span className="text-[9px] uppercase tracking-wider font-extrabold opacity-75">
+                <span className="text-xs uppercase tracking-wider font-extrabold opacity-75">
                   Phase 0{phase.id + 1}
                 </span>
-                <span className="text-[11px] font-heading font-extrabold truncate w-full">
+                <span className="text-xs font-heading font-extrabold truncate w-full">
                   {phase.name.split(" ")[0]} {phase.name.split(" ")[1]}
                 </span>
                 <div className="flex justify-between items-center w-full mt-1 border-t border-white/5 pt-1.5">
-                  <span className="text-[8px] uppercase tracking-wide opacity-50 truncate max-w-[50px] sm:max-w-[100px]">
+                  <span className="text-xs uppercase tracking-wide opacity-50 truncate max-w-[50px] sm:max-w-[100px]">
                     {phase.metric}
                   </span>
                   <span className="text-xs font-black text-white shrink-0">
@@ -429,22 +372,22 @@ export function GrowthMatrix({
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-400 font-bold uppercase">
+                <span className="text-xs text-white/60 font-bold uppercase">
                   Efficacy Index: <strong className="text-white font-black">{activePhaseInfo.score}%</strong>
                 </span>
-                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider ${efficacy.color}`}>
+                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border uppercase tracking-wider ${efficacy.color}`}>
                   {efficacy.icon}
                   {efficacy.label}
                 </span>
               </div>
             </div>
 
-            <p className="text-[11px] text-gray-300 leading-relaxed font-semibold">
+            <p className="text-xs text-white/70 leading-relaxed font-semibold">
               {activePhaseInfo.desc}
             </p>
 
             <div className="border-t border-white/5 pt-5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 mb-4 flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-4 flex items-center gap-2">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
                 Actionable Growth Recommendations
               </span>
@@ -456,7 +399,7 @@ export function GrowthMatrix({
                       className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" 
                       style={{ backgroundColor: activePhaseInfo.accentColor }} 
                     />
-                    <p className="text-[11px] text-gray-300 leading-relaxed">
+                    <p className="text-xs text-white/70 leading-relaxed">
                       {tip}
                     </p>
                   </li>

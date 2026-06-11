@@ -50,7 +50,7 @@ export function MetricCard({
           {description && (
             <div className="relative group/tooltip inline-block">
               <HelpCircle className="w-3.5 h-3.5 text-gray-500 hover:text-white cursor-help transition-colors" />
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:block w-48 p-2 rounded-lg border border-glass bg-popover text-[10px] text-gray-400 font-medium leading-relaxed z-[99]">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:block w-48 p-2 rounded-lg border border-glass bg-popover text-xs text-white/70 font-medium leading-relaxed z-[99]">
                 {description}
               </div>
             </div>
@@ -59,7 +59,7 @@ export function MetricCard({
 
         {/* Metric Source Badge */}
         {sourceBadge && (
-          <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400">
+          <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white/5 border border-white/10 text-white/60">
             {sourceBadge}
           </span>
         )}
@@ -90,7 +90,7 @@ export function MetricCard({
               </div>
             )}
             {baselineText && (
-              <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">
+              <span className="text-xs text-white/60 font-medium whitespace-nowrap">
                 {baselineText}
               </span>
             )}

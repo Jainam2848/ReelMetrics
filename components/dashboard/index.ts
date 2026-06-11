@@ -7,5 +7,4 @@ export { SyncStatusChip } from "./sync-status-chip";
 export { StrategyCard } from "./strategy-card";
 export { ReelPreviewPlayer } from "./reel-preview-player";
 export { default as OnboardingCore3D } from "./onboarding-core-3d";
-export { default as StrategyMatrix3D } from "./strategy-matrix-3d";
 export { ContentMomentumCard } from "./content-momentum-card";

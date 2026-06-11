@@ -50,7 +50,30 @@ const fetcher = async (url: string): Promise<SocialAccountDetails[]> => {
 };
 
 export function ActiveAccountProvider({ children }: { children: React.ReactNode }) {
-  const { data: accounts = [], error, isLoading, mutate } = useSWR<SocialAccountDetails[], Error>("/api/accounts", fetcher, {
+  // Only enable the SWR key once we confirm an authenticated session exists.
+  // Passing null as the SWR key prevents any fetch — this is the standard SWR
+  // pattern for conditional fetching. Without this guard, the landing page
+  // (which has no session) would fire GET /api/accounts and receive a 401,
+  // which Lighthouse flags as a console error.
+  const [swrKey, setSwrKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Dynamically import to avoid shipping the Supabase client in the SSR bundle
+    // for pages that never need it (public marketing pages).
+    import("@/lib/supabase/client").then(({ createClient }) => {
+      const supabase = createClient();
+      // Check the current session; onAuthStateChange keeps it in sync.
+      supabase.auth.getSession().then(({ data }) => {
+        setSwrKey(data.session ? "/api/accounts" : null);
+      });
+      const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+        setSwrKey(session ? "/api/accounts" : null);
+      });
+      return () => listener.subscription.unsubscribe();
+    });
+  }, []);
+
+  const { data: accounts = [], error, isLoading, mutate } = useSWR<SocialAccountDetails[], Error>(swrKey, fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: true,
   });

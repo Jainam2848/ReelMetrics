@@ -29,7 +29,6 @@ export const metadata: Metadata = {
 };
 
 import { Providers } from "@/app/providers";
-import { NeuralBackground } from "@/components/visual/NeuralBackground";
 import Script from "next/script";
 
 export default function RootLayout({
@@ -62,7 +61,6 @@ export default function RootLayout({
             gtag('config', 'G-RY10KD8ZC6');
           `}
         </Script>
-        <NeuralBackground />
         <Providers>
           {children}
         </Providers>

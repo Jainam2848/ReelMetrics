@@ -10,9 +10,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
-  turbopack: {
-    root: path.resolve(__dirname),
-  },
+  turbopack: {},
   typedRoutes: true,
   // webpack(config) {
   //   config.resolve.alias = {
@@ -48,4 +46,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// @ts-ignore
+import withBundleAnalyzer from "@next/bundle-analyzer";
+
+const configWithAnalyzer = withBundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+})(nextConfig);
+
+export default configWithAnalyzer;

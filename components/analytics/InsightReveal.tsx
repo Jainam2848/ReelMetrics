@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
-import anime from "animejs";
+import React from "react";
+import { m } from "framer-motion";
 
 interface InsightRevealProps {
   text: string;
@@ -10,46 +10,50 @@ interface InsightRevealProps {
 }
 
 export function InsightReveal({ text, className, delay = 0 }: InsightRevealProps) {
-  const containerRef = useRef<HTMLParagraphElement>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    // We animate individual words for a premium storytelling effect
-    const words = containerRef.current.querySelectorAll(".insight-word");
-    
-    // Anime.js cinematic reveal
-    anime({
-      targets: words,
-      opacity: [0, 1],
-      translateY: [4, 0],
-      filter: ["blur(4px)", "blur(0px)"],
-      easing: "easeOutExpo",
-      duration: 800,
-      delay: anime.stagger(40, { start: delay }), // Smooth staggered word appearance
-    });
-
-    return () => {
-      anime.remove(words);
-    };
-  }, [text, delay]);
-
   // Split text into words to wrap them in spans
-  const renderText = () => {
-    return text.split(" ").map((word, index) => (
-      <span
-        key={index}
-        className="insight-word inline-block opacity-0 filter blur-sm"
-        style={{ marginRight: "0.25em" }}
-      >
-        {word}
-      </span>
-    ));
+  const words = text.split(" ");
+
+  // Container variants for clean, fast stagger
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.02,
+        delayChildren: delay / 1000,
+      },
+    },
+  };
+
+  const wordVariants = {
+    hidden: { opacity: 0, y: 3 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.35,
+        ease: [0.16, 1, 0.3, 1] as const, // easeOutExponential
+      },
+    },
   };
 
   return (
-    <p ref={containerRef} className={`font-sans leading-relaxed ${className}`}>
-      {renderText()}
-    </p>
+    <m.p
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className={`font-sans leading-relaxed tracking-wide ${className}`}
+    >
+      {words.map((word, index) => (
+        <m.span
+          key={index}
+          variants={wordVariants}
+          className="inline-block"
+          style={{ marginRight: "0.25em" }}
+        >
+          {word}
+        </m.span>
+      ))}
+    </m.p>
   );
 }

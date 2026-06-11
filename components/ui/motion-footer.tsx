@@ -1,15 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useEffect, useRef } from "react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useRef } from "react";
+import { motion, useMotionValue, useSpring } from "framer-motion";
 import { cn } from "@/lib/utils";
-
-// Register ScrollTrigger safely for React
-if (typeof window !== "undefined") {
-  gsap.registerPlugin(ScrollTrigger);
-}
 
 // -------------------------------------------------------------------------
 // 1. THEME-ADAPTIVE INLINE STYLES
@@ -87,10 +81,50 @@ const STYLES = `
 /* Glass Pill Theming */
 .footer-glass-pill {
   background: linear-gradient(145deg, var(--pill-bg-1) 0%, var(--pill-bg-2) 100%);
-  box-shadow: \n      0 10px 30px -10px var(--pill-shadow), \n      inset 0 1px 1px var(--pill-highlight), \n      inset 0 -1px 2px var(--pill-inset-shadow);\n  border: 1px solid var(--pill-border);\n  backdrop-filter: blur(16px);\n  -webkit-backdrop-filter: blur(16px);\n  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);\n}\n\n.footer-glass-pill:hover {\n  background: linear-gradient(145deg, var(--pill-bg-1-hover) 0%, var(--pill-bg-2-hover) 100%);\n  border-color: var(--pill-border-hover);\n  box-shadow: \n      0 20px 40px -10px var(--pill-shadow-hover), \n      inset 0 1px 1px var(--pill-highlight-hover);\n  color: var(--foreground);\n}\n\n/* Giant Background Text Masking */\n.footer-giant-bg-text {\n  font-size: 24vw;\n  line-height: 0.75;\n  font-weight: 900;\n  letter-spacing: -0.02em;\n  color: transparent;\n  -webkit-text-stroke: 1px color-mix(in oklch, var(--foreground) 5%, transparent);\n  background: linear-gradient(180deg, color-mix(in oklch, var(--foreground) 8%, transparent) 0%, transparent 60%);\n  -webkit-background-clip: text;\n  background-clip: text;\n}\n\n/* Metallic Text Glow */\n.footer-text-glow {\n  background: linear-gradient(180deg, var(--foreground) 0%, color-mix(in oklch, var(--foreground) 40%, transparent) 100%);\n  -webkit-background-clip: text;\n  -webkit-text-fill-color: transparent;\n  background-clip: text;\n  filter: drop-shadow(0px 0px 20px color-mix(in oklch, var(--foreground) 15%, transparent));\n}\n`;
+  box-shadow: 
+      0 10px 30px -10px var(--pill-shadow), 
+      inset 0 1px 1px var(--pill-highlight), 
+      inset 0 -1px 2px var(--pill-inset-shadow);
+  border: 1px solid var(--pill-border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.footer-glass-pill:hover {
+  background: linear-gradient(145deg, var(--pill-bg-1-hover) 0%, var(--pill-bg-2-hover) 100%);
+  border-color: var(--pill-border-hover);
+  box-shadow: 
+      0 20px 40px -10px var(--pill-shadow-hover), 
+      inset 0 1px 1px var(--pill-highlight-hover);
+  color: var(--foreground);
+}
+
+/* Giant Background Text Masking */
+.footer-giant-bg-text {
+  font-size: 24vw;
+  line-height: 0.75;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: transparent;
+  -webkit-text-stroke: 1px color-mix(in oklch, var(--foreground) 5%, transparent);
+  background: linear-gradient(180deg, color-mix(in oklch, var(--foreground) 8%, transparent) 0%, transparent 60%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Metallic Text Glow */
+.footer-text-glow {
+  background: linear-gradient(180deg, var(--foreground) 0%, color-mix(in oklch, var(--foreground) 40%, transparent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0px 0px 20px color-mix(in oklch, var(--foreground) 15%, transparent));
+}
+`;
 
 // -------------------------------------------------------------------------
-// 2. MAGNETIC BUTTON PRIMITIVE (Zero Dependency)
+// 2. MAGNETIC BUTTON PRIMITIVE (Zero Dependency Framer Motion Version)
 // -------------------------------------------------------------------------
 export interface MagneticButtonProps extends React.HTMLAttributes<HTMLElement> {
   as?: React.ElementType;
@@ -99,96 +133,50 @@ export interface MagneticButtonProps extends React.HTMLAttributes<HTMLElement> {
 }
 
 const MagneticButton = React.forwardRef<HTMLElement, MagneticButtonProps>(
-  ({ className, children, as: Component = "button", ...props }, forwardedRef) => {
-    const localRef = useRef<HTMLElement>(null);
+  ({ className, children, as: Component = "button", ...props }, ref) => {
+    const x = useMotionValue(0);
+    const y = useMotionValue(0);
 
-    useEffect(() => {
-      if (typeof window === "undefined") return;
+    const springConfig = { damping: 15, stiffness: 150 };
+    const springX = useSpring(x, springConfig);
+    const springY = useSpring(y, springConfig);
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+      if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) return;
       
-      // Mobile / touchscreen device pointer bypass
-      if (window.matchMedia("(pointer: coarse)").matches) return;
-      
-      const element = localRef.current;
-      if (!element) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const h = rect.width / 2;
+      const w = rect.height / 2;
+      const clientX = e.clientX - rect.left - h;
+      const clientY = e.clientY - rect.top - w;
 
-      const ctx = gsap.context(() => {
-        let ticking = false;
-        let lastEvent: MouseEvent | null = null;
+      x.set(clientX * 0.35);
+      y.set(clientY * 0.35);
+    };
 
-        const handleMouseMove = (e: MouseEvent) => {
-          lastEvent = e;
-          if (!ticking) {
-            window.requestAnimationFrame(() => {
-              if (lastEvent) {
-                const rect = element.getBoundingClientRect();
-                const h = rect.width / 2;
-                const w = rect.height / 2;
-                const x = lastEvent.clientX - rect.left - h;
-                const y = lastEvent.clientY - rect.top - w;
+    const handleMouseLeave = () => {
+      x.set(0);
+      y.set(0);
+    };
 
-                gsap.to(element, {
-                  x: x * 0.4,
-                  y: y * 0.4,
-                  rotationX: -y * 0.15,
-                  rotationY: x * 0.15,
-                  scale: 1.05,
-                  ease: "power2.out",
-                  duration: 0.4,
-                });
-              }
-              ticking = false;
-            });
-            ticking = true;
-          }
-        };
-
-        const handleMouseLeave = () => {
-          lastEvent = null;
-          gsap.to(element, {
-            x: 0,
-            y: 0,
-            rotationX: 0,
-            rotationY: 0,
-            scale: 1,
-            ease: "elastic.out(1, 0.3)",
-            duration: 1.2,
-          });
-        };
-
-        element.addEventListener("mousemove", handleMouseMove as any);
-        element.addEventListener("mouseleave", handleMouseLeave);
-
-        return () => {
-          element.removeEventListener("mousemove", handleMouseMove as any);
-          element.removeEventListener("mouseleave", handleMouseLeave);
-        };
-      }, element);
-
-      return () => ctx.revert();
-    }, []);
-
-    const Comp = Component as any;
+    const MotionComponent = motion(Component as any);
 
     return (
-      <Comp
-        ref={(node: HTMLElement) => {
-          (localRef as any).current = node;
-          if (typeof forwardedRef === "function") forwardedRef(node);
-          else if (forwardedRef) (forwardedRef as any).current = node;
-        }}
-        className={cn("cursor-pointer", className)}
+      <MotionComponent
+        ref={ref as any}
+        style={{ x: springX, y: springY }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className={cn("cursor-pointer inline-flex", className)}
         {...props}
       >
         {children}
-      </Comp>
+      </MotionComponent>
     );
   }
 );
 MagneticButton.displayName = "MagneticButton";
 
-// -------------------------------------------------------------------------
-// 3. MAIN COMPONENT
-// -------------------------------------------------------------------------
 const MarqueeItem = () => (
   <div className="flex items-center space-x-12 px-6">
     <span>Reach Quality</span> <span className="text-primary/60">✦</span>
@@ -200,57 +188,6 @@ const MarqueeItem = () => (
 );
 
 export function CinematicFooter() {
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const giantTextRef = useRef<HTMLDivElement>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const linksRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!wrapperRef.current) return;
-
-    // React strict mode compatible GSAP context cleanup
-    const ctx = gsap.context(() => {
-      // Background Parallax
-      gsap.fromTo(
-        giantTextRef.current,
-        { y: "10vh", scale: 0.8, opacity: 0 },
-        {
-          y: "0vh",
-          scale: 1,
-          opacity: 1,
-          ease: "power1.out",
-          scrollTrigger: {
-            trigger: wrapperRef.current,
-            start: "top 80%",
-            end: "bottom bottom",
-            scrub: 1,
-          },
-        }
-      );
-
-      // Staggered Content Reveal
-      gsap.fromTo(
-        [headingRef.current, linksRef.current],
-        { y: 50, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          stagger: 0.15,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: wrapperRef.current,
-            start: "top 40%",
-            end: "bottom bottom",
-            scrub: 1,
-          },
-        }
-      );
-    }, wrapperRef);
-
-    return () => ctx.revert();
-  }, []);
-
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -259,32 +196,28 @@ export function CinematicFooter() {
     <>
       <style dangerouslySetInnerHTML={{ __html: STYLES }} />
       
-      {/* 
-        The "Curtain Reveal" Wrapper:
-        It sits in standard flow. Because it has clip-path, its contents
-        are ONLY visible within its bounding box. 
-      */}
       <div
-        ref={wrapperRef}
         className="relative h-screen w-full"
         style={{ clipPath: "polygon(0% 0, 100% 0%, 100% 100%, 0 100%)" }}
       >
-        {/* The actual footer stays fixed to the viewport underneath everything */}
         <footer className="fixed bottom-0 left-0 flex h-screen w-full flex-col justify-between overflow-hidden bg-background text-foreground cinematic-footer-wrapper">
           
           {/* Ambient Light & Grid Background */}
           <div className="footer-aurora absolute left-1/2 top-1/2 h-[60vh] w-[80vw] -translate-x-1/2 -translate-y-1/2 animate-footer-breathe rounded-[50%] blur-[80px] pointer-events-none z-0" />
           <div className="footer-bg-grid absolute inset-0 z-0 pointer-events-none" />
 
-          {/* Giant background text */}
-          <div
-            ref={giantTextRef}
+          {/* Giant background text animated using Framer Motion on viewport entry */}
+          <motion.div
+            initial={{ y: "12vh", scale: 0.85, opacity: 0 }}
+            whileInView={{ y: "0vh", scale: 1, opacity: 1 }}
+            viewport={{ amount: 0.05 }}
+            transition={{ type: "spring", damping: 20, stiffness: 60 }}
             className="footer-giant-bg-text absolute -bottom-[3vh] left-1/2 -translate-x-1/2 whitespace-nowrap z-0 pointer-events-none select-none"
           >
             TRENDORAA
-          </div>
+          </motion.div>
 
-          {/* 1. Diagonal Sleek Marquee (Top of footer) */}
+          {/* 1. Diagonal Marquee (Top of footer) */}
           <div className="absolute top-12 left-0 w-full overflow-hidden border-y border-border/50 bg-background/60 backdrop-blur-md py-4 z-10 -rotate-2 scale-110 shadow-2xl">
             <div className="flex w-max animate-footer-scroll-marquee text-xs md:text-sm font-bold tracking-[0.3em] text-muted-foreground uppercase">
               <MarqueeItem />
@@ -294,15 +227,23 @@ export function CinematicFooter() {
 
           {/* 2. Main Center Content */}
           <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 mt-20 w-full max-w-5xl mx-auto">
-            <h2
-              ref={headingRef}
+            <motion.h2
+              initial={{ y: 40, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              viewport={{ amount: 0.1 }}
+              transition={{ delay: 0.1, duration: 0.5, ease: "easeOut" }}
               className="text-5xl md:text-8xl font-black footer-text-glow tracking-tighter mb-12 text-center"
             >
               Ready to begin?
-            </h2>
+            </motion.h2>
 
-            {/* Interactive Magnetic Pills Layout */}
-            <div ref={linksRef} className="flex flex-col items-center gap-6 w-full">
+            <motion.div 
+              initial={{ y: 40, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              viewport={{ amount: 0.1 }}
+              transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
+              className="flex flex-col items-center gap-6 w-full"
+            >
               {/* Primary Call-to-Actions */}
               <div className="flex flex-wrap justify-center gap-4 w-full">
                 <MagneticButton as="a" href="/signup" className="footer-glass-pill px-10 py-5 rounded-full text-foreground font-bold text-sm md:text-base flex items-center gap-3 group">
@@ -332,7 +273,7 @@ export function CinematicFooter() {
                   Contact Support
                 </MagneticButton>
               </div>
-            </div>
+            </motion.div>
           </div>
 
           {/* 3. Bottom Bar / Credits */}

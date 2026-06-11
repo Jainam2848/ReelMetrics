@@ -11,17 +11,17 @@ export function HowItWorksSection() {
 
       <div className="max-w-6xl w-full mx-auto px-6 relative z-10">
         
-        {/* Section Header with Satoshi typography */}
+        {/* Section Header */}
         <div className="flex flex-col items-start text-left mb-16 md:mb-20 max-w-2xl">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#10B981]/30 bg-[#10B981]/10 px-3.5 py-1 text-[11px] font-bold uppercase tracking-wider text-[#10B981]">
             Workflow Pipeline
           </div>
           
-          <h2 className="text-3xl md:text-5xl font-satoshi font-black tracking-tight text-white leading-tight">
+          <h2 className="text-3xl md:text-5xl font-display font-black tracking-tight text-white leading-tight">
             How Trendoraa Fuels Your Short-Form Growth
           </h2>
           
-          <p className="mt-4 text-base text-gray-400 font-satoshi font-medium leading-relaxed">
+          <p className="mt-4 text-base text-gray-400 font-sans font-medium leading-relaxed">
             From authorization to action. Three integrated steps to diagnostic intelligence and scroll-stopping virality.
           </p>
         </div>

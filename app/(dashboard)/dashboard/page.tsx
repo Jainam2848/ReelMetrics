@@ -15,9 +15,6 @@ const TrendChart = dynamic(
     loading: () => <LoadingSkeleton variant="chart" />,
   }
 );
-const StrategyMatrix3D = dynamic(() => import("@/components/dashboard/strategy-matrix-3d"), {
-  ssr: false,
-});
 import { PostCard } from "@/components/dashboard/post-card";
 import { LoadingSkeleton } from "@/components/dashboard/loading-skeleton";
 import { OnboardingWizard } from "@/components/dashboard/onboarding-wizard";
@@ -331,7 +328,6 @@ export default function DashboardHome() {
 
   return (
     <div className="flex flex-col gap-8 relative">
-      <StrategyMatrix3D />
       <OAuthErrorBanner />
 
       {/* Global Sandbox Demo Status Banner */}
