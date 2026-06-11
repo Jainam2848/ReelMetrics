@@ -168,6 +168,14 @@ if (goal === "retention") {
 } // (onboarding-core-3d.tsx:98-114)
 ```
 
+### 4.3 GPU-Accelerated Dashboard Background & React Compiler Optimizations (`DashboardBackground.tsx`)
+
+To satisfy the strict static rendering rules of the React Compiler (Next.js 15+ / Next.js 16+), components utilising canvas simulations are structured to prevent render-phase side effects:
+* **Global Buffer & Particle State Allocation:** Rather than using `useMemo` or `useRef` inside the component body, particle arrays (`PARTICLES_DATA`), velocity vectors (`VELOCITIES_DATA`), and pre-allocated `Float32Array` buffer attributes (`LINE_POSITIONS_BUFFER`, `LINE_COLORS_BUFFER`) are declared at the module scope level.
+* **Deferred Initialization:** Initialization computations involving impure functions (`Math.random()`) and mesh manipulations are executed entirely within `useEffect` on mount. This ensures the component’s render function remains pure.
+* **Zero-Allocation Rendering Loops:** Calculations inside `useFrame` directly read and write to these global buffers, preventing memory re-allocation, minimizing garbage collection sweeps, and maintaining a stable 60 FPS.
+* **Mobile GPU Exits:** Mobile devices bypass WebGL canvas instantiation completely. If window pointer query matches `coarse` or browser width is below `768px`, the canvas is completely omitted from the DOM to preserve battery.
+
 ---
 
 ## 💻 5. Screen-by-Screen Layout & Copy Specs
@@ -308,6 +316,7 @@ If you are an LLM verifying this visual and technical architecture, review the d
 * **State Machine Loops:** Verify that the onboarding workflow prevents access to `/dashboard` cockpit subpages if `instagram_accounts.length === 0`, routing the session to the Stepper.
 * **Heuristic Failures:** Ensure that if an API sync fails, the `OAuthErrorBanner` dismisses parameters and displays clean copy, and that the database enqueues backup data averages (`skipRate` at 50%, `engagementRate` at 2.0%) without throwing fatal exceptions.
 * **Scrollbar Styling:** Confirm that global scrollbar rules use thin margins (`6px` width) and translucent overlays (`rgba(255, 255, 255, 0.1)`) to preserve OLED aesthetics.
+* **React Compiler Compliance:** Ensure that render-phase functions do not access refs, mutate parent state synchronously, or call impure methods (such as `Date.now()`, `Math.random()`, or `window.location.hash` mutations). Check that initialization tasks are deferred to state initializers or `useEffect` hooks.
 
 ---
 
