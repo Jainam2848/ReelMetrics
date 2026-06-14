@@ -277,6 +277,10 @@ export function BeforeAfterSplit() {
                   </div>
                 </div>
                 <m.div 
+                  initial={{
+                    backgroundColor: "rgba(0, 0, 0, 0.3)",
+                    borderColor: "rgba(255, 255, 255, 0.05)"
+                  }}
                   animate={sequenceStarted ? {
                     backgroundColor: "rgba(0, 184, 148, 0.15)",
                     borderColor: "rgba(0, 184, 148, 0.4)"
@@ -285,7 +289,7 @@ export function BeforeAfterSplit() {
                     borderColor: "rgba(255, 255, 255, 0.05)"
                   }}
                   transition={{ duration: 1, delay: 0.3 }}
-                  className="bg-black/30 border border-white/5 rounded-lg p-3 transition-colors"
+                  className="border rounded-lg p-3 transition-colors"
                 >
                   <div className="text-xs text-muted-foreground mb-1">
                     {sequenceStarted ? "Hook Retention" : "Skip Rate"}

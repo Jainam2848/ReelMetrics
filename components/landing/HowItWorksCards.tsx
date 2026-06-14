@@ -162,10 +162,14 @@ function PlaybookVisual({ active }: { active: boolean }) {
         ].map((item, idx) => (
           <div key={idx} className="flex items-center gap-2">
             <m.div 
-              initial={{ scale: 0.8 }}
-              animate={active ? { scale: 1, backgroundColor: "rgba(16, 185, 129, 0.2)", borderColor: "rgba(16, 185, 129, 0.4)" } : { scale: 0.9, backgroundColor: "rgba(255, 255, 255, 0.03)", borderColor: "rgba(255, 255, 255, 0.08)" }}
+              initial={{ 
+                scale: 0.8,
+                backgroundColor: "rgba(255, 255, 255, 0.03)",
+                borderColor: "rgba(255, 255, 255, 0.1)"
+              }}
+              animate={active ? { scale: 1, backgroundColor: "rgba(16, 185, 129, 0.2)", borderColor: "rgba(16, 185, 129, 0.4)" } : { scale: 0.9, backgroundColor: "rgba(255, 255, 255, 0.03)", borderColor: "rgba(255, 255, 255, 0.1)" }}
               transition={{ duration: 0.3, delay: item.delay }}
-              className="w-3.5 h-3.5 rounded border border-white/10 flex items-center justify-center"
+              className="w-3.5 h-3.5 rounded border flex items-center justify-center"
             >
               <m.svg 
                 initial={{ opacity: 0, pathLength: 0 }}
@@ -254,13 +258,17 @@ export function HowItWorksCards() {
               backgroundColor: "rgba(255, 255, 255, 0.05)"
             }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            style={{
+              backgroundColor: "rgba(255, 255, 255, 0.04)",
+              borderColor: "rgba(255, 255, 255, 0.08)"
+            }}
             tabIndex={0}
             role="button"
             aria-label={`Step ${step.num}: ${step.title}. ${step.description}`}
             onKeyDown={(e) => handleKeyDown(e, step.title)}
             onMouseEnter={() => setHoveredIdx(idx)}
             onMouseLeave={() => setHoveredIdx(null)}
-            className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-8 relative flex flex-col justify-between min-h-[340px] overflow-hidden group cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F46E5] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090D] transition-all duration-300"
+            className="backdrop-blur-xl border rounded-2xl p-8 relative flex flex-col justify-between min-h-[340px] overflow-hidden group cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F46E5] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090D] transition-all duration-300"
           >
             {/* Top content group */}
             <div className="relative z-10 flex flex-col items-start w-full">

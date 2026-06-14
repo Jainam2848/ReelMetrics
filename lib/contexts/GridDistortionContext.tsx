@@ -11,8 +11,24 @@ interface GridDistortionContextValue {
 const GridDistortionContext = createContext<GridDistortionContextValue | null>(null);
 
 export function GridDistortionProvider({ children }: { children: React.ReactNode }) {
-  const normalizedX = useMotionValue(0.5);
-  const normalizedY = useMotionValue(0.5);
+  const normalizedX = useMotionValue(50);
+  const normalizedY = useMotionValue(50);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const x = (e.clientX / window.innerWidth) * 100;
+      const y = (e.clientY / window.innerHeight) * 100;
+      normalizedX.set(x);
+      normalizedY.set(y);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, [normalizedX, normalizedY]);
 
   const value = useMemo(
     () => ({ normalizedX, normalizedY }),
@@ -31,8 +47,8 @@ export function useGridDistortion() {
   if (!ctx) {
     // Graceful degradation — return inert motion values if used outside the provider
     return {
-      normalizedX: { get: () => 0.5, set: () => {} } as unknown as MotionValue<number>,
-      normalizedY: { get: () => 0.5, set: () => {} } as unknown as MotionValue<number>,
+      normalizedX: { get: () => 50, set: () => {} } as unknown as MotionValue<number>,
+      normalizedY: { get: () => 50, set: () => {} } as unknown as MotionValue<number>,
     };
   }
   return ctx;

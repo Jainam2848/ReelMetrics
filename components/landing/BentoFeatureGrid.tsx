@@ -100,6 +100,10 @@ function HookMoatCell() {
         borderColor: "rgba(79, 70, 229, 0.3)",
         transition: { type: "spring", stiffness: 400, damping: 25 }
       }}
+      style={{
+        backgroundColor: "rgba(255, 255, 255, 0.03)",
+        borderColor: "rgba(255, 255, 255, 0.07)"
+      }}
       onMouseEnter={() => {
         primaryControls.stop();
         secondaryControls.stop();
@@ -107,7 +111,7 @@ function HookMoatCell() {
       onMouseLeave={() => {
         startWaves();
       }}
-      className="col-span-12 lg:col-span-8 row-span-2 rounded-2xl bg-white/[0.03] border border-white/[0.07] backdrop-blur-[12px] p-8 flex flex-col justify-between select-none group min-h-[420px] cursor-pointer"
+      className="col-span-12 lg:col-span-8 row-span-2 rounded-2xl border backdrop-blur-[12px] p-8 flex flex-col justify-between select-none group min-h-[420px] cursor-pointer"
     >
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
@@ -189,7 +193,11 @@ function StatsCell() {
         borderColor: "rgba(79, 70, 229, 0.3)",
         transition: { type: "spring", stiffness: 400, damping: 25 }
       }}
-      className="col-span-12 md:col-span-6 lg:col-span-4 row-span-1 rounded-2xl bg-white/[0.03] border border-white/[0.07] backdrop-blur-[12px] p-6 flex flex-col justify-between select-none group cursor-pointer"
+      style={{
+        backgroundColor: "rgba(255, 255, 255, 0.03)",
+        borderColor: "rgba(255, 255, 255, 0.07)"
+      }}
+      className="col-span-12 md:col-span-6 lg:col-span-4 row-span-1 rounded-2xl border backdrop-blur-[12px] p-6 flex flex-col justify-between select-none group cursor-pointer"
     >
       <div className="flex flex-col gap-1">
         <span className="text-[11px] font-mono font-bold tracking-widest text-[#10B981] uppercase">Module 02 // Analytics</span>
@@ -257,7 +265,11 @@ function ScoreCell() {
         borderColor: "rgba(79, 70, 229, 0.3)",
         transition: { type: "spring", stiffness: 400, damping: 25 }
       }}
-      className="col-span-12 md:col-span-6 lg:col-span-4 row-span-1 rounded-2xl bg-white/[0.03] border border-white/[0.07] backdrop-blur-[12px] p-6 flex flex-col justify-between select-none group text-center cursor-pointer"
+      style={{
+        backgroundColor: "rgba(255, 255, 255, 0.03)",
+        borderColor: "rgba(255, 255, 255, 0.07)"
+      }}
+      className="col-span-12 md:col-span-6 lg:col-span-4 row-span-1 rounded-2xl border backdrop-blur-[12px] p-6 flex flex-col justify-between select-none group text-center cursor-pointer"
     >
       <div className="flex flex-col gap-1 items-center">
         <span className="text-[11px] font-mono font-bold tracking-widest text-[#4F46E5] uppercase">Module 03 // Vector Scoring</span>
@@ -326,7 +338,11 @@ function CalendarCell() {
         borderColor: "rgba(79, 70, 229, 0.3)",
         transition: { type: "spring", stiffness: 400, damping: 25 }
       }}
-      className="col-span-12 md:col-span-5 lg:col-span-4 row-span-1 rounded-2xl bg-white/[0.03] border border-white/[0.07] backdrop-blur-[12px] p-6 flex flex-col justify-between select-none group cursor-pointer"
+      style={{
+        backgroundColor: "rgba(255, 255, 255, 0.03)",
+        borderColor: "rgba(255, 255, 255, 0.07)"
+      }}
+      className="col-span-12 md:col-span-5 lg:col-span-4 row-span-1 rounded-2xl border backdrop-blur-[12px] p-6 flex flex-col justify-between select-none group cursor-pointer"
     >
       <div className="flex flex-col gap-1 mb-4">
         <span className="text-[11px] font-mono font-bold tracking-widest text-[#10B981] uppercase">Module 04 // Scheduler</span>
@@ -373,7 +389,11 @@ function RetentionCurveCell() {
         borderColor: "rgba(79, 70, 229, 0.3)",
         transition: { type: "spring", stiffness: 400, damping: 25 }
       }}
-      className="col-span-12 md:col-span-7 lg:col-span-8 row-span-1 rounded-2xl bg-white/[0.03] border border-white/[0.07] backdrop-blur-[12px] p-6 md:p-8 flex flex-col justify-between select-none group cursor-pointer"
+      style={{
+        backgroundColor: "rgba(255, 255, 255, 0.03)",
+        borderColor: "rgba(255, 255, 255, 0.07)"
+      }}
+      className="col-span-12 md:col-span-7 lg:col-span-8 row-span-1 rounded-2xl border backdrop-blur-[12px] p-6 md:p-8 flex flex-col justify-between select-none group cursor-pointer"
     >
       <div className="flex flex-col gap-1 mb-4">
         <span className="text-[11px] font-mono font-bold tracking-widest text-[#4F46E5] uppercase">Module 05 // Retention</span>

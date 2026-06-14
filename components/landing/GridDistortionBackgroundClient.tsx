@@ -1,25 +1,18 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { m, useMotionTemplate } from "framer-motion";
+import { useGridDistortion } from "@/lib/contexts/GridDistortionContext";
 
 export function GridDistortionBackground() {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [mounted, setMounted] = useState(false);
+  const { normalizedX, normalizedY } = useGridDistortion();
 
   useEffect(() => {
     setMounted(true);
-    const handleMouseMove = (e: MouseEvent) => {
-      // Normalize position to percentage
-      const x = (e.clientX / window.innerWidth) * 100;
-      const y = (e.clientY / window.innerHeight) * 100;
-      setMousePosition({ x, y });
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-    };
   }, []);
+
+  const background = useMotionTemplate`radial-gradient(circle 400px at ${normalizedX}% ${normalizedY}%, rgba(99,102,241,0.08) 0%, rgba(20,184,166,0.03) 50%, transparent 100%)`;
 
   return (
     <div
@@ -46,10 +39,10 @@ export function GridDistortionBackground() {
 
       {/* Interactive Cursor Spotlight */}
       {mounted && (
-        <div
+        <m.div
           className="absolute inset-0 transition-opacity duration-500 opacity-60 mix-blend-screen"
           style={{
-            background: `radial-gradient(circle 400px at ${mousePosition.x}% ${mousePosition.y}%, rgba(99,102,241,0.08) 0%, rgba(20,184,166,0.03) 50%, transparent 100%)`,
+            background,
           }}
         />
       )}

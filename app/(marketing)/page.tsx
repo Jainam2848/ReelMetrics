@@ -12,6 +12,7 @@ import { CinematicFooter } from "@/components/ui/motion-footer";
 import { GridDistortionProvider } from "@/lib/contexts/GridDistortionContext";
 import { GridDistortionBackground } from "@/components/landing/GridDistortionBackgroundClient";
 import { ScrollReveal } from "@/components/landing/ScrollReveal";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 
 
 import { createClient } from "@/lib/supabase/server";
@@ -85,13 +86,17 @@ export default async function LandingPage() {
             {/* Dynamic Bento Grid Feature Showcase */}
             <div id="section-features">
               <ScrollReveal>
-                <BentoFeatureGrid />
+                <ErrorBoundary>
+                  <BentoFeatureGrid />
+                </ErrorBoundary>
               </ScrollReveal>
             </div>
 
             {/* Cinematic Transformation Sequence */}
             <ScrollReveal>
-              <BeforeAfterSplit />
+              <ErrorBoundary>
+                <BeforeAfterSplit />
+              </ErrorBoundary>
             </ScrollReveal>
             
             {/* Buzzwords Rotated Statement Marquee */}
@@ -102,7 +107,9 @@ export default async function LandingPage() {
             {/* Full Testimonial Glassmorphism Carousel */}
             <div id="section-testimonials">
               <ScrollReveal>
-                <TestimonialCarousel />
+                <ErrorBoundary>
+                  <TestimonialCarousel />
+                </ErrorBoundary>
               </ScrollReveal>
             </div>
 
