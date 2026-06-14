@@ -42,17 +42,19 @@ The wrapper resolves `effectiveOperation = resolveEffectiveOperation(operation, 
 * **Fallback**: `deepseek-chat`
 * **Heuristic**: Local statistical heuristics
 
-### 3.3 `strategy` (Standard strategic recommendations)
+### 3.3 `strategy` (Standard strategic recommendations & Standard Script Rewriting)
+* **Description**: Used for standard strategy generation and Creator tier script rewrites.
 * **Primary**: `deepseek-chat`
 * **Fallback 1**: `gemini-2.5-flash`
 * **Fallback 2**: `gemini-2.0-flash`
-* **Heuristic**: Empty/Template strategies with offline tips
+* **Heuristic**: Empty/Template strategies with offline tips (or error toast for script rewrite)
 
-### 3.4 `strategy` (Premium Strategic Recommendations)
+### 3.4 `strategy` (Premium Strategic Recommendations & Premium Script Rewriting)
+* **Description**: Used for premium strategy generation and Pro/Agency tier script rewrites (leveraging DeepSeek Reasoner for deep copywriting reasoning).
 * **Primary**: `deepseek-reasoner` *(leverages thinking model for premium creators)*
 * **Fallback 1**: `deepseek-chat`
 * **Fallback 2**: `gemini-2.5-flash`
-* **Heuristic**: Template strategies with premium indicators
+* **Heuristic**: Template strategies with premium indicators (or error toast for script rewrite)
 
 ### 3.5 `analysis` (Ad-hoc feed/global trends analysis)
 * **Primary**: `deepseek-chat`

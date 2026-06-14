@@ -1707,6 +1707,7 @@ AI OUTPUT VALIDATION RULES:
 | `lib/services/strategy.service.ts` | Strategy service (DB bridge) |
 | `lib/services/trends.service.ts` | Trend service (Daily Cache & DB bridge) |
 | `scripts/test-prompts.ts` | Prompt evaluation test suite |
+| `app/api/scripts/rewrite/route.ts` | POST endpoint for script rewriting (Premium gated) |
 
 ## Checks & Tests
 
@@ -1773,6 +1774,10 @@ grep -r "deepseek-chat\|gemini-2.0-flash\|inputPer1KTokens" lib/ai/model-router.
 # CHECK 11: Prompt evaluation test suite runs
 npx tsx scripts/test-prompts.ts
 # Expected: Runs successfully, validating 9-dimension scoring and prompt consistency across 10 mock posts.
+
+# CHECK 12: Script rewriter API unit tests pass
+npm test tests/rewrite.test.ts
+# Expected: All 5 tests pass successfully.
 ```
 
 ## Gate Criteria
@@ -1784,7 +1789,7 @@ npx tsx scripts/test-prompts.ts
 - [ ] Zod validates all LLM outputs
 - [ ] 9 scoring dimensions including `skip_rate` and `completion_rate`
 - [ ] JSON mode enforced on LLM calls
-- [ ] Temperature = 0.3
+- [ ] Temperature = 0.3 (or default for thinking models)
 - [ ] Queue handlers registered for SCORE_POST and GENERATE_STRATEGY
 - [ ] Stale-While-Revalidate (SWR) cache read/refresh logic (24hr expiry, async revalidation, 1hr force-refresh cooldown) enforced in services
 - [ ] Cost calculation uses correct model pricing
@@ -1793,6 +1798,7 @@ npx tsx scripts/test-prompts.ts
 - [ ] `npm run test:service:branching` passes
 - [ ] `npx tsx scripts/test-scoring.ts` passes
 - [ ] Services call `callLLMWithFallback` (not `callLLMPure` directly)
+- [ ] `/api/scripts/rewrite` endpoint gates standard/premium tiers, routes to DeepSeek Reasoner for Pro/Agency and DeepSeek Chat for Creator, fallback to Gemini 2.5 Flash, validates Zod schema, and increments usage logs
 
 ---
 
@@ -1906,6 +1912,7 @@ COMPONENTS (components/dashboard/):
 8. usage-meter.tsx — Progress bar showing used/total. Warning at 80% (yellow), critical at 95% (red).
 9. empty-state.tsx — Illustration placeholder + CTA button. Different messages per page context.
 10. loading-skeleton.tsx — Pulsing skeleton matching content layout shapes.
+10b. teleprompter-modal.tsx — Cinematic teleprompter: oversized font rendering, scroll play/pause controls, scroll speed (1-10) using requestAnimationFrame, font size scales, and active reading focus.
 
 COMPONENTS (components/shared/):
 11. error-boundary.tsx — Error boundary with retry button. Never shows stack traces to user.
@@ -1957,6 +1964,12 @@ PAGES:
     - Data export button (GDPR)
     - Delete account button with confirmation modal
 
+20b. app/(dashboard)/scripts/rewrite/page.tsx — Script Rewriter:
+    - Form to paste raw scripts (up to 3000 chars) and select growth goals (followers, engagement, conversions)
+    - Step-by-step loading progression sequence to buffer LLM latency
+    - Premium upgrade lock overlays for free accounts
+    - Bento storyboard grid rendering chronological script segments, visual directions, CTAs, and a teleprompter trigger
+
 HOOKS:
 21. hooks/use-posts.ts — SWR/fetch hook for Reels data from `GET /api/accounts/:id/reels`. Returns `display_views` and `metric_source`. UI routes under `/posts`.
 22. hooks/use-strategy.ts — Hook for strategy data
@@ -1991,9 +2004,9 @@ RULES:
 | File | Description |
 |---|---|
 | `app/(dashboard)/layout.tsx` | Dashboard shell |
-| `components/dashboard/*.tsx` | 10 dashboard components |
+| `components/dashboard/*.tsx` | 11 dashboard components (including `teleprompter-modal.tsx`) |
 | `components/shared/*.tsx` | 2 shared components |
-| `app/(dashboard)/**/*.tsx` | 8 page components |
+| `app/(dashboard)/**/*.tsx` | 9 page components (including `app/(dashboard)/scripts/rewrite/page.tsx`) |
 | `hooks/*.ts` | 5 data hooks |
 
 ## Checks & Tests
@@ -2051,13 +2064,17 @@ npm run build
 grep -r "display_views\|metric_source" app/\(dashboard\)/ components/dashboard/
 # Expected: Components fetch and display normalized view fields
 # Verify that all calculations dividing by views include strict checks to return null/0 when views are zero.
+
+# CHECK 13: Script rewriter page, loading sequence, bento grid and teleprompter modal controls exist
+grep -r "rawScript\|storyboard\|teleprompter\|playbackSpeed" app/\(dashboard\)/scripts/rewrite/ components/dashboard/
+# Expected: Components and page files exist with core script rewrite state and controls.
 ```
 
 ## Gate Criteria
 
 - [ ] `npx tsc --noEmit` → 0 errors
 - [ ] `npm run build` → succeeds with First Load JS budgets < 250KB per route
-- [ ] All 8 dashboard pages render successfully
+- [ ] All 9 dashboard pages render successfully (including Script Rewriter page)
 - [ ] No business logic inside React components (delegated to data hooks)
 - [ ] Loading states on every single asynchronous state change
 - [ ] Error boundaries properly configured on every sub-route/layout
@@ -2068,6 +2085,7 @@ grep -r "display_views\|metric_source" app/\(dashboard\)/ components/dashboard/
 - [ ] Animations strictly follow compositor-only property constraints (scale, opacity, x, y, rotate)
 - [ ] Zero direct synchronous imports of raw `motion` from `framer-motion` in user-facing components (delegated to dynamic LazyMotion client wrapper `performance-motion`)
 - [ ] Dark mode styling aligned with Outfit/Inter typography and design system colors
+- [ ] /scripts/rewrite page with form, multi-step loader, storyboard bento grid, and teleprompter modal with adjustable playback speed and font scale
 
 
 ---

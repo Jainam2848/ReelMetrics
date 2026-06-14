@@ -10,9 +10,10 @@ By shifting workflows from intuitive guessing to highly tailored, data-backed st
 
 * **Instagram MVP Ingestion (live):** OAuth2 for Instagram Professional accounts via `POST /api/auth/social/instagram`, Reel sync into `instagram_accounts` / `reels` / `reel_scores`, manual sync, and webhook subscription. TikTok integration is Post-MVP (Phase 11).
 * **The Hook Moat (Strategic Insight):** Surfacing Instagram Graph API `reels_skip_rate` (stored as `reels.skip_rate`) as *Strategic Skip Resistance* to mathematically dissect opening hooks.
-* **9-Dimension Scoring Engine:** Fully customized GPT-4o analytics model mapping hooks, visual pacing, structural retention, and captions.
+* **9-Dimension Scoring Engine:** Fully customized multi-model analytical framework (Gemini 2.0/2.5 Flash & DeepSeek V4) mapping hooks, visual pacing, structural retention, and captions.
+* **Viral Script Rewriter:** Standalone, premium-gated editor permitting creators to rewrite draft copy into high-retention, storyboarded short-form video scripts (integrated with a cinematic teleprompter modal).
 * **Profitable Strategy Generation:** Beautiful interactive calendars, automated posting schedules, and personalized copy generation.
-* **Cost-Optimized Architecture:** Strict monthly LLM budget caps and mathematical heuristic fallbacks to ensure sustainable **>90% Gross Margins**.
+* **Cost-Optimized Architecture:** Strict monthly LLM budget caps, sliding window RPM rate limiters for free API keys, and mathematical heuristic fallbacks to ensure sustainable **>90% Gross Margins**.
 
 ---
 
@@ -23,7 +24,8 @@ By shifting workflows from intuitive guessing to highly tailored, data-backed st
 3. **External Integrations:**
    - Meta Graph API (v22.0+)
    - TikTok Display API (v2)
-   - OpenAI API (GPT-4o & GPT-4o-mini)
+   - Google Gemini API (2.0/2.5 Flash)
+   - DeepSeek API (V4 Chat & Reasoner)
    - Stripe API (Dynamic checkout & billing portal)
    - Resend API (Transactional notification mailers)
 
@@ -40,17 +42,18 @@ cp .env.example .env
 Ensure the following variables are configured:
 * `DATABASE_URL` (Supabase Postgres Connection)
 * `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-* `OPENAI_API_KEY` (AI Engine)
+* `GEMINI_API_KEY` and `DEEPSEEK_API_KEY` (AI Engines)
 * `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`
 * `INSTAGRAM_CLIENT_ID`, `INSTAGRAM_CLIENT_SECRET`, and `INSTAGRAM_REDIRECT_URI` (callback: `/api/auth/social/instagram/callback`)
 
-**Key Instagram API routes (MVP):**
+**Key API routes:**
 * `POST /api/auth/social/instagram` — start OAuth (returns `{ authUrl }`)
 * `GET /api/accounts` — list connected `instagram_accounts`
 * `GET /api/accounts/:id/reels` — list ingested Reels
 * `GET|POST /api/reels/:id/score` — fetch or trigger scoring
 * `POST /api/accounts/:id/sync` — manual sync (5-minute cooldown)
 * `POST /api/accounts/demo` — sandbox demo (`alice_reels` seed)
+* `POST /api/scripts/rewrite` — rewrite script into storyboard (paid tiers only)
 
 ### 2. Install Dependencies & Build
 Install workspace dependencies and verify compilation and code quality:

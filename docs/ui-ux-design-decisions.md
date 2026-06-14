@@ -260,6 +260,13 @@ Each interface screen is defined here with layout rules, metrics, interaction lo
 * **GDPR Portability:** Provides the "Export Personal Database" button. Triggering it compiles and downloads a JSON file containing all metrics from `instagram_accounts`, `reels`, `stories`, and `strategies` in under 5 seconds (excluding access keys) [(prd.md:295-300)](file:///d:/Desktop/reel-logic-ai/docs/prd.md#L295-L300).
 * **GDPR Account Purge:** Provides the red "Delete account" button, executing a cascade delete across all connected media and user profiles [(prd.md:301-306)](file:///d:/Desktop/reel-logic-ai/docs/prd.md#L301-L306).
 
+### 5.12 Script Rewriter page (`/scripts/rewrite`)
+* **Objective-Driven Form Design:** Paste textarea with character counter (0/3000), single-select buttons for Growth Goals (Followers, Engagement, Conversions) showing short descriptions to set context, niche options, and a primary submit button with subtle hover scale animations.
+* **Perceived Latency Mitigation:** Since the DeepSeek Reasoner thinking model takes up to 20 seconds to process, a step-by-step sequential progress loader checklist is displayed to engage the user and maintain a high-quality feedback loop.
+* **Premium Upgrade Gate:** Strictly gates access to paid subscription tiers. Free users see a semi-transparent glassmorphic card overlay explaining features, pricing plans comparison, and an upgrade button linking directly to Stripe Checkout.
+* **Bento Storyboard & Auditing Layout:** Renders the curiosity hook audit and psychological copywriting lever alongside a bento grid storyboard table mapping chronologically: Time Start/End, Camera Direction & Visual Action, Spoken Script, On-Screen Text Overlay, and Sound Sync Notes.
+* **Cinematic Teleprompter Modal:** Features an overlay with oversized Outfit font text, adjustable font sizing (1rem - 4rem), adjustable scrolling speed (1 to 10), and play/pause controls. The auto-scrolling engine is optimized using requestAnimationFrame to avoid main-thread lag.
+
 ---
 
 ## 📏 6. Pixel-Perfect Layout, Alignment, & Spacing Specifications

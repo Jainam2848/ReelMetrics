@@ -46,7 +46,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-// @ts-ignore
+// @ts-expect-error - Bundle analyzer typings might not be installed in all dev environments
 import withBundleAnalyzer from "@next/bundle-analyzer";
 
 const configWithAnalyzer = withBundleAnalyzer({

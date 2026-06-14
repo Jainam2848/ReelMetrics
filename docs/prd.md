@@ -65,6 +65,7 @@ The platform operates on a tiered monthly subscription model structured around d
 | **AI Scoring Engine** | Heuristic + capped AI | 9-Dimension (Standard Routing) | 9-Dimension (Standard Routing) | 9-Dimension (Premium Routing) |
 | **Content Strategy** | Basic metrics | Weekly strategy generation | Advanced strategy + calendar | Custom white-label strategy briefs |
 | **Trend Detection** | None | None | 3-Account competitive trends | 10-Account cross-brand trends |
+| **Viral Script Rewriter** | Blocked | Standard Routing (DeepSeek Chat/Gemini) | Premium Routing (DeepSeek Reasoner) | Premium Routing (DeepSeek Reasoner) |
 
 > **Enforced limits:** `lib/billing/plans.ts` → `PLAN_LIMITS`. TikTok account seats and cross-platform filters are Post-MVP (Phase 11).
 
@@ -319,6 +320,21 @@ As a System, I want to track background worker heartbeats so that hung tasks are
 As a System, I want to enforce monthly budget caps and monthly AI post analysis caps per user so that we prevent malicious usage and run-away cloud costs.
 * **Acceptance Criterion 1:** Before executing any LLM API call for scoring, the backend queries the user's active billing period and checks usage against `lib/billing/plans.ts` → `PLAN_LIMITS`: **`maxReelsAnalyzed`** (10 / 50 / 200 / 1000) and **`maxAiCalls`** (10 / 150 / 600 / 2500) per tier. Design-target LLM budget caps remain $0.50 / $8.00 / $25.00 / $75.00 per month (enforcement wiring is partial — heuristic fallback is the primary guard today).
 * **Acceptance Criterion 2:** When either the post count limit or cost budget cap is hit, the system automatically redirects the user's requests to the heuristic fallback engine and inserts a cost warning in their notifications feed.
+
+### 6.8 Viral Script Rewriter (Premium Option)
+
+#### Story 16: Paid Tier Gating and API Routing
+As a Content Creator on a paid plan (Creator, Pro, or Agency), I want to rewrite my raw drafts into high-retention viral scripts using optimized AI models so that I can maximize viewer engagement.
+* **Acceptance Criterion 1:** If a Free tier user attempts to access the script rewriter page or hit the API endpoint, they are blocked with a `403 NO_ACTIVE_SUBSCRIPTION` error and prompted to upgrade.
+* **Acceptance Criterion 2:** When a Creator tier user enqueues a script, it is routed using standard routing (DeepSeek Chat primary, Gemini 2.5 Flash fallback).
+* **Acceptance Criterion 3:** When a Pro or Agency tier user enqueues a script, it is routed using premium routing (DeepSeek Reasoner primary, DeepSeek Chat/Gemini fallbacks).
+* **Acceptance Criterion 4:** Each successful script rewrite increments the user's monthly AI call counters (`aiCallsCount`, `aiTokensUsed`, `aiCostUsd`) in the database.
+
+#### Story 17: Interactive Storyboard & Cinematic Teleprompter
+As a Content Creator filming a video, I want to review my script in a structured bento grid storyboard and read it from an auto-scrolling teleprompter so that I can film easily on my phone.
+* **Acceptance Criterion 1:** The script rewriter page displays the curiosity audit breakdown, the psychological lever utilized, and a chronological bento grid timeline of segments with spoken script, visual actions, on-screen text overlays, and sound sync cues.
+* **Acceptance Criterion 2:** The teleprompter modal presents the spoken script words in an adjustable oversized font and implements a smooth `requestAnimationFrame` auto-scrolling loop.
+* **Acceptance Criterion 3:** The teleprompter modal has playback controls to play, pause, reset, and configure scroll speeds from 1 (slowest) to 10 (fastest).
 
 ---
 

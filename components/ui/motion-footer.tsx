@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRef } from "react";
-import { motion, useMotionValue, useSpring } from "framer-motion";
+import { m, useMotionValue, useSpring } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 // -------------------------------------------------------------------------
@@ -159,19 +159,19 @@ const MagneticButton = React.forwardRef<HTMLElement, MagneticButtonProps>(
       y.set(0);
     };
 
-    const MotionComponent = motion(Component as any);
+    const motionComponent = React.useMemo(() => m.create(Component as any), [Component]);
 
-    return (
-      <MotionComponent
-        ref={ref as any}
-        style={{ x: springX, y: springY }}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        className={cn("cursor-pointer inline-flex", className)}
-        {...props}
-      >
-        {children}
-      </MotionComponent>
+    return React.createElement(
+      motionComponent,
+      {
+        ref: ref as any,
+        style: { x: springX, y: springY },
+        onMouseMove: handleMouseMove,
+        onMouseLeave: handleMouseLeave,
+        className: cn("cursor-pointer inline-flex", className),
+        ...props,
+      },
+      children
     );
   }
 );
@@ -207,7 +207,7 @@ export function CinematicFooter() {
           <div className="footer-bg-grid absolute inset-0 z-0 pointer-events-none" />
 
           {/* Giant background text animated using Framer Motion on viewport entry */}
-          <motion.div
+          <m.div
             initial={{ y: "12vh", scale: 0.85, opacity: 0 }}
             whileInView={{ y: "0vh", scale: 1, opacity: 1 }}
             viewport={{ amount: 0.05 }}
@@ -215,7 +215,7 @@ export function CinematicFooter() {
             className="footer-giant-bg-text absolute -bottom-[3vh] left-1/2 -translate-x-1/2 whitespace-nowrap z-0 pointer-events-none select-none"
           >
             TRENDORAA
-          </motion.div>
+          </m.div>
 
           {/* 1. Diagonal Marquee (Top of footer) */}
           <div className="absolute top-12 left-0 w-full overflow-hidden border-y border-border/50 bg-background/60 backdrop-blur-md py-4 z-10 -rotate-2 scale-110 shadow-2xl">
@@ -227,7 +227,7 @@ export function CinematicFooter() {
 
           {/* 2. Main Center Content */}
           <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 mt-20 w-full max-w-5xl mx-auto">
-            <motion.h2
+            <m.h2
               initial={{ y: 40, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ amount: 0.1 }}
@@ -235,9 +235,9 @@ export function CinematicFooter() {
               className="text-5xl md:text-8xl font-black footer-text-glow tracking-tighter mb-12 text-center"
             >
               Ready to begin?
-            </motion.h2>
+            </m.h2>
 
-            <motion.div 
+            <m.div 
               initial={{ y: 40, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ amount: 0.1 }}
@@ -273,7 +273,7 @@ export function CinematicFooter() {
                   Contact Support
                 </MagneticButton>
               </div>
-            </motion.div>
+            </m.div>
           </div>
 
           {/* 3. Bottom Bar / Credits */}

@@ -140,10 +140,10 @@ Subscriptions are strictly cost-optimized and cap-monitored to guarantee profit 
 
 | Tier | Price | Connected Accounts | Ingested History | Monthly AI Analysis Limit | Monthly LLM Budget Cap | Key Features |
 |---|---|---|---|---|---|---|
-| **Free** | $0/mo | Max 1 (IG or TikTok) | Last 10 posts | 0 posts | $0.00 | Basic dashboard (no AI) |
-| **Creator** | **$39/mo** | Max 2 (e.g. 1 IG + 1 TikTok) | Unlimited history | **50 posts / month** | $8.00 | Weekly strategies, GPT-4o-mini |
-| **Pro** | **$89/mo** | Max 6 (e.g. 3 IG + 3 TikTok) | Unlimited history | **200 posts / month** | $25.00 | Cross-platform calendars, GPT-4o-mini |
-| **Agency** | **$249/mo** | Max 20 (up to 10 clients) | Unlimited history | **800 posts / month** | $75.00 | Custom white-label strategy briefs, GPT-4o |
+| **Free** | $0/mo | Max 1 (IG or TikTok) | Last 10 posts | 0 posts | $0.00 | Basic dashboard (no AI), Script Rewriter blocked |
+| **Creator** | **$39/mo** | Max 2 (e.g. 1 IG + 1 TikTok) | Unlimited history | **50 posts / month** | $8.00 | Weekly strategies, Standard routing (DeepSeek Chat/Gemini), Script Rewriter (standard) |
+| **Pro** | **$89/mo** | Max 6 (e.g. 3 IG + 3 TikTok) | Unlimited history | **200 posts / month** | $25.00 | Cross-platform calendars, Premium routing (DeepSeek Reasoner/Gemini), Script Rewriter (premium) |
+| **Agency** | **$249/mo** | Max 20 (up to 10 clients) | Unlimited history | **800 posts / month** | $75.00 | Custom white-label strategy briefs, Premium routing (DeepSeek Reasoner/Gemini), Script Rewriter (premium) |
 
 ## 1.7 VC Metrics That Matter
 
@@ -802,6 +802,7 @@ Strategy:
   GET    /api/accounts/:id/strategy    → Get current strategy
   POST   /api/accounts/:id/strategy    → Generate new strategy
   GET    /api/strategies/:id           → Get specific strategy
+  POST   /api/scripts/rewrite          → Rewrite script for virality (paid plans only)
 
 Analytics & Trends:
   GET    /api/accounts/:id/analytics   → Aggregated analytics
@@ -1714,7 +1715,7 @@ Services invoke **`callLLMWithFallback`**, not `callLLMPure` directly. The pure 
 async function callLLMPure<T>(params: {
   prompt: string;
   outputSchema: z.ZodSchema<T>;
-  model?: "gpt-4o-mini" | "gpt-4o";
+  model?: "gemini-2.0-flash" | "gemini-2.5-flash" | "deepseek-chat" | "deepseek-reasoner";
   maxTokens?: number;
 }): Promise<{
   success: true;
@@ -1726,7 +1727,7 @@ async function callLLMPure<T>(params: {
   success: false;
   error: string;
 }> {
-  const { prompt, outputSchema, model = "gpt-4o-mini" } = params;
+  const { prompt, outputSchema, model = "deepseek-chat" } = params;
   const startTime = Date.now();
   let rawResponse: string;
   let usage: OpenAI.CompletionUsage | undefined;
@@ -2031,6 +2032,32 @@ export class CircuitBreaker {
 - The heuristic fallback engine (§7.5) MUST be invoked when the OpenAI breaker is OPEN — users never see an error page because of a transient OpenAI outage.
 - Jobs that hit an OPEN Instagram or TikTok breaker MUST `reschedule(now + cooldownMs)` rather than incrementing the retry counter (the failure is not the job's fault).
 
+## 7.9 Script Rewriter Engine (Premium Option)
+
+To maximize virality and short-form viewer retention, Trendoraa features a premium-gated **Viral Script Rewriter Tool** (POST `/api/scripts/rewrite`). It transforms raw creator drafts or talking points into highly structured, storyboarded, and psychologically optimized short-form video scripts.
+
+### 7.9.1 Multi-Model Route Allocation
+- **Premium Tier (Pro, Agency)**: Utilizes **DeepSeek Reasoner** (`deepseek-reasoner`) to leverage its deep chain-of-thought processing. This model evaluates the original hook, selects the appropriate marketing psychology lever, and structures the storyboard.
+- **Standard Paid Tier (Creator)**: Utilizes **DeepSeek Chat** (`deepseek-chat`).
+- **Free Tier**: Blocked at the API level (returns `403 NO_ACTIVE_SUBSCRIPTION`).
+- **Outage Fallback**: If DeepSeek is rate-limited or unavailable, the system dynamically routes calls to **Gemini 2.5 Flash**.
+
+### 7.9.2 Virality Prompting Blueprint
+The rewriter prompt strictly enforces:
+1. **The 3-Second Hook Moat**: Discards generic greetings and hooks viewers using Curiosity Loops, Loss Aversion, or Status Signaling.
+2. **Visual Pacing**: Inserts cut/camera direction markers every 1.5–2.5 seconds.
+3. **High-Utility Value Drops**: Breaks the script body into lists, checklists, or steps to trigger the IKEA Effect and drive Saves.
+4. **Endless Loop Hook**: Flow-aligns the final CTA line back to the opening hook for infinite repeats.
+5. **Goal-Targeted CTAs**:
+   - *Followers*: Open-ended serial hooks.
+   - *Engagement*: Trigger word comment flows (e.g. "Comment 'REWRITE' for link").
+   - *Conversions*: Direct problem-to-solution link guides.
+
+### 7.9.3 Operational Guardrails
+- **Bait-and-Switch Prevention**: Hook and body content must align directly to protect retention.
+- **Strict Latency/Tokens Cap**: Set `max_tokens: 1500` and restrict input scripts to 3,000 characters to manage LLM billing.
+- **Translatability**: Outputs must validate against `rewriterResponseSchema` Zod definition.
+
 ---
 
 # §8 — BILLING & MONETIZATION
@@ -2080,13 +2107,15 @@ interface PlanLimits {
   maxReelsAnalyzed: number;     // per month
   maxStrategies: number;         // per month
   maxAiCalls: number;            // per month
-  aiModel: "gpt-4o-mini" | "gpt-4o";
+  aiModel: string;
+  modelTier: "standard" | "premium";
   features: {
     trendDetection: boolean;
     contentCalendar: boolean;
     teamAccess: boolean;
     whiteLabel: boolean;
     priorityAi: boolean;
+    scriptRewriter: "none" | "standard" | "premium";
   };
 }
 
@@ -2096,55 +2125,63 @@ const PLAN_LIMITS: Record<string, PlanLimits> = {
     maxReelsAnalyzed: 10,
     maxStrategies: 0,
     maxAiCalls: 10,
-    aiModel: "gpt-4o-mini",
+    aiModel: "Standard Routing Tier",
+    modelTier: "standard",
     features: {
       trendDetection: false,
       contentCalendar: false,
       teamAccess: false,
       whiteLabel: false,
       priorityAi: false,
+      scriptRewriter: "none",
     },
   },
   creator: {
-    maxAccounts: 1,
-    maxReelsAnalyzed: 100,
+    maxAccounts: 2,
+    maxReelsAnalyzed: 50,
     maxStrategies: 4,
     maxAiCalls: 150,
-    aiModel: "gpt-4o-mini",
+    aiModel: "Standard Routing Tier",
+    modelTier: "standard",
     features: {
       trendDetection: false,
       contentCalendar: true,
       teamAccess: false,
       whiteLabel: false,
       priorityAi: false,
+      scriptRewriter: "standard",
     },
   },
   pro: {
-    maxAccounts: 3,
-    maxReelsAnalyzed: 500,
+    maxAccounts: 5,
+    maxReelsAnalyzed: 200,
     maxStrategies: 12,
     maxAiCalls: 600,
-    aiModel: "gpt-4o",
+    aiModel: "Premium Routing Tier",
+    modelTier: "premium",
     features: {
       trendDetection: true,
       contentCalendar: true,
       teamAccess: false,
       whiteLabel: false,
-      priorityAi: false,
+      priorityAi: true,
+      scriptRewriter: "premium",
     },
   },
   agency: {
-    maxAccounts: 10,
-    maxReelsAnalyzed: 2000,
+    maxAccounts: 20,
+    maxReelsAnalyzed: 1000,
     maxStrategies: 40,
     maxAiCalls: 2500,
-    aiModel: "gpt-4o",
+    aiModel: "Premium Routing Tier",
+    modelTier: "premium",
     features: {
       trendDetection: true,
       contentCalendar: true,
       teamAccess: true,
       whiteLabel: true,
       priorityAi: true,
+      scriptRewriter: "premium",
     },
   },
 };
@@ -3399,18 +3436,18 @@ A migration test (`tests/security-headers.test.ts`) MUST assert every header abo
 │      Total fixed:         ~$91/mo                        │
 │                                                         │
 │  Variable (per user):                                    │
-│  ├── OpenAI GPT-4o-mini:  ~$0.015/scoring call          │
+│  ├── Gemini/DeepSeek Chat: ~$0.00025/scoring call        │
 │  │   (150 tokens in, 800 tokens out avg)                │
-│  ├── OpenAI GPT-4o:       ~$0.08/strategy call          │
+│  ├── DeepSeek Reasoner:    ~$0.0055/strategy & rewrite   │
 │  │   (2000 tokens in, 2000 tokens out avg)              │
 │  ├── Instagram API:       $0 (free)                     │
 │  └── Stripe fees:         2.9% + $0.30/transaction      │
 │                                                         │
 │  Per-plan cost estimate:                                │
-│  ├── Free:    $0.15/user/mo  (10 AI calls)              │
-│  ├── Creator: $2.25/user/mo  (150 AI calls)             │
-│  ├── Pro:     $12.00/user/mo (600 AI calls + GPT-4o)    │
-│  └── Agency:  $40.00/user/mo (2500 AI calls + GPT-4o)   │
+│  ├── Free:    $0.0025/user/mo (10 AI calls)             │
+│  ├── Creator: $0.0375/user/mo (150 AI calls)            │
+│  ├── Pro:     $0.40/user/mo   (600 AI calls + reasoner) │
+│  └── Agency:  $1.60/user/mo   (2500 AI calls + reasoner)│
 │                                                         │
 │  Gross Margin Targets:                                   │
 │  ├── Creator ($39):  94% margin  ✅                      │
@@ -3485,15 +3522,23 @@ interface AICostEvent {
   timestamp: Date;
 }
 
-// Pricing table (updated manually when OpenAI changes prices)
+// Pricing table (updated manually per official Google & DeepSeek pricing sheets)
 const MODEL_PRICING = {
-  "gpt-4o-mini": {
-    inputPer1K: 0.00015,
-    outputPer1K: 0.0006,
+  "gemini-2.0-flash": {
+    inputPer1K: 0.000075,
+    outputPer1K: 0.0003,
   },
-  "gpt-4o": {
-    inputPer1K: 0.005,
-    outputPer1K: 0.015,
+  "gemini-2.5-flash": {
+    inputPer1K: 0.000075,
+    outputPer1K: 0.0003,
+  },
+  "deepseek-chat": {
+    inputPer1K: 0.00014,
+    outputPer1K: 0.00028,
+  },
+  "deepseek-reasoner": {
+    inputPer1K: 0.00055,
+    outputPer1K: 0.00219,
   },
 };
 
@@ -4141,7 +4186,7 @@ const FAILURE_INJECTION_SUITE = [
 
 ## 16.2 AI Prompt Evaluation Framework
 
-To prevent AI output drift, schema regressions, or excessive scoring variance across prompt adjustments or LLM model upgrades (e.g. from GPT-4o-mini to GPT-5 or equivalent), the AI engine must pass an automated validation gate using `scripts/test-prompts.ts`. This script executes a mock evaluation pipeline without incurring live production costs by feeding a deterministic set of test inputs into the prompt runner.
+To prevent AI output drift, schema regressions, or excessive scoring variance across prompt adjustments or LLM model upgrades (e.g. from Gemini/DeepSeek V4 to upgraded models or equivalent), the AI engine must pass an automated validation gate using `scripts/test-prompts.ts`. This script executes a mock evaluation pipeline without incurring live production costs by feeding a deterministic set of test inputs into the prompt runner.
 
 ### 16.2.1 Mock Test Suite Setup (`scripts/test-prompts.ts`)
 

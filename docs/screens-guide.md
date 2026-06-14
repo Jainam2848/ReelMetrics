@@ -534,6 +534,39 @@ The user dashboard control panel managing credentials, privacy data, and profile
 *   **Destructive Deletion Warnings:** Hovering over the cascade deletion button changes the panel's outline to a pulsing sunset rose color, prompting caution.
 *   **Successful export notification toast:** Confirming data exports slides a sleek notification banner into the top right corner.
 
+### 2.12 Script Rewriter Page (`/scripts/rewrite`)
+
+#### 2.12.1 Structural Layout & Content Blocks
+*   **The Content Input Panel**:
+    *   A clean, centered card layout with a large, glassmorphic Textarea input for raw creator scripts (10–3,000 characters).
+    *   Goal selector buttons utilizing layout transitions (Followers, Engagement, Conversions) with sub-titles explaining the targeted virality strategy.
+    *   Niche selector (optional input) with suggestions.
+    *   Premium Upgrade Overlay: Gated for paid subscription plans (Creator, Pro, Agency). Free accounts see a high-fidelity glassmorphic overlay with pricing tier comparison, features list, and a direct upgrade CTA linking to Stripe checkout.
+*   **The Multi-Step Progress Loader**:
+    *   An interactive, staggered sequence visible during API generation to buffer LLM processing latency:
+        1. *Analyzing original hook and skip triggers...*
+        2. *Extracting niche strategy and audience triggers...*
+        3. *Structuring storyboard visual instructions...*
+        4. *Formulating CTAs & algorithmic loop hooks...*
+    *   Renders with sequential checks and smooth CSS opacity transitions.
+*   **The Bento Storyboard Results Dashboard**:
+    *   *Hook Audit Card*: Full breakdown detailing why the original script hook triggers early skips, compared with the selected psychological/copywriting lever.
+    *   *Storyboard Chronological Grid*: Interactive timeline rows displaying start/end segments (e.g. `0.0s - 3.0s`), spoken script words, visual camera action notes, overlay text directions, and audio sync details.
+    *   *Action Controls Bar*: Buttons to copy the spoken script or overlays to clipboard, and a high-contrast button to launch **Teleprompter Mode**.
+*   **Cinematic Teleprompter Modal**:
+    *   Displays script words in oversized, highly legible, centered styling.
+    *   Active reading highlighted focus overlay.
+    *   Control Dashboard: Play/pause, reset/rewind, font size adjustments, and speed controller (1 to 10 scale) powered by a smooth `requestAnimationFrame` render loop.
+
+#### 2.12.2 Metrics Displayed on this Page
+*   **Storyboard Segments Pacing:** Start and end timestamps (seconds) showing absolute duration.
+*   **Usage Credits Tracker:** Displays current active plan limits and remaining monthly AI processing calls.
+
+#### 2.12.3 Animations & Motions
+*   **Auto-Scroll Script Engine:** Uses requestAnimationFrame to scroll the teleprompter container smoothly based on speed settings.
+*   **Staggered Segment Reveal:** Bento storyboard blocks fade in and translate upward sequentially using Framer Motion layout animations.
+*   **Copy Clipboard Feedback:** Clicking copy transitions the icon to a checkmark with a quick green pop animation.
+
 ---
 
 ## 🔬 3. Interactive Design & Motion Reference Table
@@ -552,4 +585,5 @@ The following table summarizes the specific frontend motions, libraries, and des
 | **Post Details (`/posts/[id]`)** | Transcript segments, 9-dim bars, rewriter | Framer Motion, custom CSS | Video timeline transcription track syncing, low-efficacy warning card pulses | Sunset Rose, Electric Cobalt |
 | **Billing (`/billing`)** | Tier cards, SLA notices, accordions | Framer Motion, custom CSS | Checkout button shimmer sweeps, FAQ drawer spring wipes | Space Obsidian, Electric Cobalt |
 | **Settings (`/settings`)** | Profiles, GDPR exports, Cascade deletes | Framer Motion | Destructive deletion warning glows, success toast slides | Space Obsidian, Sunset Rose |
+| **Script Rewriter (`/scripts/rewrite`)** | Script Form, Storyboard Bento, Teleprompter Modal | Framer Motion, requestAnimationFrame, CSS | Sequential loader checklists, staggered storyboard reveals, requestAnimationFrame scroll loop, copy clipboard feedback ticks | Space Obsidian, Electric Cobalt, Neon Jade |
 

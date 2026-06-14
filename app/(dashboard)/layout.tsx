@@ -19,6 +19,7 @@ import {
   LogOut,
   Zap,
   TrendingUp,
+  FileText,
 } from "lucide-react";
 
 import { AccountSwitcher } from "@/components/shared/account-switcher";
@@ -45,6 +46,7 @@ const NAV_GROUPS: { title: string; items: SidebarItem[] }[] = [
       { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="w-[18px] h-[18px]" /> },
       { label: "My Reels", href: "/posts", icon: <Film className="w-[18px] h-[18px]" /> },
       { label: "Strategy", href: "/strategy", icon: <TrendingUp className="w-[18px] h-[18px]" />, badge: "AI" },
+      { label: "Script Rewriter", href: "/scripts/rewrite", icon: <FileText className="w-[18px] h-[18px]" />, badge: "PRO" },
     ],
   },
   {
