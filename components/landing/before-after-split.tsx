@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { m, useInView, useReducedMotion } from "framer-motion";
+import { m, useInView, useReducedMotion, useMotionValue, useMotionTemplate } from "framer-motion";
 import { Play, TrendingUp, AlertTriangle, Eye, RefreshCw } from "lucide-react";
 
 export function BeforeAfterSplit() {
@@ -12,6 +12,24 @@ export function BeforeAfterSplit() {
   const [sequenceStarted, setSequenceStarted] = useState(false);
   const [simulating, setSimulating] = useState(false);
   const [isMobileDevice, setIsMobileDevice] = useState(false);
+
+  // Mouse coordinate values for spotlight hover spell
+  const mouseLeftX = useMotionValue(0);
+  const mouseLeftY = useMotionValue(0);
+  const mouseRightX = useMotionValue(0);
+  const mouseRightY = useMotionValue(0);
+
+  function handleMouseLeftMove(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    mouseLeftX.set(e.clientX - rect.left);
+    mouseLeftY.set(e.clientY - rect.top);
+  }
+
+  function handleMouseRightMove(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    mouseRightX.set(e.clientX - rect.left);
+    mouseRightY.set(e.clientY - rect.top);
+  }
 
   // Counter states
   const [viewsCount, setViewsCount] = useState(0);
@@ -66,25 +84,36 @@ export function BeforeAfterSplit() {
     <section id="transformation" className="py-24 relative w-full overflow-hidden" ref={containerRef}>
       <div className="max-w-6xl mx-auto px-6 relative z-10">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-display font-extrabold text-white mb-4">
-            Stop Guessing. <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-accent">Start Engineering.</span>
+          <h2 className="text-3xl md:text-5xl font-display font-extrabold text-white mb-4 font-cabinet">
+            Stop Guessing. <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-accent">Engineer Retention.</span>
           </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            See exactly where you lose your audience and how to fix it before you even post.
+          <p className="text-muted-foreground text-base max-w-2xl mx-auto font-outfit">
+            Our analytical engine evaluates your hooks, visual pacing, and CTA strength to predict and improve distribution before you hit publish.
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-stretch">
           {/* LEFT: Old Way */}
-          <div className="flex flex-col h-full border border-red-500/20 bg-[#1A1515]/50 backdrop-blur-xl rounded-3xl p-6 md:p-8 relative overflow-hidden">
-            <div className="absolute top-0 right-0 bg-red-500/10 text-red-400 text-xs font-bold px-4 py-1.5 rounded-bl-2xl uppercase tracking-wider">
+          <div 
+            onMouseMove={handleMouseLeftMove}
+            className="flex flex-col h-full border border-red-500/20 bg-[#1A1515]/50 backdrop-blur-xl rounded-3xl p-6 md:p-8 relative overflow-hidden group"
+          >
+            {/* Localized Spotlight Hover Reaction */}
+            <m.div
+              className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"
+              style={{
+                background: useMotionTemplate`radial-gradient(350px circle at ${mouseLeftX}px ${mouseLeftY}px, rgba(239, 68, 68, 0.05), transparent 80%)`,
+              }}
+            />
+
+            <div className="absolute top-0 right-0 bg-red-500/10 text-red-400 text-[10px] font-bold px-4 py-1.5 rounded-bl-2xl uppercase tracking-wider z-10 font-mono">
               The Old Way
             </div>
             
-            <h3 className="text-xl font-display font-bold text-white mb-2 mt-4">Post & Pray</h3>
-            <p className="text-red-400/80 text-sm mb-8 flex items-center gap-2">
+            <h3 className="text-xl font-display font-bold text-white mb-2 mt-4 z-10 font-cabinet">Post & Pray</h3>
+            <p className="text-red-400/80 text-xs mb-8 flex items-center gap-2 z-10 font-outfit">
               <AlertTriangle className="w-4 h-4" /> 
-              High skip rate detected. Algorithm penalty active.
+              Blind distribution. High scroll-away rates trigger immediate reach limits.
             </p>
 
             {/* Messy Grid */}
@@ -125,6 +154,7 @@ export function BeforeAfterSplit() {
 
           {/* RIGHT: Trendoraa Way */}
           <m.div
+            onMouseMove={handleMouseRightMove}
             style={{ 
               transformStyle: "preserve-3d", 
               perspective: "1000px",
@@ -132,8 +162,16 @@ export function BeforeAfterSplit() {
             }}
             whileHover={(shouldReduceMotion || isMobileDevice) ? {} : { rotateX: 0 }}
             transition={{ type: "spring", stiffness: 120, damping: 18 }}
-            className="flex flex-col h-full border border-white/10 bg-white/[0.03] backdrop-blur-[8px] rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-glow before-after-glass"
+            className="flex flex-col h-full border border-white/10 bg-white/[0.03] backdrop-blur-[8px] rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-glow before-after-glass group"
           >
+            {/* Localized Spotlight Hover Reaction */}
+            <m.div
+              className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"
+              style={{
+                background: useMotionTemplate`radial-gradient(350px circle at ${mouseRightX}px ${mouseRightY}px, rgba(99, 102, 241, 0.08), transparent 80%)`,
+              }}
+            />
+
             {/* Stacked backdrop-filter layer for premium glass depth */}
             <div className="absolute inset-0 bg-black/[0.15] backdrop-blur-[20px] pointer-events-none z-0 before-after-glass-inner" />
 
@@ -178,16 +216,16 @@ export function BeforeAfterSplit() {
               }
             `}} />
 
-            <div className="absolute top-0 right-0 bg-brand-primary/20 text-brand-primary text-xs font-bold px-4 py-1.5 rounded-bl-2xl uppercase tracking-wider z-10">
+            <div className="absolute top-0 right-0 bg-brand-primary/20 text-brand-primary text-[10px] font-bold px-4 py-1.5 rounded-bl-2xl uppercase tracking-wider z-10 font-mono">
               Trendoraa Way
             </div>
 
             <div className="flex justify-between items-start mt-4 mb-8 z-10 relative">
               <div>
-                <h3 className="text-xl font-display font-bold text-white mb-2">Deep Post Analysis</h3>
-                <p className="text-brand-secondary text-sm flex items-center gap-2">
+                <h3 className="text-xl font-display font-bold text-white mb-2 font-cabinet">Deep Post Analysis</h3>
+                <p className="text-brand-secondary text-xs flex items-center gap-2 font-outfit">
                   <TrendingUp className="w-4 h-4" />
-                  Actual metrics, unmasked.
+                  Audit your visual and audio structure frame-by-frame.
                 </p>
               </div>
               <button 
@@ -298,6 +336,43 @@ export function BeforeAfterSplit() {
                   </m.div>
                 )}
               </div>
+
+              {/* Insightful Detailed Diagnostic Panel */}
+              {sequenceStarted && (
+                <m.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 2.2, duration: 0.6, ease: "easeOut" }}
+                  className="mt-6 p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col gap-3 text-left font-outfit z-10 relative animate-fade-in"
+                >
+                  <div className="text-[10px] font-bold tracking-widest text-brand-secondary uppercase font-mono">
+                    Diagnostic Analysis Engine
+                  </div>
+                  
+                  <div className="space-y-3 text-[11px] leading-relaxed text-white/70">
+                    <div className="flex gap-2.5 items-start">
+                      <span className="h-1.5 w-1.5 rounded-full bg-brand-primary mt-1.5 shrink-0" />
+                      <div>
+                        <strong className="text-white">Visual Pacing Index:</strong> Scans the video file frame-by-frame to identify edit cut markers and transition pacing. Compares visual velocity to target niches (e.g. tech, finance) to suggest transition density.
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2.5 items-start">
+                      <span className="h-1.5 w-1.5 rounded-full bg-brand-secondary mt-1.5 shrink-0" />
+                      <div>
+                        <strong className="text-white">Audio Hook Sync:</strong> Cross-references background audio momentum and voiceover clarity against the opening 3 seconds of the clip to optimize retention velocity.
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2.5 items-start">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#14B8A6] mt-1.5 shrink-0" />
+                      <div>
+                        <strong className="text-white">CTA Conversion Scoring:</strong> Parses caption and verbal instructions to evaluate call-to-action effectiveness, projecting saves and shares rates instead of vanity likes.
+                      </div>
+                    </div>
+                  </div>
+                </m.div>
+              )}
             </div>
           </m.div>
         </div>

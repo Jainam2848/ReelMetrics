@@ -10,7 +10,6 @@ import { TestimonialCarousel } from "@/components/landing/TestimonialCarousel";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { CinematicFooter } from "@/components/ui/motion-footer";
 import { GridDistortionProvider } from "@/lib/contexts/GridDistortionContext";
-import { AnalysisStateProvider } from "@/lib/contexts/AnalysisStateContext";
 import { GridDistortionBackground } from "@/components/landing/GridDistortionBackgroundClient";
 import { ScrollReveal } from "@/components/landing/ScrollReveal";
 
@@ -24,21 +23,15 @@ export default async function LandingPage() {
 
   return (
     /**
-     * Both contexts are scoped to marketing pages only.
-     * They are NOT in app/layout.tsx to avoid polluting the dashboard.
-     *
+     * Scoped to marketing pages only.
      * GridDistortionProvider — shares normalizedX/Y MotionValues for
      *   cursor-reactive effects without extra event listeners.
-     *
-     * AnalysisStateProvider — bridges ReelScoreSimulator → GridDistortionBackground
-     *   so the background can react to the analysis phase.
      */
     <GridDistortionProvider>
-      <AnalysisStateProvider>
-        <div
-          className="min-h-screen bg-[#08090D] text-[#F8F8FC] dark text-foreground overflow-hidden selection:bg-brand-primary/30 relative flex flex-col"
-          style={{ backgroundColor: "#08090D" }}
-        >
+      <div
+        className="min-h-screen bg-[#08090D] text-[#F8F8FC] dark text-foreground overflow-hidden selection:bg-brand-primary/30 relative flex flex-col"
+        style={{ backgroundColor: "#08090D" }}
+      >
           {/* WebGL grid distortion — state-reactive & smooth transitions */}
           <GridDistortionBackground />
 
@@ -126,7 +119,6 @@ export default async function LandingPage() {
             </div>
           </main>
         </div>
-      </AnalysisStateProvider>
     </GridDistortionProvider>
   );
 }

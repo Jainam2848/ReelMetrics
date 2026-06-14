@@ -18,11 +18,11 @@ export function HowItWorksSection() {
           </div>
           
           <h2 className="text-3xl md:text-5xl font-display font-black tracking-tight text-white leading-tight">
-            How Trendoraa Fuels Your Short-Form Growth
+            Predict Viewer Swipes. Audit Real Feed Performance.
           </h2>
           
           <p className="mt-4 text-base text-gray-400 font-sans font-medium leading-relaxed">
-            From authorization to action. Three integrated steps to diagnostic intelligence and scroll-stopping virality.
+            From pre-publish diagnostics to continuous feed tracking. Three integrated steps to lock in viewer attention and scale your organic reach.
           </p>
         </div>
 

@@ -6,17 +6,9 @@ import { m } from "framer-motion";
 import { CTAButton } from "./CTAButton";
 import { FlipWords } from "@/components/ui/flip-words";
 import { HeroStats } from "./HeroStats";
-import { SimulatorSkeleton } from "./SimulatorSkeleton";
-import { useAnalysisState } from "@/lib/contexts/AnalysisStateContext";
-
-const ReelScoreSimulator = dynamic(
-  () => import("./ReelScoreSimulator"),
-  { ssr: false, loading: () => <SimulatorSkeleton /> }
-);
+import GrowthCalculator from "./GrowthCalculator";
 
 export function HeroSection({ hasSession = false }: { hasSession?: boolean }) {
-  // Analysis state is now managed via shared context
-  const { analysisState, setAnalysisState } = useAnalysisState();
 
   return (
     <>
@@ -138,19 +130,13 @@ export function HeroSection({ hasSession = false }: { hasSession?: boolean }) {
             <HeroStats />
           </div>
 
-          {/* Right Column: Dynamic Live Reel Scoring Widget */}
+          {/* Right Column: Dynamic Growth Calculator Widget */}
           <div className="lg:col-span-5 flex justify-center lg:justify-end w-full relative z-20">
-            {/* Ambient Background Glowing Orb Reacting to State */}
+            {/* Ambient Background Glowing Orb */}
             <div 
-              className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full blur-[100px] pointer-events-none select-none z-0 transition-all duration-[1200ms] ease-out ${
-                analysisState === "complete"
-                  ? "bg-emerald-500/8"
-                  : analysisState === "analyzing"
-                    ? "bg-indigo-500/10 animate-orb-pulse"
-                    : "bg-indigo-500/6"
-              }`}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full blur-[100px] pointer-events-none select-none z-0 bg-indigo-500/6 transition-all duration-[1200ms] ease-out"
             />
-            <ReelScoreSimulator onStateChange={setAnalysisState} />
+            <GrowthCalculator />
           </div>
           
         </div>
